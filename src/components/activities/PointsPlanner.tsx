@@ -28,9 +28,10 @@ function getRegWeek(r: Registration): number | null {
 interface PointsPlannerProps {
   catalog: CatalogItem[];
   registrations: Registration[];
+  onClickRegistration?: (reg: Registration, cat: CatalogItem) => void;
 }
 
-export function PointsPlanner({ catalog, registrations }: PointsPlannerProps) {
+export function PointsPlanner({ catalog, registrations, onClickRegistration }: PointsPlannerProps) {
   const updateReg = useUpdateRegistration();
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const currentWeek = getCurrentWeek();
@@ -135,7 +136,7 @@ export function PointsPlanner({ catalog, registrations }: PointsPlannerProps) {
                 {unplanned.map((r) => {
                   const cat = catalog.find((c) => c.id === r.catalog_id);
                   if (!cat) return null;
-                  return <RegBlock key={r.id} reg={r} cat={cat} onDragStart={handleDragStart} isDragging={draggedId === r.id} />;
+                  return <RegBlock key={r.id} reg={r} cat={cat} onDragStart={handleDragStart} isDragging={draggedId === r.id} onClick={() => onClickRegistration?.(r, cat)} />;
                 })}
               </div>
             </div>
@@ -167,7 +168,7 @@ export function PointsPlanner({ catalog, registrations }: PointsPlannerProps) {
                       {w.registrations.map((r) => {
                         const cat = catalog.find((c) => c.id === r.catalog_id);
                         if (!cat) return null;
-                        return <RegBlock key={r.id} reg={r} cat={cat} onDragStart={handleDragStart} isDragging={draggedId === r.id} />;
+                        return <RegBlock key={r.id} reg={r} cat={cat} onDragStart={handleDragStart} isDragging={draggedId === r.id} onClick={() => onClickRegistration?.(r, cat)} />;
                       })}
                     </div>
                     <div className={`text-center text-xs font-bold tabular-nums rounded px-1 py-0.5 ${
@@ -207,14 +208,15 @@ export function PointsPlanner({ catalog, registrations }: PointsPlannerProps) {
   );
 }
 
-function RegBlock({ reg, cat, onDragStart, isDragging }: { reg: Registration; cat: CatalogItem; onDragStart: (e: React.DragEvent, id: string) => void; isDragging: boolean }) {
+function RegBlock({ reg, cat, onDragStart, isDragging, onClick }: { reg: Registration; cat: CatalogItem; onDragStart: (e: React.DragEvent, id: string) => void; isDragging: boolean; onClick?: () => void }) {
   const isCompleted = reg.status === "completed";
   const isMandatoryIncomplete = cat.is_mandatory && !isCompleted;
   return (
     <div
       draggable
       onDragStart={(e) => onDragStart(e, reg.id)}
-      className={`text-[10px] leading-tight rounded px-1.5 py-1 cursor-grab active:cursor-grabbing transition-all flex items-start gap-1 ${
+      onClick={(e) => { e.stopPropagation(); onClick?.(); }}
+      className={`text-[10px] leading-tight rounded px-1.5 py-1 cursor-pointer active:cursor-grabbing transition-all flex items-start gap-1 hover:ring-1 hover:ring-primary/40 ${
         isDragging ? "opacity-40 scale-95" : "opacity-100"
       } ${isCompleted ? "bg-primary/15 text-primary" : isMandatoryIncomplete ? "bg-blue-50 text-blue-700 ring-1 ring-destructive/50" : "bg-blue-50 text-blue-700"}`}
     >
