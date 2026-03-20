@@ -2,7 +2,7 @@ import { useMemo, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, CheckCircle2, GripVertical, Star, Info } from "lucide-react";
+import { AlertTriangle, CheckCircle2, GripVertical, Info } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useUpdateRegistration, type CatalogItem, type Registration } from "@/hooks/useActivityCatalog";
 import { Tooltip as UITooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -288,7 +288,7 @@ function RegBlock({ reg, cat, onDragStart, isDragging, onClick }: { reg: Registr
       <GripVertical className="h-3 w-3 shrink-0 mt-px opacity-40" />
       <span className="flex-1 min-w-0">
         <span className="line-clamp-2">
-          {isMandatory && <Star className="h-2.5 w-2.5 inline mr-0.5 text-[#E07A5F]" />}
+          
           {cat.name}
         </span>
         <span className="font-semibold ml-0.5">{cat.points}p</span>
