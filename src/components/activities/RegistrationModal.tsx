@@ -123,6 +123,10 @@ export function RegistrationModal({ open, onOpenChange, catalogItem, registratio
       } as any, {
         onSuccess: (data) => {
           setReg(data);
+          // Save participants for new registration
+          form.selectedMembers.forEach((memberId) => {
+            toggleParticipant.mutate({ registrationId: data.id, memberId, isParticipant: false });
+          });
           toast.success("Registrering opprettet");
         },
       });
@@ -206,17 +210,26 @@ export function RegistrationModal({ open, onOpenChange, catalogItem, registratio
           </div>
 
           {/* Participants */}
-          {reg && members && (
+          {members && (
             <div>
               <Label className="mb-2 block">Deltakere</Label>
               <div className="flex flex-wrap gap-3">
                 {members.map((member) => {
-                  const isP = regParticipants.some((p) => p.member_id === member.id);
+                  const isSelected = form.selectedMembers.includes(member.id);
                   return (
                     <label key={member.id} className="flex items-center gap-1.5 text-sm cursor-pointer">
                       <Checkbox
-                        checked={isP}
-                        onCheckedChange={() => toggleParticipant.mutate({ registrationId: reg.id, memberId: member.id, isParticipant: isP })}
+                        checked={isSelected}
+                        onCheckedChange={() => {
+                          const newMembers = isSelected
+                            ? form.selectedMembers.filter((id) => id !== member.id)
+                            : [...form.selectedMembers, member.id];
+                          setForm((p) => ({ ...p, selectedMembers: newMembers }));
+                          // If registration already exists, persist immediately
+                          if (reg) {
+                            toggleParticipant.mutate({ registrationId: reg.id, memberId: member.id, isParticipant: isSelected });
+                          }
+                        }}
                       />
                       {member.name.split(" ")[0]}
                     </label>
