@@ -265,7 +265,7 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
   };
 
   return (
-    <Card className={`overflow-hidden transition-shadow ${isToday ? "ring-2 ring-primary shadow-md" : ""}`}>
+    <Card className={`overflow-hidden transition-shadow ${isToday ? "ring-2 ring-primary shadow-md" : ""} ${isCancelled ? "opacity-60" : ""}`}>
       <CardContent className="p-0">
         {/* Header */}
         <div
@@ -274,12 +274,13 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
         >
           <div className="space-y-0.5">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold capitalize">
+              <span className={`text-sm font-semibold capitalize ${isCancelled ? "line-through text-muted-foreground" : ""}`}>
                 {formatWeekdayNb(meetingDate)} {meetingDate.getDate()}. {meetingDate.toLocaleDateString("nb-NO", { month: "long" })}
               </span>
               {isToday && <Badge className="bg-primary text-primary-foreground text-[10px]">I dag</Badge>}
               {status === "in_progress" && <Badge className="bg-green-600 text-white text-[10px]">Pågår</Badge>}
               {status === "completed" && <Badge variant="secondary" className="text-[10px]">Fullført</Badge>}
+              {isCancelled && <Badge variant="destructive" className="text-[10px]">Avlyst</Badge>}
             </div>
             {recurringMeeting && (
               <Badge variant="outline" className="text-[10px]">
