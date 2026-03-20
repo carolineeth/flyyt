@@ -19,7 +19,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { SubSessionBlock } from "./SubSessionBlock";
 import { toast } from "sonner";
-import { Plus, Play, Square, Copy, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Play, Square, Copy, ChevronUp, ChevronDown, X, CalendarDays } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const subSessionTemplates: Record<string, string[]> = {
   sprint_planning: ["Gjennomgå product backlog", "Velg items for sprint", "Estimering", "Definer sprint goal"],
@@ -59,6 +60,8 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
   const [newAgenda, setNewAgenda] = useState("");
   const [notes, setNotes] = useState(meeting?.notes || "");
   const [expanded, setExpanded] = useState(true);
+  const [showReschedule, setShowReschedule] = useState(false);
+  const [newDate, setNewDate] = useState("");
 
   useEffect(() => { setNotes(meeting?.notes || ""); }, [meeting?.notes]);
 
@@ -81,6 +84,39 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
 
   const meetingDate = meeting.meeting_date ? new Date(meeting.meeting_date + "T00:00:00") : new Date(meeting.date);
   const status = meeting.status || "upcoming";
+  const isCancelled = status === "cancelled";
+
+  const cancelMeeting = async () => {
+    await supabase.from("meetings").update({ status: "cancelled" } as any).eq("id", meeting.id);
+    qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
+    toast.success("Møte avlyst");
+  };
+
+  const rescheduleMeeting = async (dateStr: string) => {
+    if (!dateStr) return;
+    const newMeetingDate = new Date(dateStr);
+    const newWeek = (() => {
+      const d = new Date(Date.UTC(newMeetingDate.getFullYear(), newMeetingDate.getMonth(), newMeetingDate.getDate()));
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+    })();
+    await supabase.from("meetings").update({
+      meeting_date: dateStr,
+      date: new Date(dateStr).toISOString(),
+      week_number: newWeek,
+    } as any).eq("id", meeting.id);
+    qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
+    setShowReschedule(false);
+    toast.success("Møte flyttet til " + newMeetingDate.toLocaleDateString("nb-NO", { day: "numeric", month: "long" }));
+  };
+
+  const uncancelMeeting = async () => {
+    await supabase.from("meetings").update({ status: "upcoming" } as any).eq("id", meeting.id);
+    qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
+    toast.success("Møte gjenopprettet");
+  };
 
   const addAgendaItem = async () => {
     if (!newAgenda.trim()) return;
@@ -229,7 +265,7 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
   };
 
   return (
-    <Card className={`overflow-hidden transition-shadow ${isToday ? "ring-2 ring-primary shadow-md" : ""}`}>
+    <Card className={`overflow-hidden transition-shadow ${isToday ? "ring-2 ring-primary shadow-md" : ""} ${isCancelled ? "opacity-60" : ""}`}>
       <CardContent className="p-0">
         {/* Header */}
         <div
@@ -238,12 +274,13 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
         >
           <div className="space-y-0.5">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold capitalize">
+              <span className={`text-sm font-semibold capitalize ${isCancelled ? "line-through text-muted-foreground" : ""}`}>
                 {formatWeekdayNb(meetingDate)} {meetingDate.getDate()}. {meetingDate.toLocaleDateString("nb-NO", { month: "long" })}
               </span>
               {isToday && <Badge className="bg-primary text-primary-foreground text-[10px]">I dag</Badge>}
               {status === "in_progress" && <Badge className="bg-green-600 text-white text-[10px]">Pågår</Badge>}
               {status === "completed" && <Badge variant="secondary" className="text-[10px]">Fullført</Badge>}
+              {isCancelled && <Badge variant="destructive" className="text-[10px]">Avlyst</Badge>}
             </div>
             {recurringMeeting && (
               <Badge variant="outline" className="text-[10px]">
@@ -254,7 +291,7 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
           {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
         </div>
 
-        {expanded && (
+        {expanded && !isCancelled && (
           <div className="px-4 pb-4 space-y-4 border-t border-border pt-3">
             {/* Roles */}
             <div className="flex gap-2 flex-wrap">
@@ -422,9 +459,65 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
                   <Play className="h-3 w-3 mr-1" /> Gjenåpne møte
                 </Button>
               )}
+              <Popover open={showReschedule} onOpenChange={setShowReschedule}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-7 text-xs">
+                    <CalendarDays className="h-3 w-3 mr-1" /> Flytt møte
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-3" align="start">
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium">Velg ny dato</p>
+                    <Input
+                      type="date"
+                      value={newDate}
+                      onChange={(e) => setNewDate(e.target.value)}
+                      className="h-8 text-xs"
+                    />
+                    <Button size="sm" className="h-7 text-xs w-full" onClick={() => rescheduleMeeting(newDate)} disabled={!newDate}>
+                      Flytt hit
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <Button variant="outline" size="sm" className="h-7 text-xs text-destructive hover:text-destructive" onClick={cancelMeeting}>
+                <X className="h-3 w-3 mr-1" /> Avlys
+              </Button>
               <Button variant="outline" size="sm" className="h-7 text-xs" onClick={exportToProcessLog}>
                 <Copy className="h-3 w-3 mr-1" /> Eksporter til prosesslogg
               </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Cancelled state - minimal controls */}
+        {expanded && isCancelled && (
+          <div className="px-4 pb-3 border-t border-border pt-3">
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={uncancelMeeting}>
+                <Play className="h-3 w-3 mr-1" /> Gjenopprett møte
+              </Button>
+              <Popover open={showReschedule} onOpenChange={setShowReschedule}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-7 text-xs">
+                    <CalendarDays className="h-3 w-3 mr-1" /> Flytt til ny dato
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-3" align="start">
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium">Velg ny dato</p>
+                    <Input
+                      type="date"
+                      value={newDate}
+                      onChange={(e) => setNewDate(e.target.value)}
+                      className="h-8 text-xs"
+                    />
+                    <Button size="sm" className="h-7 text-xs w-full" onClick={() => { rescheduleMeeting(newDate); uncancelMeeting(); }} disabled={!newDate}>
+                      Flytt og gjenopprett
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
         )}

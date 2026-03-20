@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { MeetingCard } from "@/components/meetings/MeetingCard";
+import { MonthlyCalendar } from "@/components/meetings/MonthlyCalendar";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Calendar, Plus, RefreshCw } from "lucide-react";
 
@@ -273,6 +274,13 @@ export default function MeetingCalendarPage() {
           </div>
         </div>
       )}
+
+      {/* Monthly calendar overview */}
+      <MonthlyCalendar
+        currentWeek={week}
+        currentYear={year}
+        onNavigateToWeek={(w, y) => { setWeek(w); setYear(y); }}
+      />
 
       {/* Rotation indicator */}
       {rotation && members && (
