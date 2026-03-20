@@ -280,6 +280,31 @@ export default function MeetingsPage() {
 
                 {isExpanded && (
                   <div className="px-4 pb-4 border-t border-border pt-3 space-y-3">
+                    {/* Roles */}
+                    {((m as any).facilitator_id || (m as any).note_taker_id) && (
+                      <div className="flex gap-4 flex-wrap">
+                        {(m as any).facilitator_id && (() => {
+                          const f = members?.find((mem) => mem.id === (m as any).facilitator_id);
+                          return f ? (
+                            <div className="flex items-center gap-1.5 text-sm">
+                              <Badge variant="outline" className="text-[10px]">Møteleder</Badge>
+                              <MemberAvatar member={f} />
+                              <span className="text-muted-foreground">{f.name.split(" ")[0]}</span>
+                            </div>
+                          ) : null;
+                        })()}
+                        {(m as any).note_taker_id && (() => {
+                          const n = members?.find((mem) => mem.id === (m as any).note_taker_id);
+                          return n ? (
+                            <div className="flex items-center gap-1.5 text-sm">
+                              <Badge variant="outline" className="text-[10px]">Referent</Badge>
+                              <MemberAvatar member={n} />
+                              <span className="text-muted-foreground">{n.name.split(" ")[0]}</span>
+                            </div>
+                          ) : null;
+                        })()}
+                      </div>
+                    )}
                     {m.notes && (
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">Notater</p>
