@@ -65,10 +65,10 @@ export default function AuthPage() {
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Logger inn..." : "Logg inn"}
           </Button>
-          <Button type="button" variant="ghost" className="w-full" onClick={handleSignUp} disabled={loading}>
-            Opprett konto
-          </Button>
         </form>
+        <p className="text-xs text-muted-foreground text-center mt-6">
+          Kun for teammedlemmer i Videre
+        </p>
       </div>
     </div>
   );
