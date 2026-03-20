@@ -80,6 +80,54 @@ export type Database = {
         }
         Relationships: []
       }
+      activity_catalog: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          is_mandatory: boolean
+          max_occurrences: number
+          meeting_type: string | null
+          name: string
+          period: string
+          period_deadline: string | null
+          points: number
+          prosesslogg_template: string | null
+          sort_order: number
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_mandatory?: boolean
+          max_occurrences?: number
+          meeting_type?: string | null
+          name: string
+          period?: string
+          period_deadline?: string | null
+          points?: number
+          prosesslogg_template?: string | null
+          sort_order?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_mandatory?: boolean
+          max_occurrences?: number
+          meeting_type?: string | null
+          name?: string
+          period?: string
+          period_deadline?: string | null
+          points?: number
+          prosesslogg_template?: string | null
+          sort_order?: number
+        }
+        Relationships: []
+      }
       activity_participants: {
         Row: {
           activity_id: string
@@ -109,6 +157,115 @@ export type Database = {
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      activity_registration_participants: {
+        Row: {
+          id: string
+          member_id: string
+          registration_id: string
+        }
+        Insert: {
+          id?: string
+          member_id: string
+          registration_id: string
+        }
+        Update: {
+          id?: string
+          member_id?: string
+          registration_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_registration_participants_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_registration_participants_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "activity_registrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      activity_registrations: {
+        Row: {
+          attachment_links: string[] | null
+          catalog_id: string
+          completed_date: string | null
+          completed_week: number | null
+          created_at: string
+          description: string | null
+          experiences: string | null
+          id: string
+          linked_meeting_id: string | null
+          linked_sub_session_id: string | null
+          occurrence_number: number
+          planned_week: number | null
+          reflections: string | null
+          status: string
+          timing_rationale: string | null
+        }
+        Insert: {
+          attachment_links?: string[] | null
+          catalog_id: string
+          completed_date?: string | null
+          completed_week?: number | null
+          created_at?: string
+          description?: string | null
+          experiences?: string | null
+          id?: string
+          linked_meeting_id?: string | null
+          linked_sub_session_id?: string | null
+          occurrence_number?: number
+          planned_week?: number | null
+          reflections?: string | null
+          status?: string
+          timing_rationale?: string | null
+        }
+        Update: {
+          attachment_links?: string[] | null
+          catalog_id?: string
+          completed_date?: string | null
+          completed_week?: number | null
+          created_at?: string
+          description?: string | null
+          experiences?: string | null
+          id?: string
+          linked_meeting_id?: string | null
+          linked_sub_session_id?: string | null
+          occurrence_number?: number
+          planned_week?: number | null
+          reflections?: string | null
+          status?: string
+          timing_rationale?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_registrations_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "activity_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_registrations_linked_meeting_id_fkey"
+            columns: ["linked_meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_registrations_linked_sub_session_id_fkey"
+            columns: ["linked_sub_session_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_sub_sessions"
             referencedColumns: ["id"]
           },
         ]
