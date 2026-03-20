@@ -28,6 +28,7 @@ export type Database = {
           max_points: number | null
           name: string
           notes: string | null
+          planned_week: number | null
           points: number
           status: string
           updated_at: string
@@ -45,6 +46,7 @@ export type Database = {
           max_points?: number | null
           name: string
           notes?: string | null
+          planned_week?: number | null
           points?: number
           status?: string
           updated_at?: string
@@ -62,6 +64,7 @@ export type Database = {
           max_points?: number | null
           name?: string
           notes?: string | null
+          planned_week?: number | null
           points?: number
           status?: string
           updated_at?: string
