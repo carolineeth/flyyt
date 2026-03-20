@@ -17,8 +17,8 @@ import {
   type Registration,
 } from "@/hooks/useActivityCatalog";
 import { toast } from "sonner";
-import { Link2, FileText, Plus, Trash2 } from "lucide-react";
-import { FileUpload } from "./FileUpload";
+import { Link2, FileText, Plus, Trash2, Pencil, Eye } from "lucide-react";
+import { FileUpload, getPublicUrl } from "./FileUpload";
 
 interface RegistrationModalProps {
   open: boolean;
@@ -36,6 +36,7 @@ export function RegistrationModal({ open, onOpenChange, catalogItem, registratio
   const toggleParticipant = useToggleRegistrationParticipant();
 
   const [reg, setReg] = useState<Registration | null>(null);
+  const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     status: "not_started",
     completed_date: "",
@@ -52,6 +53,7 @@ export function RegistrationModal({ open, onOpenChange, catalogItem, registratio
     const existingParticipantIds = participants?.filter((p) => p.registration_id === registration?.id).map((p) => p.member_id) || [];
     if (registration) {
       setReg(registration);
+      setEditing(false);
       setForm({
         status: registration.status,
         completed_date: registration.completed_date || "",
@@ -65,6 +67,7 @@ export function RegistrationModal({ open, onOpenChange, catalogItem, registratio
       });
     } else {
       setReg(null);
+      setEditing(true); // new registration starts in edit mode
       setForm({
         status: "not_started",
         completed_date: "",
