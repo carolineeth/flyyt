@@ -19,9 +19,11 @@ const CATEGORIES = [
 interface Props {
   memberId: string;
   existingEntry: DailyUpdate | null;
+  date: Date;
+  dayLabel: string;
 }
 
-export function StandupInput({ memberId, existingEntry }: Props) {
+export function StandupInput({ memberId, existingEntry, date, dayLabel }: Props) {
   const [content, setContent] = useState(existingEntry?.content ?? "");
   const [category, setCategory] = useState<string | null>(existingEntry?.category ?? null);
   const [backlogItemId, setBacklogItemId] = useState<string | null>(existingEntry?.backlog_item_id ?? null);
@@ -34,12 +36,14 @@ export function StandupInput({ memberId, existingEntry }: Props) {
       setContent(existingEntry.content ?? "");
       setCategory(existingEntry.category ?? null);
       setBacklogItemId(existingEntry.backlog_item_id ?? null);
+    } else {
+      setContent("");
+      setCategory(null);
+      setBacklogItemId(null);
     }
   }, [existingEntry]);
 
-  const today = new Date();
-  const todayStr = format(today, "yyyy-MM-dd");
-  const dayLabel = format(today, "EEEE d. MMMM", { locale: nb });
+  const dateStr = format(date, "yyyy-MM-dd");
 
   const handlePublish = async () => {
     if (!content.trim()) {
@@ -49,7 +53,7 @@ export function StandupInput({ memberId, existingEntry }: Props) {
     try {
       await upsert.mutateAsync({
         member_id: memberId,
-        entry_date: todayStr,
+        entry_date: dateStr,
         content: content.trim(),
         category,
         backlog_item_id: backlogItemId,
@@ -65,16 +69,16 @@ export function StandupInput({ memberId, existingEntry }: Props) {
   return (
     <div className="rounded-xl border border-border bg-card p-4 space-y-3">
       <div>
-        <h3 className="text-sm font-medium text-foreground capitalize">I dag — {dayLabel}</h3>
+        <h3 className="text-sm font-medium text-foreground capitalize">{dayLabel}</h3>
         <p className="text-xs text-muted-foreground">
           {existingEntry
             ? `Oppdatering sendt kl. ${format(new Date(existingEntry.updated_at), "HH:mm")}`
-            : "Din tur!"}
+            : "Skriv din oppdatering"}
         </p>
       </div>
 
       <Textarea
-        placeholder="Hva har du gjort/jobbet med i dag?"
+        placeholder="Hva har du gjort/jobbet med?"
         value={content}
         onChange={(e) => setContent(e.target.value)}
         className="min-h-[80px] resize-none text-sm"
