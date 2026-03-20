@@ -177,10 +177,10 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
     qc.invalidateQueries({ queryKey: ["meeting_action_points", meeting.id] });
   };
 
-  const overrideRole = async (field: "leader_id" | "notetaker_id", memberId: string) => {
+  const overrideRole = async (field: "leader_id" | "notetaker_id", memberId: string | null) => {
     await supabase.from("meetings").update({ [field]: memberId } as any).eq("id", meeting.id);
     qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
-    toast.success("Rolle oppdatert");
+    toast.success(memberId ? "Rolle oppdatert" : "Rolle fjernet");
   };
 
   const exportToProcessLog = () => {
