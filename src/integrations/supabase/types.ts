@@ -254,6 +254,7 @@ export type Database = {
           id: string
           is_completed: boolean
           meeting_id: string
+          source_sub_session_id: string | null
           title: string
         }
         Insert: {
@@ -263,6 +264,7 @@ export type Database = {
           id?: string
           is_completed?: boolean
           meeting_id: string
+          source_sub_session_id?: string | null
           title: string
         }
         Update: {
@@ -272,6 +274,7 @@ export type Database = {
           id?: string
           is_completed?: boolean
           meeting_id?: string
+          source_sub_session_id?: string | null
           title?: string
         }
         Relationships: [
@@ -289,53 +292,242 @@ export type Database = {
             referencedRelation: "meetings"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "meeting_action_points_source_sub_session_id_fkey"
+            columns: ["source_sub_session_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_sub_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_agenda_items: {
+        Row: {
+          added_by: string | null
+          created_at: string
+          id: string
+          is_completed: boolean
+          meeting_id: string
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          added_by?: string | null
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          meeting_id: string
+          sort_order?: number
+          title: string
+        }
+        Update: {
+          added_by?: string | null
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          meeting_id?: string
+          sort_order?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_agenda_items_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_agenda_items_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_rotation: {
+        Row: {
+          id: number
+          leader_id: string
+          notetaker_id: string
+          position: number
+        }
+        Insert: {
+          id?: number
+          leader_id: string
+          notetaker_id: string
+          position: number
+        }
+        Update: {
+          id?: number
+          leader_id?: string
+          notetaker_id?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_rotation_leader_id_fkey"
+            columns: ["leader_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_rotation_notetaker_id_fkey"
+            columns: ["notetaker_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_sub_session_items: {
+        Row: {
+          content: string
+          id: string
+          sort_order: number
+          sub_session_id: string
+        }
+        Insert: {
+          content: string
+          id?: string
+          sort_order?: number
+          sub_session_id: string
+        }
+        Update: {
+          content?: string
+          id?: string
+          sort_order?: number
+          sub_session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_sub_session_items_sub_session_id_fkey"
+            columns: ["sub_session_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_sub_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meeting_sub_sessions: {
+        Row: {
+          id: string
+          linked_activity_id: string | null
+          meeting_id: string
+          notes: string | null
+          sort_order: number
+          title: string
+          type: string
+        }
+        Insert: {
+          id?: string
+          linked_activity_id?: string | null
+          meeting_id: string
+          notes?: string | null
+          sort_order?: number
+          title: string
+          type: string
+        }
+        Update: {
+          id?: string
+          linked_activity_id?: string | null
+          meeting_id?: string
+          notes?: string | null
+          sort_order?: number
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_sub_sessions_linked_activity_id_fkey"
+            columns: ["linked_activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_sub_sessions_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
         ]
       }
       meetings: {
         Row: {
+          actual_end_time: string | null
+          actual_start_time: string | null
           created_at: string
           date: string
           duration_minutes: number | null
           facilitator_id: string | null
           id: string
+          leader_id: string | null
+          meeting_date: string | null
           note_taker_id: string | null
           notes: string | null
+          notetaker_id: string | null
           participants: string[] | null
           planning_capacity: Json | null
+          recurring_meeting_id: string | null
           related_activity_id: string | null
           review_feedback: string | null
+          rotation_position: number | null
           sprint_id: string | null
+          status: string
           type: string
+          week_number: number | null
         }
         Insert: {
+          actual_end_time?: string | null
+          actual_start_time?: string | null
           created_at?: string
           date?: string
           duration_minutes?: number | null
           facilitator_id?: string | null
           id?: string
+          leader_id?: string | null
+          meeting_date?: string | null
           note_taker_id?: string | null
           notes?: string | null
+          notetaker_id?: string | null
           participants?: string[] | null
           planning_capacity?: Json | null
+          recurring_meeting_id?: string | null
           related_activity_id?: string | null
           review_feedback?: string | null
+          rotation_position?: number | null
           sprint_id?: string | null
+          status?: string
           type?: string
+          week_number?: number | null
         }
         Update: {
+          actual_end_time?: string | null
+          actual_start_time?: string | null
           created_at?: string
           date?: string
           duration_minutes?: number | null
           facilitator_id?: string | null
           id?: string
+          leader_id?: string | null
+          meeting_date?: string | null
           note_taker_id?: string | null
           notes?: string | null
+          notetaker_id?: string | null
           participants?: string[] | null
           planning_capacity?: Json | null
+          recurring_meeting_id?: string | null
           related_activity_id?: string | null
           review_feedback?: string | null
+          rotation_position?: number | null
           sprint_id?: string | null
+          status?: string
           type?: string
+          week_number?: number | null
         }
         Relationships: [
           {
@@ -346,10 +538,31 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "meetings_leader_id_fkey"
+            columns: ["leader_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "meetings_note_taker_id_fkey"
             columns: ["note_taker_id"]
             isOneToOne: false
             referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetings_notetaker_id_fkey"
+            columns: ["notetaker_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetings_recurring_meeting_id_fkey"
+            columns: ["recurring_meeting_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_meetings"
             referencedColumns: ["id"]
           },
           {
@@ -367,6 +580,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      recurring_meetings: {
+        Row: {
+          day_of_week: number
+          end_time: string
+          id: string
+          is_active: boolean
+          label: string
+          start_time: string
+        }
+        Insert: {
+          day_of_week: number
+          end_time: string
+          id?: string
+          is_active?: boolean
+          label: string
+          start_time: string
+        }
+        Update: {
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          start_time?: string
+        }
+        Relationships: []
       }
       report_sections: {
         Row: {

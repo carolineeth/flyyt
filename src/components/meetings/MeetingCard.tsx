@@ -1,0 +1,443 @@
+import { useState, useEffect, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  useMeetingAgendaItems,
+  useMeetingSubSessions,
+  useMeetingActionPoints,
+  formatDateNb,
+  formatWeekdayNb,
+} from "@/hooks/useMeetingCalendar";
+import { useTeamMembers } from "@/hooks/useTeamMembers";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MemberAvatar } from "@/components/ui/MemberAvatar";
+import { SubSessionBlock } from "./SubSessionBlock";
+import { toast } from "sonner";
+import { Plus, Play, Square, Copy, ChevronUp, ChevronDown } from "lucide-react";
+
+const subSessionTemplates: Record<string, string[]> = {
+  sprint_planning: ["Gjennomgå product backlog", "Velg items for sprint", "Estimering", "Definer sprint goal"],
+  sprint_review: ["Demo av fullførte items", "Feedback", "Items som ikke ble fullført"],
+  retrospective: ["Hva fungerte bra?", "Hva kan forbedres?", "Action points for neste sprint"],
+  veiledermøte: ["Spørsmål til veileder", "Feedback fra veileder", "Action points"],
+  mobb_programmering: ["Hva skal vi jobbe med?", "Tidsskjema (hvem driver når)", "Lenke til commit/kildekode", "Refleksjoner"],
+};
+
+const subSessionTypeLabels: Record<string, string> = {
+  sprint_planning: "Sprint Planning",
+  sprint_review: "Sprint Review",
+  retrospective: "Retrospektiv",
+  veiledermøte: "Veiledermøte",
+  mobb_programmering: "Mobb-programmering",
+  workshop: "Workshop",
+  annet: "Annet",
+};
+
+interface MeetingCardProps {
+  meeting: any;
+  recurringMeeting: any;
+  leaderName: string;
+  notetakerName: string;
+  isToday: boolean;
+  year: number;
+  week: number;
+}
+
+export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerName, isToday, year, week }: MeetingCardProps) {
+  const qc = useQueryClient();
+  const { data: members } = useTeamMembers();
+  const { data: agendaItems } = useMeetingAgendaItems(meeting?.id);
+  const { data: subSessions } = useMeetingSubSessions(meeting?.id);
+  const { data: actionPoints } = useMeetingActionPoints(meeting?.id);
+
+  const [newAgenda, setNewAgenda] = useState("");
+  const [notes, setNotes] = useState(meeting?.notes || "");
+  const [expanded, setExpanded] = useState(true);
+
+  useEffect(() => { setNotes(meeting?.notes || ""); }, [meeting?.notes]);
+
+  // Auto-save notes
+  const saveNotes = useCallback(async (val: string) => {
+    if (!meeting?.id) return;
+    await supabase.from("meetings").update({ notes: val } as any).eq("id", meeting.id);
+  }, [meeting?.id]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (meeting?.id && notes !== (meeting?.notes || "")) {
+        saveNotes(notes);
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [notes, meeting?.notes, saveNotes, meeting?.id]);
+
+  if (!meeting) return null;
+
+  const meetingDate = meeting.meeting_date ? new Date(meeting.meeting_date + "T00:00:00") : new Date(meeting.date);
+  const status = meeting.status || "upcoming";
+
+  const addAgendaItem = async () => {
+    if (!newAgenda.trim()) return;
+    const order = (agendaItems?.length ?? 0);
+    await supabase.from("meeting_agenda_items" as any).insert({
+      meeting_id: meeting.id,
+      title: newAgenda.trim(),
+      sort_order: order,
+    } as any);
+    setNewAgenda("");
+    qc.invalidateQueries({ queryKey: ["meeting_agenda_items", meeting.id] });
+    toast.success("Lagret");
+  };
+
+  const toggleAgendaItem = async (itemId: string, completed: boolean) => {
+    await supabase.from("meeting_agenda_items" as any).update({ is_completed: completed } as any).eq("id", itemId);
+    qc.invalidateQueries({ queryKey: ["meeting_agenda_items", meeting.id] });
+  };
+
+  const moveAgendaItem = async (index: number, direction: "up" | "down") => {
+    if (!agendaItems) return;
+    const swapIdx = direction === "up" ? index - 1 : index + 1;
+    if (swapIdx < 0 || swapIdx >= agendaItems.length) return;
+    const a = agendaItems[index];
+    const b = agendaItems[swapIdx];
+    await Promise.all([
+      supabase.from("meeting_agenda_items" as any).update({ sort_order: b.sort_order } as any).eq("id", a.id),
+      supabase.from("meeting_agenda_items" as any).update({ sort_order: a.sort_order } as any).eq("id", b.id),
+    ]);
+    qc.invalidateQueries({ queryKey: ["meeting_agenda_items", meeting.id] });
+  };
+
+  const addSubSession = async (type: string) => {
+    const order = (subSessions?.length ?? 0);
+    const title = subSessionTypeLabels[type] || type;
+    const { data: ss, error } = await supabase.from("meeting_sub_sessions" as any).insert({
+      meeting_id: meeting.id,
+      type,
+      title,
+      sort_order: order,
+    } as any).select().single();
+    if (error) { toast.error(error.message); return; }
+
+    // Pre-fill template items
+    const templateItems = subSessionTemplates[type];
+    if (templateItems && ss) {
+      await supabase.from("meeting_sub_session_items" as any).insert(
+        templateItems.map((content, i) => ({
+          sub_session_id: (ss as any).id,
+          content,
+          sort_order: i,
+        })) as any
+      );
+    }
+
+    qc.invalidateQueries({ queryKey: ["meeting_sub_sessions", meeting.id] });
+    toast.success("Delmøte lagt til");
+  };
+
+  const deleteSubSession = async (ssId: string) => {
+    await supabase.from("meeting_sub_session_items" as any).delete().eq("sub_session_id", ssId);
+    await supabase.from("meeting_sub_sessions" as any).delete().eq("id", ssId);
+    qc.invalidateQueries({ queryKey: ["meeting_sub_sessions", meeting.id] });
+    toast.success("Delmøte fjernet");
+  };
+
+  const startMeeting = async () => {
+    const now = new Date();
+    const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    await supabase.from("meetings").update({ status: "in_progress", actual_start_time: time } as any).eq("id", meeting.id);
+    qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
+    toast.success("Møte startet");
+  };
+
+  const endMeeting = async () => {
+    const now = new Date();
+    const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    await supabase.from("meetings").update({ status: "completed", actual_end_time: time } as any).eq("id", meeting.id);
+    qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
+    toast.success("Møte avsluttet");
+  };
+
+  const addActionPoint = async () => {
+    await supabase.from("meeting_action_points").insert({
+      meeting_id: meeting.id,
+      title: "",
+      is_completed: false,
+    } as any);
+    qc.invalidateQueries({ queryKey: ["meeting_action_points", meeting.id] });
+  };
+
+  const updateActionPoint = async (apId: string, updates: any) => {
+    await supabase.from("meeting_action_points").update(updates).eq("id", apId);
+    qc.invalidateQueries({ queryKey: ["meeting_action_points", meeting.id] });
+  };
+
+  const overrideRole = async (field: "leader_id" | "notetaker_id", memberId: string) => {
+    await supabase.from("meetings").update({ [field]: memberId } as any).eq("id", meeting.id);
+    qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
+    toast.success("Rolle oppdatert");
+  };
+
+  const exportToProcessLog = () => {
+    const dateStr = meetingDate.toLocaleDateString("nb-NO", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const startTime = recurringMeeting ? `${recurringMeeting.start_time}` : "";
+    const endTime = meeting.actual_end_time || (recurringMeeting ? recurringMeeting.end_time : "");
+
+    let log = `Møte: ${recurringMeeting?.label || "Møte"} — ${dateStr}\n`;
+    log += `Tid: ${startTime}–${endTime}\n`;
+    log += `Møteleder: ${leaderName} | Referent: ${notetakerName}\n\n`;
+
+    if (agendaItems?.length) {
+      log += `Agenda:\n`;
+      agendaItems.forEach((ai: any) => {
+        log += `- [${ai.is_completed ? "✓" : "✗"}] ${ai.title}\n`;
+      });
+      log += "\n";
+    }
+
+    subSessions?.forEach((ss: any) => {
+      log += `[Delmøte: ${ss.title}]\n`;
+      if (ss.notes) log += `${ss.notes}\n`;
+      log += "\n";
+    });
+
+    if (notes) {
+      log += `Notater:\n${notes}\n\n`;
+    }
+
+    if (actionPoints?.length) {
+      log += `Action points:\n`;
+      actionPoints.forEach((ap: any) => {
+        const assignee = members?.find((m) => m.id === ap.assignee_id);
+        log += `- [${ap.is_completed ? "x" : " "}] ${ap.title}`;
+        if (assignee) log += ` → ${assignee.name}`;
+        if (ap.deadline) log += ` (frist: ${ap.deadline})`;
+        log += "\n";
+      });
+    }
+
+    navigator.clipboard.writeText(log);
+    toast.success("Kopiert til utklippstavlen");
+  };
+
+  return (
+    <Card className={`overflow-hidden transition-shadow ${isToday ? "ring-2 ring-primary shadow-md" : ""}`}>
+      <CardContent className="p-0">
+        {/* Header */}
+        <div
+          className="px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-accent/30 transition-colors"
+          onClick={() => setExpanded(!expanded)}
+        >
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold capitalize">
+                {formatWeekdayNb(meetingDate)} {meetingDate.getDate()}. {meetingDate.toLocaleDateString("nb-NO", { month: "long" })}
+              </span>
+              {isToday && <Badge className="bg-primary text-primary-foreground text-[10px]">I dag</Badge>}
+              {status === "in_progress" && <Badge className="bg-green-600 text-white text-[10px]">Pågår</Badge>}
+              {status === "completed" && <Badge variant="secondary" className="text-[10px]">Fullført</Badge>}
+            </div>
+            {recurringMeeting && (
+              <Badge variant="outline" className="text-[10px]">
+                {recurringMeeting.start_time?.slice(0, 5)} – {recurringMeeting.end_time?.slice(0, 5)}
+              </Badge>
+            )}
+          </div>
+          {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+        </div>
+
+        {expanded && (
+          <div className="px-4 pb-4 space-y-4 border-t border-border pt-3">
+            {/* Roles */}
+            <div className="flex gap-2 flex-wrap">
+              <div className="flex items-center gap-1">
+                <Badge className="bg-teal-600 text-white text-[10px]">Leder</Badge>
+                <Select value={meeting.leader_id || ""} onValueChange={(v) => overrideRole("leader_id", v)}>
+                  <SelectTrigger className="h-6 text-xs w-32 border-0 p-0 pl-1">
+                    <SelectValue placeholder={leaderName} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {members?.map((m) => <SelectItem key={m.id} value={m.id}>{m.name.split(" ")[0]}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-1">
+                <Badge className="bg-purple-600 text-white text-[10px]">Referent</Badge>
+                <Select value={meeting.notetaker_id || ""} onValueChange={(v) => overrideRole("notetaker_id", v)}>
+                  <SelectTrigger className="h-6 text-xs w-32 border-0 p-0 pl-1">
+                    <SelectValue placeholder={notetakerName} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {members?.map((m) => <SelectItem key={m.id} value={m.id}>{m.name.split(" ")[0]}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Agenda */}
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Agenda</p>
+              {agendaItems?.map((ai: any, idx: number) => (
+                <div key={ai.id} className="flex items-center gap-2 group">
+                  {(status === "in_progress" || status === "completed") && (
+                    <Checkbox
+                      checked={ai.is_completed}
+                      onCheckedChange={(v) => toggleAgendaItem(ai.id, !!v)}
+                      disabled={status === "completed"}
+                    />
+                  )}
+                  <span className={`text-sm flex-1 ${ai.is_completed ? "line-through text-muted-foreground" : ""}`}>
+                    {ai.title}
+                  </span>
+                  {ai.added_by && (() => {
+                    const m = members?.find((mm) => mm.id === ai.added_by);
+                    return m ? <span className="text-[10px] text-muted-foreground">{m.name.split(" ")[0]}</span> : null;
+                  })()}
+                  <div className="opacity-0 group-hover:opacity-100 flex gap-0.5">
+                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => moveAgendaItem(idx, "up")} disabled={idx === 0}>
+                      <ChevronUp className="h-3 w-3" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => moveAgendaItem(idx, "down")} disabled={idx === (agendaItems?.length ?? 0) - 1}>
+                      <ChevronDown className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              {status !== "completed" && (
+                <div className="flex gap-1 mt-1">
+                  <Input
+                    value={newAgenda}
+                    onChange={(e) => setNewAgenda(e.target.value)}
+                    placeholder="+ Legg til agendapunkt"
+                    className="h-7 text-xs"
+                    onKeyDown={(e) => e.key === "Enter" && addAgendaItem()}
+                  />
+                  <Button variant="ghost" size="sm" className="h-7 px-2" onClick={addAgendaItem}>
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Sub-sessions */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Delmøter</p>
+              {subSessions?.map((ss: any) => (
+                <SubSessionBlock
+                  key={ss.id}
+                  subSession={ss}
+                  meetingStatus={status}
+                  onDelete={() => deleteSubSession(ss.id)}
+                />
+              ))}
+              {status !== "completed" && (
+                <Select onValueChange={addSubSession}>
+                  <SelectTrigger className="h-7 text-xs w-48">
+                    <SelectValue placeholder="+ Legg til delmøte" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(subSessionTypeLabels).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {/* Notes */}
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Notater</p>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Møtenotater..."
+                rows={3}
+                className="text-xs"
+              />
+            </div>
+
+            {/* Action points */}
+            {(status === "in_progress" || status === "completed") && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Action points</p>
+                {actionPoints?.map((ap) => (
+                  <ActionPointRow key={ap.id} ap={ap} members={members || []} onUpdate={updateActionPoint} />
+                ))}
+                {status !== "completed" && (
+                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={addActionPoint}>
+                    <Plus className="h-3 w-3 mr-1" /> Action point
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* Control buttons */}
+            <div className="flex gap-2 pt-2 flex-wrap">
+              {status === "upcoming" && (
+                <Button size="sm" className="h-7 text-xs" onClick={startMeeting}>
+                  <Play className="h-3 w-3 mr-1" /> Start møte
+                </Button>
+              )}
+              {status === "in_progress" && (
+                <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={endMeeting}>
+                  <Square className="h-3 w-3 mr-1" /> Avslutt møte
+                </Button>
+              )}
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={exportToProcessLog}>
+                <Copy className="h-3 w-3 mr-1" /> Eksporter til prosesslogg
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ActionPointRow({ ap, members, onUpdate }: { ap: any; members: any[]; onUpdate: (id: string, u: any) => void }) {
+  const [title, setTitle] = useState(ap.title);
+
+  useEffect(() => { setTitle(ap.title); }, [ap.title]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (title !== ap.title) onUpdate(ap.id, { title });
+    }, 500);
+    return () => clearTimeout(t);
+  }, [title, ap.title, ap.id, onUpdate]);
+
+  return (
+    <div className="flex items-center gap-2">
+      <Checkbox
+        checked={ap.is_completed}
+        onCheckedChange={(v) => onUpdate(ap.id, { is_completed: !!v })}
+      />
+      <Input
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="Beskrivelse..."
+        className="h-7 text-xs flex-1"
+      />
+      <Select value={ap.assignee_id || "none"} onValueChange={(v) => onUpdate(ap.id, { assignee_id: v === "none" ? null : v })}>
+        <SelectTrigger className="h-7 text-xs w-28">
+          <SelectValue placeholder="Ansvarlig" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">Ingen</SelectItem>
+          {members.map((m) => <SelectItem key={m.id} value={m.id}>{m.name.split(" ")[0]}</SelectItem>)}
+        </SelectContent>
+      </Select>
+      <Input
+        type="date"
+        value={ap.deadline || ""}
+        onChange={(e) => onUpdate(ap.id, { deadline: e.target.value || null })}
+        className="h-7 text-xs w-32"
+      />
+    </div>
+  );
+}
