@@ -44,6 +44,7 @@ export function RegistrationModal({ open, onOpenChange, catalogItem, registratio
     reflections: "",
     attachment_links: [] as string[],
     newLink: "",
+    selectedMembers: [] as string[],
   });
 
   useEffect(() => {
