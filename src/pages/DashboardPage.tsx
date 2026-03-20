@@ -10,7 +10,7 @@ import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { Target, CalendarDays, Users, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { AttendanceTrendChart } from "@/components/dashboard/AttendanceTrendChart";
+
 
 function useAllMeetings() {
   return useQuery({
@@ -158,10 +158,6 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* Attendance trend */}
-      {allMeetings && members && (
-        <AttendanceTrendChart meetings={allMeetings as any} members={members} />
-      )}
 
       {/* Team members */}
       <Card>
