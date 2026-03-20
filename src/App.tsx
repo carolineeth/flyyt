@@ -11,7 +11,7 @@ import DashboardPage from "@/pages/DashboardPage";
 import ActivitiesPage from "@/pages/ActivitiesPage";
 import BacklogPage from "@/pages/BacklogPage";
 import SprintBoardPage from "@/pages/SprintBoardPage";
-import DecisionsPage from "@/pages/DecisionsPage";
+
 import MeetingsPage from "@/pages/MeetingsPage";
 import ResourcesPage from "@/pages/ResourcesPage";
 import ProcessLogExportPage from "@/pages/ProcessLogExportPage";
@@ -61,7 +61,7 @@ const App = () => (
               <Route path="/aktiviteter" element={<ActivitiesPage />} />
               <Route path="/backlog" element={<BacklogPage />} />
               <Route path="/sprint" element={<SprintBoardPage />} />
-              <Route path="/beslutninger" element={<DecisionsPage />} />
+              
               <Route path="/moter" element={<MeetingsPage />} />
               <Route path="/ressurser" element={<ResourcesPage />} />
               <Route path="/prosesslogg" element={<ProcessLogExportPage />} />
