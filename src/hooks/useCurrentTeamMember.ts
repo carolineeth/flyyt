@@ -18,17 +18,17 @@ export function useCurrentTeamMember() {
     });
   }, []);
 
-  const { data: currentMember, isLoading: memberLoading, refetch } = useQuery<TeamMember | null>({
+  const { data: currentMember, isLoading: memberLoading, refetch } = useQuery({
     queryKey: ["current_team_member", authUserId],
     enabled: !!authUserId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase
         .from("team_members")
-        .select("*")
-        .eq("auth_user_id" as any, authUserId!)
+        .select("*") as any)
+        .eq("auth_user_id", authUserId!)
         .maybeSingle();
       if (error) throw error;
-      return data as TeamMember | null;
+      return (data as TeamMember | null);
     },
   });
 
