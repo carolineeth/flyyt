@@ -364,6 +364,54 @@ export type Database = {
           },
         ]
       }
+      daily_updates: {
+        Row: {
+          backlog_item_id: string | null
+          category: string | null
+          content: string | null
+          created_at: string
+          entry_date: string
+          id: string
+          member_id: string
+          updated_at: string
+        }
+        Insert: {
+          backlog_item_id?: string | null
+          category?: string | null
+          content?: string | null
+          created_at?: string
+          entry_date: string
+          id?: string
+          member_id: string
+          updated_at?: string
+        }
+        Update: {
+          backlog_item_id?: string | null
+          category?: string | null
+          content?: string | null
+          created_at?: string
+          entry_date?: string
+          id?: string
+          member_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_updates_backlog_item_id_fkey"
+            columns: ["backlog_item_id"]
+            isOneToOne: false
+            referencedRelation: "backlog_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_updates_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       decisions: {
         Row: {
           choice: string | null
