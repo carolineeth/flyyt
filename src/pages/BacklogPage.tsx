@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
@@ -15,26 +15,31 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { toast } from "sonner";
 import { ListTodo, Plus, GripVertical } from "lucide-react";
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
-import type { BacklogItem } from "@/lib/types";
+import type { BacklogItem, Sprint } from "@/lib/types";
 
 const typeLabels: Record<string, string> = {
   user_story: "Brukerhistorie",
-  technical: "Teknisk",
+  technical: "Teknisk oppgave",
   design: "Design",
   report: "Rapport",
   admin: "Admin",
 };
 const typeColors: Record<string, string> = {
-  user_story: "bg-blue-100 text-blue-700",
-  technical: "bg-blue-100 text-blue-700",
-  design: "bg-pink-100 text-pink-700",
-  report: "bg-purple-100 text-purple-700",
-  admin: "bg-gray-100 text-gray-600",
+  user_story: "bg-[#E6F1FB] text-[#0C447C]",
+  technical: "bg-[#E1F5EE] text-[#085041]",
+  design: "bg-[#FBEAF0] text-[#72243E]",
+  report: "bg-[#EEEDFE] text-[#3C3489]",
+  admin: "bg-[#F1EFE8] text-[#444441]",
 };
 const priorityLabels: Record<string, string> = {
   must_have: "Må ha",
   should_have: "Bør ha",
   nice_to_have: "Fint å ha",
+};
+const priorityDot: Record<string, string> = {
+  must_have: "bg-red-500",
+  should_have: "bg-yellow-500",
+  nice_to_have: "bg-gray-400",
 };
 const statusLabels: Record<string, string> = {
   backlog: "Backlog",
@@ -56,6 +61,22 @@ export default function BacklogPage() {
       return data;
     },
   });
+  const { data: sprints } = useQuery<Sprint[]>({
+    queryKey: ["sprints"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sprints").select("*").order("start_date");
+      if (error) throw error;
+      return data;
+    },
+  });
+  const { data: sprintItems } = useQuery({
+    queryKey: ["sprint_items_all"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sprint_items").select("backlog_item_id, sprint_id");
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const [showCreate, setShowCreate] = useState(false);
   const [filterType, setFilterType] = useState<string>("all");
@@ -66,11 +87,27 @@ export default function BacklogPage() {
   const [newItem, setNewItem] = useState({
     title: "", description: "", type: "user_story", priority: "should_have",
     estimate: null as number | null, epic: "", assignee_id: null as string | null,
+    sprint_id: null as string | null, labels: "" as string,
   });
+
+  const existingEpics = useMemo(() => {
+    const epics = new Set(items?.map((i) => i.epic).filter(Boolean) as string[]);
+    return Array.from(epics);
+  }, [items]);
+
+  // Map backlog_item_id -> sprint name
+  const itemSprintMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    sprintItems?.forEach((si) => {
+      const sprint = sprints?.find((s) => s.id === si.sprint_id);
+      if (sprint) map[si.backlog_item_id] = sprint.name;
+    });
+    return map;
+  }, [sprintItems, sprints]);
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("backlog_items").insert({
+      const { data, error } = await supabase.from("backlog_items").insert({
         item_id: "",
         title: newItem.title,
         description: newItem.description || null,
@@ -79,13 +116,25 @@ export default function BacklogPage() {
         estimate: newItem.estimate,
         epic: newItem.epic || null,
         assignee_id: newItem.assignee_id,
-      });
+        labels: newItem.labels ? newItem.labels.split(",").map((l) => l.trim()).filter(Boolean) : [],
+      }).select().single();
       if (error) throw error;
+      // If sprint selected, add to sprint_items
+      if (newItem.sprint_id && data) {
+        await supabase.from("sprint_items").insert({
+          sprint_id: newItem.sprint_id,
+          backlog_item_id: data.id,
+          column_name: "todo",
+        });
+      }
+      return data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["backlog_items"] });
+      qc.invalidateQueries({ queryKey: ["sprint_items"] });
+      qc.invalidateQueries({ queryKey: ["sprint_items_all"] });
       setShowCreate(false);
-      setNewItem({ title: "", description: "", type: "user_story", priority: "should_have", estimate: null, epic: "", assignee_id: null });
+      setNewItem({ title: "", description: "", type: "user_story", priority: "should_have", estimate: null, epic: "", assignee_id: null, sprint_id: null, labels: "" });
       toast.success("Backlog-item opprettet");
     },
     onError: (e) => toast.error(e.message),
@@ -96,9 +145,7 @@ export default function BacklogPage() {
       const { error } = await supabase.from("backlog_items").update({ status }).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["backlog_items"] });
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["backlog_items"] }),
   });
 
   const updateSortMutation = useMutation({
@@ -114,13 +161,8 @@ export default function BacklogPage() {
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", itemId);
   };
+  const handleDragEnd = () => { setDraggedItemId(null); setDragOverStatus(null); };
 
-  const handleDragEnd = () => {
-    setDraggedItemId(null);
-    setDragOverStatus(null);
-  };
-
-  // Board mode: drop into status column
   const handleBoardDrop = useCallback((e: React.DragEvent, status: string) => {
     e.preventDefault();
     const itemId = e.dataTransfer.getData("text/plain");
@@ -129,22 +171,17 @@ export default function BacklogPage() {
     if (!itemId) return;
     const item = items?.find((i) => i.id === itemId);
     if (item && item.status !== status) {
-      updateStatusMutation.mutate({ id: itemId, status }, {
-        onSuccess: () => toast.success(`Flyttet til ${statusLabels[status]}`),
-      });
+      updateStatusMutation.mutate({ id: itemId, status });
     }
   }, [items, updateStatusMutation]);
 
-  // List mode: reorder by dropping on another item
   const handleListDrop = useCallback((e: React.DragEvent, targetId: string) => {
     e.preventDefault();
     const dragId = e.dataTransfer.getData("text/plain");
     setDraggedItemId(null);
     if (!dragId || dragId === targetId || !items) return;
     const targetItem = items.find((i) => i.id === targetId);
-    if (targetItem) {
-      updateSortMutation.mutate({ id: dragId, sort_order: targetItem.sort_order });
-    }
+    if (targetItem) updateSortMutation.mutate({ id: dragId, sort_order: targetItem.sort_order });
   }, [items, updateSortMutation]);
 
   const filtered = items?.filter((i) => {
@@ -156,6 +193,7 @@ export default function BacklogPage() {
   const renderItemCard = (item: BacklogItem, compact = false) => {
     const assignee = members?.find((m) => m.id === item.assignee_id);
     const isDragging = draggedItemId === item.id;
+    const sprintName = itemSprintMap[item.id];
     return (
       <Card
         key={item.id}
@@ -164,22 +202,24 @@ export default function BacklogPage() {
         onDragEnd={handleDragEnd}
         onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
         onDrop={(e) => handleListDrop(e, item.id)}
-        className={`transition-all cursor-grab active:cursor-grabbing ${
-          isDragging ? "opacity-40 scale-95" : "hover:shadow-sm"
-        }`}
+        className={`transition-all cursor-grab active:cursor-grabbing ${isDragging ? "opacity-40 scale-95" : "hover:shadow-sm"}`}
       >
         <CardContent className={`${compact ? "p-2.5" : "py-3 px-4"} flex items-center gap-2`}>
           <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground/40" />
           {!compact && <span className="text-xs text-muted-foreground font-mono w-14 shrink-0">{item.item_id}</span>}
+          <span className={`h-2 w-2 rounded-full shrink-0 ${priorityDot[item.priority] ?? "bg-gray-400"}`} title={priorityLabels[item.priority]} />
           <Badge className={`text-[9px] shrink-0 ${typeColors[item.type] ?? ""}`}>
             {compact ? item.type.slice(0, 3) : typeLabels[item.type]}
           </Badge>
           <span className={`${compact ? "text-xs" : "text-sm"} font-medium flex-1 min-w-0 truncate`}>{item.title}</span>
           {item.estimate && (
-            <Badge variant="outline" className="text-[9px] tabular-nums shrink-0">{item.estimate}sp</Badge>
+            <span className="h-5 w-5 rounded-full bg-muted text-[10px] font-medium flex items-center justify-center shrink-0 tabular-nums">{item.estimate}</span>
           )}
-          {!compact && <Badge variant="secondary" className="text-[10px] shrink-0">{priorityLabels[item.priority]}</Badge>}
-          {!compact && <Badge variant="outline" className="text-[10px] shrink-0">{statusLabels[item.status]}</Badge>}
+          {sprintName ? (
+            <Badge className="text-[9px] bg-green-100 text-green-700 shrink-0">{sprintName}</Badge>
+          ) : !compact ? (
+            <Badge variant="outline" className="text-[9px] text-muted-foreground shrink-0">Ikke i sprint</Badge>
+          ) : null}
           {assignee && <MemberAvatar member={assignee} />}
         </CardContent>
       </Card>
@@ -198,7 +238,6 @@ export default function BacklogPage() {
         }
       />
 
-      {/* Filters + view toggle */}
       <div className="flex gap-2 flex-wrap items-center">
         <Select value={filterType} onValueChange={setFilterType}>
           <SelectTrigger className="w-36 h-8 text-sm"><SelectValue placeholder="Type" /></SelectTrigger>
@@ -215,53 +254,33 @@ export default function BacklogPage() {
           </SelectContent>
         </Select>
         <div className="ml-auto flex rounded-md border border-border overflow-hidden">
-          <button
-            className={`px-3 py-1 text-xs font-medium transition-colors ${viewMode === "list" ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
-            onClick={() => setViewMode("list")}
-          >Liste</button>
-          <button
-            className={`px-3 py-1 text-xs font-medium transition-colors ${viewMode === "board" ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
-            onClick={() => setViewMode("board")}
-          >Board</button>
+          <button className={`px-3 py-1 text-xs font-medium transition-colors ${viewMode === "list" ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`} onClick={() => setViewMode("list")}>Liste</button>
+          <button className={`px-3 py-1 text-xs font-medium transition-colors ${viewMode === "board" ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`} onClick={() => setViewMode("board")}>Board</button>
         </div>
       </div>
 
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Laster...</p>
       ) : !filtered?.length ? (
-        <EmptyState
-          icon={ListTodo}
-          title="Ingen items i backlog"
-          description="Opprett det første backlog-itemet for å komme i gang"
-          actionLabel="Legg til item"
-          onAction={() => setShowCreate(true)}
-        />
+        <EmptyState icon={ListTodo} title="Ingen items i backlog" description="Opprett det første backlog-itemet for å komme i gang" actionLabel="Legg til item" onAction={() => setShowCreate(true)} />
       ) : viewMode === "list" ? (
-        <div className="space-y-1.5">
-          {filtered.map((item) => renderItemCard(item))}
-        </div>
+        <div className="space-y-1.5">{filtered.map((item) => renderItemCard(item))}</div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {statusOrder.map((status) => {
             const colItems = filtered?.filter((i) => i.status === status) ?? [];
             const isOver = dragOverStatus === status;
             return (
-              <div
-                key={status}
-                className="space-y-2"
+              <div key={status} className="space-y-2"
                 onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDragOverStatus(status); }}
                 onDragLeave={() => setDragOverStatus(null)}
                 onDrop={(e) => handleBoardDrop(e, status)}
               >
-                <div className={`flex items-center justify-between px-2 py-1.5 rounded-md transition-colors ${
-                  isOver ? "bg-primary/10 border border-primary/30" : "bg-muted"
-                }`}>
+                <div className={`flex items-center justify-between px-2 py-1.5 rounded-md transition-colors ${isOver ? "bg-primary/10 border border-primary/30" : "bg-muted"}`}>
                   <span className="text-xs font-medium">{statusLabels[status]}</span>
                   <Badge variant="secondary" className="text-[10px] tabular-nums">{colItems.length}</Badge>
                 </div>
-                <div className={`space-y-1.5 min-h-[100px] rounded-lg p-1 transition-colors ${
-                  isOver ? "bg-primary/5 ring-2 ring-primary/20 ring-dashed" : ""
-                }`}>
+                <div className={`space-y-1.5 min-h-[100px] rounded-lg p-1 transition-colors ${isOver ? "bg-primary/5 ring-2 ring-primary/20 ring-dashed" : ""}`}>
                   {colItems.map((item) => renderItemCard(item, true))}
                 </div>
               </div>
@@ -272,11 +291,15 @@ export default function BacklogPage() {
 
       {/* Create dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Nytt backlog-item</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div><Label>Tittel</Label><Input value={newItem.title} onChange={(e) => setNewItem((p) => ({ ...p, title: e.target.value }))} placeholder="Kort beskrivende tittel" /></div>
-            <div><Label>Beskrivelse</Label><Textarea value={newItem.description} onChange={(e) => setNewItem((p) => ({ ...p, description: e.target.value }))} placeholder="Som [rolle] ønsker jeg [mål] for å [effekt]" rows={3} /></div>
+            <div><Label>Tittel *</Label><Input value={newItem.title} onChange={(e) => setNewItem((p) => ({ ...p, title: e.target.value }))} placeholder="Kort beskrivende tittel" /></div>
+            <div>
+              <Label>Beskrivelse</Label>
+              <Textarea value={newItem.description} onChange={(e) => setNewItem((p) => ({ ...p, description: e.target.value }))}
+                placeholder={newItem.type === "user_story" ? "Som [rolle] ønsker jeg [mål] for å [effekt]" : "Beskriv oppgaven"} rows={3} />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Type</Label>
@@ -292,13 +315,19 @@ export default function BacklogPage() {
                   <SelectContent>{Object.entries(priorityLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label>Story Points</Label>
-                <Select value={newItem.estimate?.toString() ?? ""} onValueChange={(v) => setNewItem((p) => ({ ...p, estimate: parseInt(v) }))}>
-                  <SelectTrigger><SelectValue placeholder="Velg" /></SelectTrigger>
-                  <SelectContent>{storyPoints.map((sp) => <SelectItem key={sp} value={sp.toString()}>{sp}</SelectItem>)}</SelectContent>
-                </Select>
+            </div>
+            <div>
+              <Label>Estimat (Story Points)</Label>
+              <div className="flex gap-2 mt-1">
+                {storyPoints.map((sp) => (
+                  <button key={sp} onClick={() => setNewItem((p) => ({ ...p, estimate: p.estimate === sp ? null : sp }))}
+                    className={`h-8 w-8 rounded-full text-xs font-medium transition-colors ${newItem.estimate === sp ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}>
+                    {sp}
+                  </button>
+                ))}
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Ansvarlig</Label>
                 <Select value={newItem.assignee_id ?? ""} onValueChange={(v) => setNewItem((p) => ({ ...p, assignee_id: v || null }))}>
@@ -306,8 +335,29 @@ export default function BacklogPage() {
                   <SelectContent>{members?.map((m) => <SelectItem key={m.id} value={m.id}>{m.name.split(" ")[0]}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
+              <div>
+                <Label>Sprint</Label>
+                <Select value={newItem.sprint_id ?? "none"} onValueChange={(v) => setNewItem((p) => ({ ...p, sprint_id: v === "none" ? null : v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Ikke i sprint</SelectItem>
+                    {sprints?.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div><Label>Epic/Kategori</Label><Input value={newItem.epic} onChange={(e) => setNewItem((p) => ({ ...p, epic: e.target.value }))} placeholder="f.eks. Kartvisning, UX Research" /></div>
+            <div>
+              <Label>Epic/Kategori</Label>
+              <Input value={newItem.epic} onChange={(e) => setNewItem((p) => ({ ...p, epic: e.target.value }))}
+                placeholder="f.eks. Kartvisning, UX Research" list="epic-suggestions" />
+              <datalist id="epic-suggestions">
+                {existingEpics.map((e) => <option key={e} value={e} />)}
+              </datalist>
+            </div>
+            <div>
+              <Label>Labels (kommaseparert)</Label>
+              <Input value={newItem.labels} onChange={(e) => setNewItem((p) => ({ ...p, labels: e.target.value }))} placeholder="frontend, api, bug" />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setShowCreate(false)}>Avbryt</Button>

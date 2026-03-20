@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTeamMembers } from "./useTeamMembers";
+import { useCurrentTeamMember } from "./useCurrentTeamMember";
 import { useState, useEffect, useMemo } from "react";
 import { startOfWeek, endOfWeek, format, addWeeks, subWeeks, getISOWeek, eachDayOfInterval, isWeekend, isBefore, isAfter, startOfDay } from "date-fns";
 import { nb } from "date-fns/locale";
@@ -19,21 +20,8 @@ export interface DailyUpdate {
 }
 
 export function useCurrentMember() {
-  const { data: members } = useTeamMembers();
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUserEmail(data.user?.email ?? null);
-    });
-  }, []);
-
-  const currentMember = useMemo(() => {
-    if (!members || !userEmail) return null;
-    return members.find((m) => m.email.toLowerCase() === userEmail.toLowerCase()) ?? null;
-  }, [members, userEmail]);
-
-  return { currentMember, userEmail };
+  const { currentMember, authUserId } = useCurrentTeamMember();
+  return { currentMember, userEmail: authUserId ? "linked" : null };
 }
 
 export function useWeekNavigation() {

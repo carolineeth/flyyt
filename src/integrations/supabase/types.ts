@@ -1080,6 +1080,7 @@ export type Database = {
       }
       team_members: {
         Row: {
+          auth_user_id: string | null
           avatar_color: string
           created_at: string
           email: string
@@ -1087,6 +1088,7 @@ export type Database = {
           name: string
         }
         Insert: {
+          auth_user_id?: string | null
           avatar_color?: string
           created_at?: string
           email: string
@@ -1094,6 +1096,7 @@ export type Database = {
           name: string
         }
         Update: {
+          auth_user_id?: string | null
           avatar_color?: string
           created_at?: string
           email?: string
@@ -1107,7 +1110,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_team_member_id_for_auth_user: {
+        Args: { _auth_uid: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
