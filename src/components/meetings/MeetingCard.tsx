@@ -291,7 +291,7 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
           {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
         </div>
 
-        {expanded && (
+        {expanded && !isCancelled && (
           <div className="px-4 pb-4 space-y-4 border-t border-border pt-3">
             {/* Roles */}
             <div className="flex gap-2 flex-wrap">
@@ -459,9 +459,65 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
                   <Play className="h-3 w-3 mr-1" /> Gjenåpne møte
                 </Button>
               )}
+              <Popover open={showReschedule} onOpenChange={setShowReschedule}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-7 text-xs">
+                    <CalendarDays className="h-3 w-3 mr-1" /> Flytt møte
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-3" align="start">
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium">Velg ny dato</p>
+                    <Input
+                      type="date"
+                      value={newDate}
+                      onChange={(e) => setNewDate(e.target.value)}
+                      className="h-8 text-xs"
+                    />
+                    <Button size="sm" className="h-7 text-xs w-full" onClick={() => rescheduleMeeting(newDate)} disabled={!newDate}>
+                      Flytt hit
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <Button variant="outline" size="sm" className="h-7 text-xs text-destructive hover:text-destructive" onClick={cancelMeeting}>
+                <X className="h-3 w-3 mr-1" /> Avlys
+              </Button>
               <Button variant="outline" size="sm" className="h-7 text-xs" onClick={exportToProcessLog}>
                 <Copy className="h-3 w-3 mr-1" /> Eksporter til prosesslogg
               </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Cancelled state - minimal controls */}
+        {expanded && isCancelled && (
+          <div className="px-4 pb-3 border-t border-border pt-3">
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={uncancelMeeting}>
+                <Play className="h-3 w-3 mr-1" /> Gjenopprett møte
+              </Button>
+              <Popover open={showReschedule} onOpenChange={setShowReschedule}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-7 text-xs">
+                    <CalendarDays className="h-3 w-3 mr-1" /> Flytt til ny dato
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-3" align="start">
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium">Velg ny dato</p>
+                    <Input
+                      type="date"
+                      value={newDate}
+                      onChange={(e) => setNewDate(e.target.value)}
+                      className="h-8 text-xs"
+                    />
+                    <Button size="sm" className="h-7 text-xs w-full" onClick={() => { rescheduleMeeting(newDate); uncancelMeeting(); }} disabled={!newDate}>
+                      Flytt og gjenopprett
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
         )}
