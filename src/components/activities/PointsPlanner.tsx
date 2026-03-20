@@ -2,9 +2,10 @@ import { useMemo, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, CheckCircle2, GripVertical } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { AlertTriangle, CheckCircle2, GripVertical, Star, Info } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useUpdateRegistration, type CatalogItem, type Registration } from "@/hooks/useActivityCatalog";
+import { Tooltip as UITooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 
 const WEEK_RANGES: Record<number, string> = {
@@ -25,6 +26,53 @@ function getRegWeek(r: Registration): number | null {
   return r.planned_week ?? null;
 }
 
+/** Calculate effective points for a week respecting the mandatory-exempt rule */
+function calcWeekPoints(weekRegs: Registration[], catalog: CatalogItem[]) {
+  let mandatoryPoints = 0;
+  let optionalPoints = 0;
+  let optionalCount = 0;
+  let mandatoryEarned = 0;
+  let mandatoryPlanned = 0;
+  let optionalEarned = 0;
+  let optionalPlanned = 0;
+
+  weekRegs.forEach((r) => {
+    const cat = catalog.find((c) => c.id === r.catalog_id);
+    if (!cat) return;
+    const pts = cat.points;
+    const isCompleted = r.status === "completed";
+
+    if (cat.is_mandatory) {
+      mandatoryPoints += pts;
+      if (isCompleted) mandatoryEarned += pts;
+      else mandatoryPlanned += pts;
+    } else {
+      optionalCount++;
+      optionalPoints += pts;
+      if (isCompleted) optionalEarned += pts;
+      else optionalPlanned += pts;
+    }
+  });
+
+  // Optional activities capped at 3 points per week
+  const effectiveOptional = Math.min(optionalPoints, 3);
+  const effectiveOptionalEarned = Math.min(optionalEarned, 3);
+  const effectiveOptionalPlanned = Math.min(optionalPlanned, Math.max(3 - optionalEarned, 0));
+
+  return {
+    mandatoryPoints,
+    optionalPoints,
+    optionalCount,
+    effectiveOptional,
+    total: mandatoryPoints + effectiveOptional,
+    mandatoryEarned,
+    mandatoryPlanned,
+    optionalEarned: effectiveOptionalEarned,
+    optionalPlanned: effectiveOptionalPlanned,
+    overLimit: optionalCount > 3,
+  };
+}
+
 interface PointsPlannerProps {
   catalog: CatalogItem[];
   registrations: Registration[];
@@ -40,16 +88,8 @@ export function PointsPlanner({ catalog, registrations, onClickRegistration }: P
     return Array.from({ length: 10 }, (_, i) => {
       const week = i + 10;
       const weekRegs = registrations.filter((r) => getRegWeek(r) === week);
-      const earned = weekRegs.filter((r) => r.status === "completed").reduce((s, r) => {
-        const cat = catalog.find((c) => c.id === r.catalog_id);
-        return s + (cat?.points ?? 0);
-      }, 0);
-      const planned = weekRegs.filter((r) => r.status !== "completed").reduce((s, r) => {
-        const cat = catalog.find((c) => c.id === r.catalog_id);
-        return s + (cat?.points ?? 0);
-      }, 0);
-      const total = earned + planned;
-      return { week, registrations: weekRegs, earned, planned, total, unused: Math.max(3 - total, 0) };
+      const calc = calcWeekPoints(weekRegs, catalog);
+      return { week, registrations: weekRegs, ...calc };
     });
   }, [registrations, catalog]);
 
@@ -66,7 +106,9 @@ export function PointsPlanner({ catalog, registrations, onClickRegistration }: P
       msgs.push({ type: "warning", text: `⚠ ${unplannedMandatory.length} obligatorisk${unplannedMandatory.length > 1 ? "e" : ""} aktivitet${unplannedMandatory.length > 1 ? "er" : ""} ikke planlagt før uke 14` });
     }
     weekData.forEach((w) => {
-      if (w.total > 3) msgs.push({ type: "warning", text: `⚠ Uke ${w.week} har ${w.total} poeng planlagt — maks 3 gir poeng` });
+      if (w.optionalCount > 3) {
+        msgs.push({ type: "warning", text: `⚠ Uke ${w.week} har ${w.optionalCount} valgfrie aktiviteter — maks 3 gir poeng` });
+      }
     });
     if (mandatoryCats.length > 0 && unplannedMandatory.length === 0) {
       msgs.push({ type: "success", text: "✓ Alle obligatoriske aktiviteter er gjennomført eller planlagt" });
@@ -75,19 +117,40 @@ export function PointsPlanner({ catalog, registrations, onClickRegistration }: P
   }, [catalog, registrations, weekData]);
 
   const summary = useMemo(() => {
-    const earned = registrations.filter((r) => r.status === "completed").reduce((s, r) => {
+    // Group by week and calculate effective points
+    const weekMap: Record<number, Registration[]> = {};
+    registrations.forEach((r) => {
+      const w = getRegWeek(r);
+      if (w != null) {
+        if (!weekMap[w]) weekMap[w] = [];
+        weekMap[w].push(r);
+      }
+    });
+
+    let earned = 0;
+    let planned = 0;
+    Object.values(weekMap).forEach((weekRegs) => {
+      const calc = calcWeekPoints(weekRegs, catalog);
+      earned += calc.mandatoryEarned + calc.optionalEarned;
+      planned += calc.mandatoryPlanned + calc.optionalPlanned;
+    });
+
+    // Also count unplanned registrations' points (they haven't been assigned a week yet)
+    const unplannedRegs = registrations.filter((r) => getRegWeek(r) === null);
+    unplannedRegs.forEach((r) => {
       const cat = catalog.find((c) => c.id === r.catalog_id);
-      return s + (cat?.points ?? 0);
-    }, 0);
-    const plannedNotDone = registrations.filter((r) => r.status !== "completed" && r.planned_week != null).reduce((s, r) => {
-      const cat = catalog.find((c) => c.id === r.catalog_id);
-      return s + (cat?.points ?? 0);
-    }, 0);
-    return { earned, planned: plannedNotDone, remaining: 30 - earned - plannedNotDone };
+      if (!cat) return;
+      if (r.status === "completed") earned += cat.points;
+      else planned += cat.points;
+    });
+
+    return { earned, planned, remaining: Math.max(30 - earned - planned, 0) };
   }, [registrations, catalog]);
 
   const chartData = useMemo(() => weekData.map((w) => ({
-    name: `U${w.week}`, Opptjent: w.earned, Planlagt: w.planned, Ubrukt: w.unused,
+    name: `U${w.week}`,
+    Valgfrie: w.optionalEarned + w.optionalPlanned,
+    Obligatoriske: w.mandatoryEarned + w.mandatoryPlanned,
   })), [weekData]);
 
   const handleDragStart = (e: React.DragEvent, regId: string) => {
@@ -172,7 +235,7 @@ export function PointsPlanner({ catalog, registrations, onClickRegistration }: P
                       })}
                     </div>
                     <div className={`text-center text-xs font-bold tabular-nums rounded px-1 py-0.5 ${
-                      w.total > 3 ? "bg-destructive/15 text-destructive" : w.total > 0 ? "text-primary" : "text-muted-foreground"
+                      w.overLimit ? "bg-destructive/15 text-destructive" : w.total > 0 ? "text-primary" : "text-muted-foreground"
                     }`}>{w.total > 0 ? `${w.total}p` : "—"}</div>
                   </div>
                 </div>
@@ -194,11 +257,11 @@ export function PointsPlanner({ catalog, registrations, onClickRegistration }: P
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} barSize={24}>
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} domain={[0, 5]} />
+                <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} domain={[0, 6]} />
                 <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid hsl(var(--border))" }} labelStyle={{ fontWeight: 600 }} />
-                <Bar dataKey="Opptjent" stackId="a" fill="hsl(var(--primary))" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="Planlagt" stackId="a" fill="hsl(var(--info))" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="Ubrukt" stackId="a" fill="hsl(var(--muted))" radius={[2, 2, 0, 0]} />
+                <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
+                <Bar dataKey="Valgfrie" stackId="a" fill="hsl(var(--primary))" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="Obligatoriske" stackId="a" fill="#E07A5F" radius={[2, 2, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -210,7 +273,7 @@ export function PointsPlanner({ catalog, registrations, onClickRegistration }: P
 
 function RegBlock({ reg, cat, onDragStart, isDragging, onClick }: { reg: Registration; cat: CatalogItem; onDragStart: (e: React.DragEvent, id: string) => void; isDragging: boolean; onClick?: () => void }) {
   const isCompleted = reg.status === "completed";
-  const isMandatoryIncomplete = cat.is_mandatory && !isCompleted;
+  const isMandatory = cat.is_mandatory;
   return (
     <div
       draggable
@@ -218,11 +281,16 @@ function RegBlock({ reg, cat, onDragStart, isDragging, onClick }: { reg: Registr
       onClick={(e) => { e.stopPropagation(); onClick?.(); }}
       className={`text-[10px] leading-tight rounded px-1.5 py-1 cursor-pointer active:cursor-grabbing transition-all flex items-start gap-1 hover:ring-1 hover:ring-primary/40 ${
         isDragging ? "opacity-40 scale-95" : "opacity-100"
-      } ${isCompleted ? "bg-primary/15 text-primary" : isMandatoryIncomplete ? "bg-blue-50 text-blue-700 ring-1 ring-destructive/50" : "bg-blue-50 text-blue-700"}`}
+      } ${isCompleted ? "bg-primary/15 text-primary" : "bg-blue-50 text-blue-700"} ${
+        isMandatory ? "border-t-2 border-t-[#E07A5F]" : ""
+      }`}
     >
       <GripVertical className="h-3 w-3 shrink-0 mt-px opacity-40" />
       <span className="flex-1 min-w-0">
-        <span className="line-clamp-2">{cat.name}</span>
+        <span className="line-clamp-2">
+          {isMandatory && <Star className="h-2.5 w-2.5 inline mr-0.5 text-[#E07A5F]" />}
+          {cat.name}
+        </span>
         <span className="font-semibold ml-0.5">{cat.points}p</span>
       </span>
     </div>
@@ -237,3 +305,5 @@ function SummaryItem({ label, value, color }: { label: string; value: string; co
     </div>
   );
 }
+
+export { getRegWeek, calcWeekPoints };

@@ -1,12 +1,15 @@
 import { useState, useCallback } from "react";
 import { useActivityCatalog, useActivityRegistrations, type CatalogItem, type Registration } from "@/hooks/useActivityCatalog";
-import { PointsPlanner } from "@/components/activities/PointsPlanner";
+import { PointsPlanner, getRegWeek, calcWeekPoints } from "@/components/activities/PointsPlanner";
 import { CatalogView } from "@/components/activities/CatalogView";
 import { RegistrationsView } from "@/components/activities/RegistrationsView";
 import { RegistrationModal } from "@/components/activities/RegistrationModal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
+import { useMemo } from "react";
 
 export default function ActivitiesPage() {
   const { data: catalog, isLoading: loadingCatalog } = useActivityCatalog();
@@ -31,20 +34,41 @@ export default function ActivitiesPage() {
   const cat = catalog || [];
   const regs = registrations || [];
 
-  // Summary
-  const earned = regs
-    .filter((r) => r.status === "completed")
-    .reduce((s, r) => {
-      const c = cat.find((c) => c.id === r.catalog_id);
-      return s + (c?.points ?? 0);
-    }, 0);
+  // Calculate earned using mandatory-exempt logic
+  const weekMap: Record<number, Registration[]> = {};
+  regs.forEach((r) => {
+    const w = getRegWeek(r);
+    if (w != null) {
+      if (!weekMap[w]) weekMap[w] = [];
+      weekMap[w].push(r);
+    }
+  });
+
+  let earned = 0;
+  Object.values(weekMap).forEach((weekRegs) => {
+    const calc = calcWeekPoints(weekRegs, cat);
+    earned += calc.mandatoryEarned + calc.optionalEarned;
+  });
+
   const progressPct = Math.min((earned / 30) * 100, 100);
 
   return (
     <div className="space-y-6 scroll-reveal">
       <PageHeader
         title="Aktivitets-tracker"
-        description="Teamaktiviteter teller 30% av prosjektkarakteren. Maks 3 aktiviteter gir poeng per uke."
+        description={
+          <span className="inline-flex items-center gap-1">
+            Teamaktiviteter teller 30% av prosjektkarakteren. Maks 3 valgfrie aktiviteter gir poeng per uke.
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help inline" />
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-[280px] text-xs">
+                Grensen på 3 aktiviteter per uke gjelder kun valgfrie aktiviteter. Obligatoriske aktiviteter gir alltid poeng og teller ikke mot denne grensen.
+              </TooltipContent>
+            </Tooltip>
+          </span>
+        }
       />
 
       {/* Points overview */}
