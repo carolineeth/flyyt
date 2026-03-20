@@ -10,6 +10,7 @@ import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { Target, CalendarDays, Users, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { AttendanceTrendChart } from "@/components/dashboard/AttendanceTrendChart";
 
 function useAllMeetings() {
   return useQuery({
@@ -17,7 +18,7 @@ function useAllMeetings() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("meetings")
-        .select("id, participants, recurring_meeting_id, status")
+        .select("id, participants, recurring_meeting_id, status, week_number")
         .not("recurring_meeting_id", "is", null);
       if (error) throw error;
       return data ?? [];
@@ -155,6 +156,11 @@ export default function DashboardPage() {
             </p>
           </CardContent>
         </Card>
+      )}
+
+      {/* Attendance trend */}
+      {allMeetings && members && (
+        <AttendanceTrendChart meetings={allMeetings as any} members={members} />
       )}
 
       {/* Team members */}
