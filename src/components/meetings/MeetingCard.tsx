@@ -19,7 +19,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { SubSessionBlock } from "./SubSessionBlock";
 import { toast } from "sonner";
-import { Plus, Play, Square, Copy, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Play, Square, Copy, ChevronUp, ChevronDown, X, CalendarDays } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const subSessionTemplates: Record<string, string[]> = {
   sprint_planning: ["Gjennomgå product backlog", "Velg items for sprint", "Estimering", "Definer sprint goal"],
@@ -59,6 +60,8 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
   const [newAgenda, setNewAgenda] = useState("");
   const [notes, setNotes] = useState(meeting?.notes || "");
   const [expanded, setExpanded] = useState(true);
+  const [showReschedule, setShowReschedule] = useState(false);
+  const [newDate, setNewDate] = useState("");
 
   useEffect(() => { setNotes(meeting?.notes || ""); }, [meeting?.notes]);
 
@@ -81,6 +84,39 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
 
   const meetingDate = meeting.meeting_date ? new Date(meeting.meeting_date + "T00:00:00") : new Date(meeting.date);
   const status = meeting.status || "upcoming";
+  const isCancelled = status === "cancelled";
+
+  const cancelMeeting = async () => {
+    await supabase.from("meetings").update({ status: "cancelled" } as any).eq("id", meeting.id);
+    qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
+    toast.success("Møte avlyst");
+  };
+
+  const rescheduleMeeting = async (dateStr: string) => {
+    if (!dateStr) return;
+    const newMeetingDate = new Date(dateStr);
+    const newWeek = (() => {
+      const d = new Date(Date.UTC(newMeetingDate.getFullYear(), newMeetingDate.getMonth(), newMeetingDate.getDate()));
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+    })();
+    await supabase.from("meetings").update({
+      meeting_date: dateStr,
+      date: new Date(dateStr).toISOString(),
+      week_number: newWeek,
+    } as any).eq("id", meeting.id);
+    qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
+    setShowReschedule(false);
+    toast.success("Møte flyttet til " + newMeetingDate.toLocaleDateString("nb-NO", { day: "numeric", month: "long" }));
+  };
+
+  const uncancelMeeting = async () => {
+    await supabase.from("meetings").update({ status: "upcoming" } as any).eq("id", meeting.id);
+    qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
+    toast.success("Møte gjenopprettet");
+  };
 
   const addAgendaItem = async () => {
     if (!newAgenda.trim()) return;
