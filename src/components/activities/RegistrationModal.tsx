@@ -18,6 +18,7 @@ import {
 } from "@/hooks/useActivityCatalog";
 import { toast } from "sonner";
 import { Link2, FileText, Plus, Trash2 } from "lucide-react";
+import { FileUpload } from "./FileUpload";
 
 interface RegistrationModalProps {
   open: boolean;
@@ -289,15 +290,29 @@ export function RegistrationModal({ open, onOpenChange, catalogItem, registratio
             </div>
           </div>
 
-          {/* Attachments */}
-          <div className="space-y-2 border-t pt-4">
-            <Label>Vedlegg (lenker)</Label>
-            {form.attachment_links.map((link, i) => (
-              <div key={i} className="flex items-center gap-2">
+          {/* Attachments — file upload + links */}
+          <div className="space-y-3 border-t pt-4">
+            <Label>Vedlegg (bilder og filer)</Label>
+            <FileUpload
+              files={form.attachment_links.filter((l) => !l.startsWith("http"))}
+              onFilesChange={(storagePaths) => {
+                const links = form.attachment_links.filter((l) => l.startsWith("http"));
+                setForm((p) => ({ ...p, attachment_links: [...storagePaths, ...links] }));
+              }}
+              folder="activities"
+            />
+
+            <Label className="mt-2">Lenker</Label>
+            {form.attachment_links.filter((l) => l.startsWith("http")).map((link, i) => (
+              <div key={`link-${i}`} className="flex items-center gap-2">
                 <a href={link} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline flex-1 truncate">
                   {link}
                 </a>
-                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => removeLink(i)}>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => {
+                  const storagePaths = form.attachment_links.filter((l) => !l.startsWith("http"));
+                  const links = form.attachment_links.filter((l) => l.startsWith("http")).filter((_, idx) => idx !== i);
+                  setForm((p) => ({ ...p, attachment_links: [...storagePaths, ...links] }));
+                }}>
                   <Trash2 className="h-3 w-3" />
                 </Button>
               </div>
