@@ -1,4 +1,4 @@
-import { useActivities, useActivityParticipants } from "@/hooks/useActivities";
+import { useActivityCatalog, useActivityRegistrations, useRegistrationParticipants } from "@/hooks/useActivityCatalog";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,14 +8,23 @@ import { Target, CalendarDays, Users, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function DashboardPage() {
-  const { data: activities } = useActivities();
+  const { data: catalog } = useActivityCatalog();
+  const { data: registrations } = useActivityRegistrations();
   const { data: members } = useTeamMembers();
-  const { data: participants } = useActivityParticipants();
+  const { data: participants } = useRegistrationParticipants();
 
-  const completedActivities = activities?.filter((a) => a.status === "completed") ?? [];
-  const totalEarned = completedActivities.reduce((sum, a) => sum + a.points, 0);
+  const regs = registrations ?? [];
+  const cat = catalog ?? [];
+
+  const completedRegs = regs.filter((r) => r.status === "completed");
+  const totalEarned = completedRegs.reduce((sum, r) => {
+    const c = cat.find((c) => c.id === r.catalog_id);
+    return sum + (c?.points ?? 0);
+  }, 0);
   const maxPossible = 30;
   const progressPct = Math.min((totalEarned / maxPossible) * 100, 100);
+
+  const mandatoryRemaining = cat.filter((c) => c.is_mandatory && !regs.some((r) => r.catalog_id === c.id && r.status === "completed")).length;
 
   const quickLinks = [
     { label: "Aktiviteter", to: "/aktiviteter", icon: Target },
@@ -45,7 +54,7 @@ export default function DashboardPage() {
           </div>
           <Progress value={progressPct} className="h-2" />
           <p className="text-xs text-muted-foreground mt-2">
-            {completedActivities.length} aktiviteter fullført · Maks 3 poenggivende per uke
+            {completedRegs.length} aktiviteter fullført · Maks 3 poenggivende per uke
           </p>
         </CardContent>
       </Card>
@@ -54,22 +63,20 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-5">
-            <p className="text-sm text-muted-foreground">Totalt aktiviteter</p>
-            <p className="text-2xl font-bold tabular-nums">{activities?.length ?? 0}</p>
+            <p className="text-sm text-muted-foreground">Totalt registreringer</p>
+            <p className="text-2xl font-bold tabular-nums">{regs.length}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-5">
             <p className="text-sm text-muted-foreground">Fullførte</p>
-            <p className="text-2xl font-bold tabular-nums text-primary">{completedActivities.length}</p>
+            <p className="text-2xl font-bold tabular-nums text-primary">{completedRegs.length}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-5">
             <p className="text-sm text-muted-foreground">Obligatoriske gjenstår</p>
-            <p className="text-2xl font-bold tabular-nums">
-              {activities?.filter((a) => a.is_mandatory && a.status !== "completed").length ?? 0}
-            </p>
+            <p className="text-2xl font-bold tabular-nums">{mandatoryRemaining}</p>
           </CardContent>
         </Card>
       </div>
