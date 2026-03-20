@@ -320,7 +320,6 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
                     <Checkbox
                       checked={ai.is_completed}
                       onCheckedChange={(v) => toggleAgendaItem(ai.id, !!v)}
-                      disabled={status === "completed"}
                     />
                   )}
                   <span className={`text-sm flex-1 ${ai.is_completed ? "line-through text-muted-foreground" : ""}`}>
@@ -340,20 +339,18 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
                   </div>
                 </div>
               ))}
-              {status !== "completed" && (
-                <div className="flex gap-1 mt-1">
-                  <Input
-                    value={newAgenda}
-                    onChange={(e) => setNewAgenda(e.target.value)}
-                    placeholder="+ Legg til agendapunkt"
-                    className="h-7 text-xs"
-                    onKeyDown={(e) => e.key === "Enter" && addAgendaItem()}
-                  />
-                  <Button variant="ghost" size="sm" className="h-7 px-2" onClick={addAgendaItem}>
-                    <Plus className="h-3 w-3" />
-                  </Button>
-                </div>
-              )}
+              <div className="flex gap-1 mt-1">
+                <Input
+                  value={newAgenda}
+                  onChange={(e) => setNewAgenda(e.target.value)}
+                  placeholder="+ Legg til agendapunkt"
+                  className="h-7 text-xs"
+                  onKeyDown={(e) => e.key === "Enter" && addAgendaItem()}
+                />
+                <Button variant="ghost" size="sm" className="h-7 px-2" onClick={addAgendaItem}>
+                  <Plus className="h-3 w-3" />
+                </Button>
+              </div>
             </div>
 
             {/* Sub-sessions */}
@@ -367,18 +364,16 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
                   onDelete={() => deleteSubSession(ss.id)}
                 />
               ))}
-              {status !== "completed" && (
-                <Select onValueChange={addSubSession}>
-                  <SelectTrigger className="h-7 text-xs w-48">
-                    <SelectValue placeholder="+ Legg til delmøte" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(subSessionTypeLabels).map(([k, v]) => (
-                      <SelectItem key={k} value={k}>{v}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+              <Select onValueChange={addSubSession}>
+                <SelectTrigger className="h-7 text-xs w-48">
+                  <SelectValue placeholder="+ Legg til delmøte" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(subSessionTypeLabels).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Notes */}
@@ -394,19 +389,15 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
             </div>
 
             {/* Action points */}
-            {(status === "in_progress" || status === "completed") && (
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">Action points</p>
-                {actionPoints?.map((ap) => (
-                  <ActionPointRow key={ap.id} ap={ap} members={members || []} onUpdate={updateActionPoint} />
-                ))}
-                {status !== "completed" && (
-                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={addActionPoint}>
-                    <Plus className="h-3 w-3 mr-1" /> Action point
-                  </Button>
-                )}
-              </div>
-            )}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Action points</p>
+              {actionPoints?.map((ap) => (
+                <ActionPointRow key={ap.id} ap={ap} members={members || []} onUpdate={updateActionPoint} />
+              ))}
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={addActionPoint}>
+                <Plus className="h-3 w-3 mr-1" /> Action point
+              </Button>
+            </div>
 
             {/* Control buttons */}
             <div className="flex gap-2 pt-2 flex-wrap">
@@ -418,6 +409,15 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
               {status === "in_progress" && (
                 <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={endMeeting}>
                   <Square className="h-3 w-3 mr-1" /> Avslutt møte
+                </Button>
+              )}
+              {status === "completed" && (
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={async () => {
+                  await supabase.from("meetings").update({ status: "in_progress" } as any).eq("id", meeting.id);
+                  qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
+                  toast.success("Møte gjenåpnet for redigering");
+                }}>
+                  <Play className="h-3 w-3 mr-1" /> Gjenåpne møte
                 </Button>
               )}
               <Button variant="outline" size="sm" className="h-7 text-xs" onClick={exportToProcessLog}>
