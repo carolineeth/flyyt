@@ -14,6 +14,7 @@ import SprintBoardPage from "@/pages/SprintBoardPage";
 import DecisionsPage from "@/pages/DecisionsPage";
 import MeetingsPage from "@/pages/MeetingsPage";
 import ResourcesPage from "@/pages/ResourcesPage";
+import ProcessLogExportPage from "@/pages/ProcessLogExportPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -62,6 +63,7 @@ const App = () => (
               <Route path="/beslutninger" element={<DecisionsPage />} />
               <Route path="/moter" element={<MeetingsPage />} />
               <Route path="/ressurser" element={<ResourcesPage />} />
+              <Route path="/prosesslogg" element={<ProcessLogExportPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AppLayout>

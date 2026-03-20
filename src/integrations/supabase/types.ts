@@ -23,6 +23,7 @@ export type Database = {
           deadline_date: string | null
           deadline_phase: string | null
           description: string | null
+          experiences: string | null
           id: string
           is_mandatory: boolean
           max_points: number | null
@@ -30,7 +31,9 @@ export type Database = {
           notes: string | null
           planned_week: number | null
           points: number
+          reflections: string | null
           status: string
+          timing_rationale: string | null
           updated_at: string
         }
         Insert: {
@@ -41,6 +44,7 @@ export type Database = {
           deadline_date?: string | null
           deadline_phase?: string | null
           description?: string | null
+          experiences?: string | null
           id?: string
           is_mandatory?: boolean
           max_points?: number | null
@@ -48,7 +52,9 @@ export type Database = {
           notes?: string | null
           planned_week?: number | null
           points?: number
+          reflections?: string | null
           status?: string
+          timing_rationale?: string | null
           updated_at?: string
         }
         Update: {
@@ -59,6 +65,7 @@ export type Database = {
           deadline_date?: string | null
           deadline_phase?: string | null
           description?: string | null
+          experiences?: string | null
           id?: string
           is_mandatory?: boolean
           max_points?: number | null
@@ -66,7 +73,9 @@ export type Database = {
           notes?: string | null
           planned_week?: number | null
           points?: number
+          reflections?: string | null
           status?: string
+          timing_rationale?: string | null
           updated_at?: string
         }
         Relationships: []
