@@ -12,7 +12,7 @@ import ActivitiesPage from "@/pages/ActivitiesPage";
 import BacklogPage from "@/pages/BacklogPage";
 import SprintBoardPage from "@/pages/SprintBoardPage";
 
-import MeetingsPage from "@/pages/MeetingsPage";
+import MeetingCalendarPage from "@/pages/MeetingCalendarPage";
 import ResourcesPage from "@/pages/ResourcesPage";
 import ProcessLogExportPage from "@/pages/ProcessLogExportPage";
 import ReportPage from "@/pages/ReportPage";
@@ -62,7 +62,7 @@ const App = () => (
               <Route path="/backlog" element={<BacklogPage />} />
               <Route path="/sprint" element={<SprintBoardPage />} />
               
-              <Route path="/moter" element={<MeetingsPage />} />
+              <Route path="/moter" element={<MeetingCalendarPage />} />
               <Route path="/ressurser" element={<ResourcesPage />} />
               <Route path="/prosesslogg" element={<ProcessLogExportPage />} />
               <Route path="/rapport" element={<ReportPage />} />

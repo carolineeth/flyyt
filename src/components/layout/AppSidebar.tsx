@@ -32,7 +32,7 @@ const navItems = [
   { title: "Backlog", url: "/backlog", icon: ListTodo },
   { title: "Sprint Board", url: "/sprint", icon: Columns3 },
   
-  { title: "Møter", url: "/moter", icon: Users },
+  { title: "Møtekalender", url: "/moter", icon: Calendar },
   { title: "Ressurser", url: "/ressurser", icon: Link2 },
   { title: "Prosesslogg", url: "/prosesslogg", icon: ClipboardCheck },
   { title: "Rapport", url: "/rapport", icon: FileText },

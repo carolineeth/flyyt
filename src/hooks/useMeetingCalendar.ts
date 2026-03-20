@@ -82,9 +82,9 @@ export function useWeekMeetings(year: number, week: number) {
       const { data, error } = await supabase
         .from("meetings")
         .select("*")
-        .eq("week_number" as any, week);
+        .eq("week_number" as any, week) as any;
       if (error) throw error;
-      return data;
+      return data as any[];
     },
   });
 }
