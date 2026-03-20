@@ -48,6 +48,7 @@ export function RegistrationModal({ open, onOpenChange, catalogItem, registratio
   });
 
   useEffect(() => {
+    const existingParticipantIds = participants?.filter((p) => p.registration_id === registration?.id).map((p) => p.member_id) || [];
     if (registration) {
       setReg(registration);
       setForm({
@@ -59,6 +60,7 @@ export function RegistrationModal({ open, onOpenChange, catalogItem, registratio
         reflections: registration.reflections || "",
         attachment_links: registration.attachment_links || [],
         newLink: "",
+        selectedMembers: existingParticipantIds,
       });
     } else {
       setReg(null);
@@ -71,9 +73,10 @@ export function RegistrationModal({ open, onOpenChange, catalogItem, registratio
         reflections: "",
         attachment_links: [],
         newLink: "",
+        selectedMembers: [],
       });
     }
-  }, [registration, open]);
+  }, [registration, open, participants]);
 
   const regParticipants = participants?.filter((p) => p.registration_id === reg?.id) || [];
 
