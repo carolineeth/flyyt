@@ -11,6 +11,7 @@ import DashboardPage from "@/pages/DashboardPage";
 import ActivitiesPage from "@/pages/ActivitiesPage";
 import BacklogPage from "@/pages/BacklogPage";
 import SprintBoardPage from "@/pages/SprintBoardPage";
+import StandupPage from "@/pages/StandupPage";
 
 import MeetingCalendarPage from "@/pages/MeetingCalendarPage";
 import ResourcesPage from "@/pages/ResourcesPage";
@@ -59,6 +60,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<DashboardPage />} />
               <Route path="/aktiviteter" element={<ActivitiesPage />} />
+              <Route path="/standup" element={<StandupPage />} />
               <Route path="/backlog" element={<BacklogPage />} />
               <Route path="/sprint" element={<SprintBoardPage />} />
               
