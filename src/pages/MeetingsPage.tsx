@@ -433,7 +433,29 @@ export default function MeetingsPage() {
               </div>
             </div>
 
-            {/* General notes (for all types) */}
+            {/* Roles */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Møteleder</Label>
+                <Select value={form.facilitator_id ?? "none"} onValueChange={(v) => setForm((p) => ({ ...p, facilitator_id: v === "none" ? null : v }))}>
+                  <SelectTrigger className="text-sm"><SelectValue placeholder="Velg" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Ingen</SelectItem>
+                    {members?.map((m) => <SelectItem key={m.id} value={m.id}>{m.name.split(" ")[0]}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Referent</Label>
+                <Select value={form.note_taker_id ?? "none"} onValueChange={(v) => setForm((p) => ({ ...p, note_taker_id: v === "none" ? null : v }))}>
+                  <SelectTrigger className="text-sm"><SelectValue placeholder="Velg" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Ingen</SelectItem>
+                    {members?.map((m) => <SelectItem key={m.id} value={m.id}>{m.name.split(" ")[0]}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div>
               <Label>Generelle notater</Label>
               <Textarea
