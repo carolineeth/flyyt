@@ -47,8 +47,23 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
     return conflicts;
   }, [agileMeetings, registrations, catalog]);
 
+  const [selectedRegistration, setSelectedRegistration] = useState<Registration | null | undefined>(undefined);
+
   const openModal = (item: CatalogItem) => {
     setSelectedCatalog(item);
+    setSelectedRegistration(undefined); // will use getExistingRegistration
+    setModalOpen(true);
+  };
+
+  const openModalNew = (item: CatalogItem) => {
+    setSelectedCatalog(item);
+    setSelectedRegistration(null); // force new registration
+    setModalOpen(true);
+  };
+
+  const openModalWithRegistration = (item: CatalogItem, reg: Registration) => {
+    setSelectedCatalog(item);
+    setSelectedRegistration(reg);
     setModalOpen(true);
   };
 
@@ -105,10 +120,26 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
                   <span className="text-sm font-medium">{advisorMeeting.name}</span>
                   <Badge variant="secondary" className="text-[10px]">1p per uke, maks 4</Badge>
                 </div>
-                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openModal(advisorMeeting)}>
-                  Registrer
-                </Button>
+                {getRegistrationsFor(advisorMeeting.id).length < 4 && (
+                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openModalNew(advisorMeeting)}>
+                    + Registrer ny
+                  </Button>
+                )}
               </div>
+              {/* Existing registrations */}
+              {getRegistrationsFor(advisorMeeting.id).map((reg, i) => (
+                <div
+                  key={reg.id}
+                  className="flex items-center gap-2 text-xs px-2 py-1.5 rounded hover:bg-accent/30 cursor-pointer transition-colors"
+                  onClick={() => openModalWithRegistration(advisorMeeting, reg)}
+                >
+                  <StatusIcon catId={advisorMeeting.id} />
+                  <span className="flex-1">Møte #{i + 1}{reg.completed_date ? ` — ${reg.completed_date}` : ""}</span>
+                  <Badge variant={reg.status === "completed" ? "default" : "outline"} className="text-[10px]">
+                    {reg.status === "completed" ? "Fullført" : reg.status === "in_progress" ? "Pågår" : "Ikke startet"}
+                  </Badge>
+                </div>
+              ))}
               <div className="flex gap-1.5">
                 {Array.from({ length: 4 }).map((_, i) => {
                   const completed = getRegistrationsFor(advisorMeeting.id).filter((r) => r.status === "completed").length;
@@ -194,7 +225,7 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
           open={modalOpen}
           onOpenChange={setModalOpen}
           catalogItem={selectedCatalog}
-          registration={getExistingRegistration(selectedCatalog.id)}
+          registration={selectedRegistration === undefined ? getExistingRegistration(selectedCatalog.id) : selectedRegistration}
           allRegistrations={registrations}
         />
       )}
