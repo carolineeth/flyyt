@@ -30,11 +30,7 @@ export default function ActivitiesPage() {
   const { data: members } = useTeamMembers();
   const updateActivity = useUpdateActivity();
   const toggleParticipant = useToggleParticipant();
-  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  const completedActivities = activities?.filter((a) => a.status === "completed") ?? [];
-  const totalEarned = completedActivities.reduce((sum, a) => sum + a.points, 0);
 
   const handleStatusChange = (activity: Activity, status: string) => {
     const updates: Partial<Activity> & { id: string } = { id: activity.id, status };
