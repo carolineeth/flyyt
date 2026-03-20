@@ -1,0 +1,1 @@
+ALTER TABLE public.activity_registrations ADD COLUMN short_status text DEFAULT NULL;

@@ -209,6 +209,7 @@ export type Database = {
           occurrence_number: number
           planned_week: number | null
           reflections: string | null
+          short_status: string | null
           status: string
           timing_rationale: string | null
         }
@@ -226,6 +227,7 @@ export type Database = {
           occurrence_number?: number
           planned_week?: number | null
           reflections?: string | null
+          short_status?: string | null
           status?: string
           timing_rationale?: string | null
         }
@@ -243,6 +245,7 @@ export type Database = {
           occurrence_number?: number
           planned_week?: number | null
           reflections?: string | null
+          short_status?: string | null
           status?: string
           timing_rationale?: string | null
         }
