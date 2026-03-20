@@ -87,15 +87,12 @@ export default function MeetingCalendarPage() {
       const dateStr = meetingDate.toISOString().split("T")[0];
       const isToday = dateStr === todayStr;
 
-      // If meeting exists and has explicit leader/notetaker override (including null = cleared)
-      const hasLeaderOverride = meeting && "leader_id" in meeting;
-      const hasNotetakerOverride = meeting && "notetaker_id" in meeting;
-      const mLeader = hasLeaderOverride && meeting.leader_id
-        ? members?.find((m) => m.id === (meeting as any).leader_id)?.name.split(" ")[0] || leaderName
-        : hasLeaderOverride && meeting.leader_id === null ? "–" : leaderName;
-      const mNotetaker = hasNotetakerOverride && meeting.notetaker_id
-        ? members?.find((m) => m.id === (meeting as any).notetaker_id)?.name.split(" ")[0] || notetakerName
-        : hasNotetakerOverride && meeting.notetaker_id === null ? "–" : notetakerName;
+      const mLeader = meeting?.leader_id
+        ? members?.find((m) => m.id === (meeting as any).leader_id)?.name.split(" ")[0] || "–"
+        : meeting ? "–" : leaderName;
+      const mNotetaker = meeting?.notetaker_id
+        ? members?.find((m) => m.id === (meeting as any).notetaker_id)?.name.split(" ")[0] || "–"
+        : meeting ? "–" : notetakerName;
 
       return { rm, meeting, isToday, leaderName: mLeader, notetakerName: mNotetaker };
     });
