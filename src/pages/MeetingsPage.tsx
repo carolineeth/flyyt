@@ -64,6 +64,8 @@ export default function MeetingsPage() {
     participants: [] as string[],
     related_activity_id: null as string | null,
     sprint_id: null as string | null,
+    facilitator_id: null as string | null,
+    note_taker_id: null as string | null,
     // Planning-specific
     planning_capacity: {} as Record<string, number>,
     planning_selected_items: [] as string[],
@@ -95,6 +97,7 @@ export default function MeetingsPage() {
     setForm({
       type: "daily_standup", date: new Date().toISOString().slice(0, 16), duration_minutes: 15, notes: "",
       participants: [], related_activity_id: null, sprint_id: null,
+      facilitator_id: null, note_taker_id: null,
       planning_capacity: {}, planning_selected_items: [], sprint_goal: "",
       review_feedback: "", retro_items: [], standup_entries: [],
       agenda_items: [], advisor_notes: "", action_points: [],
@@ -112,6 +115,8 @@ export default function MeetingsPage() {
         participants: form.participants,
         related_activity_id: form.related_activity_id,
         sprint_id: form.sprint_id,
+        facilitator_id: form.facilitator_id,
+        note_taker_id: form.note_taker_id,
         planning_capacity: form.type === "sprint_planning" ? form.planning_capacity : null,
         review_feedback: form.type === "sprint_review" ? form.review_feedback : null,
       }).select().single();
