@@ -88,11 +88,11 @@ export default function MeetingCalendarPage() {
       const isToday = dateStr === todayStr;
 
       const mLeader = meeting?.leader_id
-        ? members?.find((m) => m.id === (meeting as any).leader_id)?.name.split(" ")[0] || leaderName
-        : leaderName;
+        ? members?.find((m) => m.id === (meeting as any).leader_id)?.name.split(" ")[0] || "–"
+        : meeting ? "–" : leaderName;
       const mNotetaker = meeting?.notetaker_id
-        ? members?.find((m) => m.id === (meeting as any).notetaker_id)?.name.split(" ")[0] || notetakerName
-        : notetakerName;
+        ? members?.find((m) => m.id === (meeting as any).notetaker_id)?.name.split(" ")[0] || "–"
+        : meeting ? "–" : notetakerName;
 
       return { rm, meeting, isToday, leaderName: mLeader, notetakerName: mNotetaker };
     });
