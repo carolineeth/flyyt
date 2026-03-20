@@ -15,6 +15,7 @@ import DecisionsPage from "@/pages/DecisionsPage";
 import MeetingsPage from "@/pages/MeetingsPage";
 import ResourcesPage from "@/pages/ResourcesPage";
 import ProcessLogExportPage from "@/pages/ProcessLogExportPage";
+import ReportPage from "@/pages/ReportPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -64,6 +65,7 @@ const App = () => (
               <Route path="/moter" element={<MeetingsPage />} />
               <Route path="/ressurser" element={<ResourcesPage />} />
               <Route path="/prosesslogg" element={<ProcessLogExportPage />} />
+              <Route path="/rapport" element={<ReportPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AppLayout>

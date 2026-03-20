@@ -368,6 +368,50 @@ export type Database = {
           },
         ]
       }
+      report_sections: {
+        Row: {
+          assignee_id: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          sort_order: number
+          status: string
+          title: string
+          updated_at: string
+          word_count_goal: number
+        }
+        Insert: {
+          assignee_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          sort_order?: number
+          status?: string
+          title: string
+          updated_at?: string
+          word_count_goal?: number
+        }
+        Update: {
+          assignee_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          sort_order?: number
+          status?: string
+          title?: string
+          updated_at?: string
+          word_count_goal?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_sections_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       resources: {
         Row: {
           category: string
