@@ -6,7 +6,7 @@ import { useState, useEffect, useMemo } from "react";
 import { startOfWeek, endOfWeek, format, addWeeks, subWeeks, getISOWeek, eachDayOfInterval, isWeekend, isBefore, isAfter, startOfDay } from "date-fns";
 import { nb } from "date-fns/locale";
 
-const PROJECT_START = new Date(2026, 2, 3); // March 3, 2026 (week 10)
+const PROJECT_START = new Date(2026, 2, 9); // March 9, 2026 (week 11)
 
 export interface DailyUpdate {
   id: string;
