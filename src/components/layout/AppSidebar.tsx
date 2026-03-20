@@ -8,6 +8,7 @@ import {
   Link2,
   LogOut,
   ClipboardCheck,
+  FileText,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -34,6 +35,7 @@ const navItems = [
   { title: "Møter", url: "/moter", icon: Users },
   { title: "Ressurser", url: "/ressurser", icon: Link2 },
   { title: "Prosesslogg", url: "/prosesslogg", icon: ClipboardCheck },
+  { title: "Rapport", url: "/rapport", icon: FileText },
 ];
 
 export function AppSidebar() {
