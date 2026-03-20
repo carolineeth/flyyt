@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { SubSessionBlock } from "./SubSessionBlock";
 import { toast } from "sonner";
-import { Plus, Play, Square, Copy, ChevronUp, ChevronDown, X, CalendarDays } from "lucide-react";
+import { Plus, Play, Square, Copy, ChevronUp, ChevronDown, X, CalendarDays, Save } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const subSessionTemplates: Record<string, string[]> = {
@@ -85,6 +85,14 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
   const meetingDate = meeting.meeting_date ? new Date(meeting.meeting_date + "T00:00:00") : new Date(meeting.date);
   const status = meeting.status || "upcoming";
   const isCancelled = status === "cancelled";
+  const todayDate = new Date();
+  todayDate.setHours(0, 0, 0, 0);
+  const isPast = meetingDate < todayDate;
+
+  const saveMeeting = async () => {
+    await saveNotes(notes);
+    toast.success("Møte lagret");
+  };
 
   const cancelMeeting = async () => {
     await supabase.from("meetings").update({ status: "cancelled" } as any).eq("id", meeting.id);
@@ -440,25 +448,19 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
 
             {/* Control buttons */}
             <div className="flex gap-2 pt-2 flex-wrap">
-              {status === "upcoming" && (
+              {!isPast && status === "upcoming" && (
                 <Button size="sm" className="h-7 text-xs" onClick={startMeeting}>
                   <Play className="h-3 w-3 mr-1" /> Start møte
                 </Button>
               )}
-              {status === "in_progress" && (
+              {!isPast && status === "in_progress" && (
                 <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={endMeeting}>
                   <Square className="h-3 w-3 mr-1" /> Avslutt møte
                 </Button>
               )}
-              {status === "completed" && (
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={async () => {
-                  await supabase.from("meetings").update({ status: "in_progress" } as any).eq("id", meeting.id);
-                  qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
-                  toast.success("Møte gjenåpnet for redigering");
-                }}>
-                  <Play className="h-3 w-3 mr-1" /> Gjenåpne møte
-                </Button>
-              )}
+              <Button size="sm" variant="default" className="h-7 text-xs" onClick={saveMeeting}>
+                <Save className="h-3 w-3 mr-1" /> Lagre
+              </Button>
               <Popover open={showReschedule} onOpenChange={setShowReschedule}>
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className="h-7 text-xs">
