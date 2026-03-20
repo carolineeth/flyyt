@@ -3,7 +3,7 @@ import {
   Target,
   ListTodo,
   Columns3,
-  Scale,
+  
   Users,
   Link2,
   LogOut,
@@ -31,7 +31,7 @@ const navItems = [
   { title: "Aktiviteter", url: "/aktiviteter", icon: Target },
   { title: "Backlog", url: "/backlog", icon: ListTodo },
   { title: "Sprint Board", url: "/sprint", icon: Columns3 },
-  { title: "Beslutninger", url: "/beslutninger", icon: Scale },
+  
   { title: "Møter", url: "/moter", icon: Users },
   { title: "Ressurser", url: "/ressurser", icon: Link2 },
   { title: "Prosesslogg", url: "/prosesslogg", icon: ClipboardCheck },
