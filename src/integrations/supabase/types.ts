@@ -104,6 +104,41 @@ export type Database = {
           },
         ]
       }
+      advisor_agenda_items: {
+        Row: {
+          answer: string | null
+          created_at: string
+          id: string
+          meeting_id: string
+          question: string
+          sort_order: number
+        }
+        Insert: {
+          answer?: string | null
+          created_at?: string
+          id?: string
+          meeting_id: string
+          question: string
+          sort_order?: number
+        }
+        Update: {
+          answer?: string | null
+          created_at?: string
+          id?: string
+          meeting_id?: string
+          question?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "advisor_agenda_items_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       backlog_items: {
         Row: {
           assignee_id: string | null
@@ -206,6 +241,7 @@ export type Database = {
         Row: {
           assignee_id: string | null
           created_at: string
+          deadline: string | null
           id: string
           is_completed: boolean
           meeting_id: string
@@ -214,6 +250,7 @@ export type Database = {
         Insert: {
           assignee_id?: string | null
           created_at?: string
+          deadline?: string | null
           id?: string
           is_completed?: boolean
           meeting_id: string
@@ -222,6 +259,7 @@ export type Database = {
         Update: {
           assignee_id?: string | null
           created_at?: string
+          deadline?: string | null
           id?: string
           is_completed?: boolean
           meeting_id?: string
@@ -248,28 +286,40 @@ export type Database = {
         Row: {
           created_at: string
           date: string
+          duration_minutes: number | null
           id: string
           notes: string | null
           participants: string[] | null
+          planning_capacity: Json | null
           related_activity_id: string | null
+          review_feedback: string | null
+          sprint_id: string | null
           type: string
         }
         Insert: {
           created_at?: string
           date?: string
+          duration_minutes?: number | null
           id?: string
           notes?: string | null
           participants?: string[] | null
+          planning_capacity?: Json | null
           related_activity_id?: string | null
+          review_feedback?: string | null
+          sprint_id?: string | null
           type?: string
         }
         Update: {
           created_at?: string
           date?: string
+          duration_minutes?: number | null
           id?: string
           notes?: string | null
           participants?: string[] | null
+          planning_capacity?: Json | null
           related_activity_id?: string | null
+          review_feedback?: string | null
+          sprint_id?: string | null
           type?: string
         }
         Relationships: [
@@ -278,6 +328,13 @@ export type Database = {
             columns: ["related_activity_id"]
             isOneToOne: false
             referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetings_sprint_id_fkey"
+            columns: ["sprint_id"]
+            isOneToOne: false
+            referencedRelation: "sprints"
             referencedColumns: ["id"]
           },
         ]
@@ -308,6 +365,57 @@ export type Database = {
           url?: string
         }
         Relationships: []
+      }
+      retro_items: {
+        Row: {
+          column_type: string
+          created_at: string
+          group_label: string | null
+          id: string
+          is_anonymous: boolean
+          is_grouped: boolean
+          meeting_id: string
+          member_id: string | null
+          text: string
+        }
+        Insert: {
+          column_type: string
+          created_at?: string
+          group_label?: string | null
+          id?: string
+          is_anonymous?: boolean
+          is_grouped?: boolean
+          meeting_id: string
+          member_id?: string | null
+          text: string
+        }
+        Update: {
+          column_type?: string
+          created_at?: string
+          group_label?: string | null
+          id?: string
+          is_anonymous?: boolean
+          is_grouped?: boolean
+          meeting_id?: string
+          member_id?: string | null
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retro_items_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retro_items_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sprint_items: {
         Row: {
