@@ -3,16 +3,13 @@ import { useActivities, useActivityParticipants, useUpdateActivity, useTogglePar
 import { PointsPlanner } from "@/components/activities/PointsPlanner";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Target, Calendar, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
+import { Calendar, ChevronDown, ChevronUp } from "lucide-react";
 import type { Activity } from "@/lib/types";
 
 const statusLabels: Record<string, string> = {
