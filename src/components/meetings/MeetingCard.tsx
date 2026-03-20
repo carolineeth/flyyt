@@ -408,6 +408,9 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
                   key={ss.id}
                   subSession={ss}
                   meetingStatus={status}
+                  meetingId={meeting.id}
+                  meetingDate={meeting.meeting_date || meetingDate.toISOString().split("T")[0]}
+                  meetingParticipants={meeting.participants || []}
                   onDelete={() => deleteSubSession(ss.id)}
                 />
               ))}
