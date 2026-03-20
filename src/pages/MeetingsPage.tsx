@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { toast } from "sonner";
 import { Users, Plus, Clock, Link2, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { StandupTemplate } from "@/components/meetings/StandupTemplate";
 import { SprintPlanningTemplate } from "@/components/meetings/SprintPlanningTemplate";
 import { SprintReviewTemplate } from "@/components/meetings/SprintReviewTemplate";
@@ -64,6 +65,8 @@ export default function MeetingsPage() {
     participants: [] as string[],
     related_activity_id: null as string | null,
     sprint_id: null as string | null,
+    facilitator_id: null as string | null,
+    note_taker_id: null as string | null,
     // Planning-specific
     planning_capacity: {} as Record<string, number>,
     planning_selected_items: [] as string[],
@@ -95,6 +98,7 @@ export default function MeetingsPage() {
     setForm({
       type: "daily_standup", date: new Date().toISOString().slice(0, 16), duration_minutes: 15, notes: "",
       participants: [], related_activity_id: null, sprint_id: null,
+      facilitator_id: null, note_taker_id: null,
       planning_capacity: {}, planning_selected_items: [], sprint_goal: "",
       review_feedback: "", retro_items: [], standup_entries: [],
       agenda_items: [], advisor_notes: "", action_points: [],
@@ -112,6 +116,8 @@ export default function MeetingsPage() {
         participants: form.participants,
         related_activity_id: form.related_activity_id,
         sprint_id: form.sprint_id,
+        facilitator_id: form.facilitator_id,
+        note_taker_id: form.note_taker_id,
         planning_capacity: form.type === "sprint_planning" ? form.planning_capacity : null,
         review_feedback: form.type === "sprint_review" ? form.review_feedback : null,
       }).select().single();
@@ -275,6 +281,31 @@ export default function MeetingsPage() {
 
                 {isExpanded && (
                   <div className="px-4 pb-4 border-t border-border pt-3 space-y-3">
+                    {/* Roles */}
+                    {((m as any).facilitator_id || (m as any).note_taker_id) && (
+                      <div className="flex gap-4 flex-wrap">
+                        {(m as any).facilitator_id && (() => {
+                          const f = members?.find((mem) => mem.id === (m as any).facilitator_id);
+                          return f ? (
+                            <div className="flex items-center gap-1.5 text-sm">
+                              <Badge variant="outline" className="text-[10px]">Møteleder</Badge>
+                              <MemberAvatar member={f} />
+                              <span className="text-muted-foreground">{f.name.split(" ")[0]}</span>
+                            </div>
+                          ) : null;
+                        })()}
+                        {(m as any).note_taker_id && (() => {
+                          const n = members?.find((mem) => mem.id === (m as any).note_taker_id);
+                          return n ? (
+                            <div className="flex items-center gap-1.5 text-sm">
+                              <Badge variant="outline" className="text-[10px]">Referent</Badge>
+                              <MemberAvatar member={n} />
+                              <span className="text-muted-foreground">{n.name.split(" ")[0]}</span>
+                            </div>
+                          ) : null;
+                        })()}
+                      </div>
+                    )}
                     {m.notes && (
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">Notater</p>
@@ -402,7 +433,29 @@ export default function MeetingsPage() {
               </div>
             </div>
 
-            {/* General notes (for all types) */}
+            {/* Roles */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Møteleder</Label>
+                <Select value={form.facilitator_id ?? "none"} onValueChange={(v) => setForm((p) => ({ ...p, facilitator_id: v === "none" ? null : v }))}>
+                  <SelectTrigger className="text-sm"><SelectValue placeholder="Velg" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Ingen</SelectItem>
+                    {members?.map((m) => <SelectItem key={m.id} value={m.id}>{m.name.split(" ")[0]}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Referent</Label>
+                <Select value={form.note_taker_id ?? "none"} onValueChange={(v) => setForm((p) => ({ ...p, note_taker_id: v === "none" ? null : v }))}>
+                  <SelectTrigger className="text-sm"><SelectValue placeholder="Velg" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Ingen</SelectItem>
+                    {members?.map((m) => <SelectItem key={m.id} value={m.id}>{m.name.split(" ")[0]}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div>
               <Label>Generelle notater</Label>
               <Textarea
