@@ -279,7 +279,36 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
               </div>
             </div>
 
-            {/* Agenda */}
+            {/* Participants */}
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Tilstede</p>
+              <div className="flex flex-wrap gap-2.5">
+                {members?.map((m) => {
+                  const isPresent = (meeting.participants || []).includes(m.id);
+                  return (
+                    <label key={m.id} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                      <Checkbox
+                        checked={isPresent}
+                        onCheckedChange={async (checked) => {
+                          const current: string[] = meeting.participants || [];
+                          const updated = checked
+                            ? [...current, m.id]
+                            : current.filter((id: string) => id !== m.id);
+                          await supabase.from("meetings").update({ participants: updated } as any).eq("id", meeting.id);
+                          qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
+                        }}
+                      />
+                      {m.name.split(" ")[0]}
+                    </label>
+                  );
+                })}
+              </div>
+              {(meeting.participants || []).length > 0 && (
+                <p className="text-[10px] text-muted-foreground">
+                  {(meeting.participants || []).length} av {members?.length ?? 0} tilstede
+                </p>
+              )}
+            </div>
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground">Agenda</p>
               {agendaItems?.map((ai: any, idx: number) => (
