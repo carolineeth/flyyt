@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,11 +42,10 @@ export function MonthlyCalendar({ currentWeek, currentYear, onNavigateToWeek }: 
   const calendarDays = useMemo(() => {
     const firstDay = new Date(viewYear, viewMonth, 1);
     const lastDay = new Date(viewYear, viewMonth + 1, 0);
-    const startDow = (firstDay.getDay() || 7) - 1; // Monday = 0
+    const startDow = (firstDay.getDay() || 7) - 1;
 
     const days: { date: Date | null; dateStr: string; meetings: any[] }[] = [];
 
-    // Padding before
     for (let i = 0; i < startDow; i++) days.push({ date: null, dateStr: "", meetings: [] });
 
     for (let d = 1; d <= lastDay.getDate(); d++) {
@@ -144,5 +143,3 @@ export function MonthlyCalendar({ currentWeek, currentYear, onNavigateToWeek }: 
     </Card>
   );
 }
-
-import { useState } from "react";
