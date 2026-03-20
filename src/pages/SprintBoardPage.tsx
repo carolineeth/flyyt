@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { toast } from "sonner";
-import { Columns3, Plus, StickyNote } from "lucide-react";
+import { Columns3, Plus, StickyNote, GripVertical } from "lucide-react";
 import type { Sprint, SprintItem, BacklogItem } from "@/lib/types";
 
 const columns = [
@@ -65,6 +65,8 @@ export default function SprintBoardPage() {
 
   const [showCreateSprint, setShowCreateSprint] = useState(false);
   const [newSprint, setNewSprint] = useState({ name: "", goal: "", start_date: "", end_date: "" });
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+  const [dragOverCol, setDragOverCol] = useState<string | null>(null);
   const wipLimit = 2;
 
   const createSprintMutation = useMutation({
@@ -94,11 +96,37 @@ export default function SprintBoardPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["sprint_items"] }),
   });
 
+  const handleDragStart = (e: React.DragEvent, itemId: string) => {
+    setDraggedItemId(itemId);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", itemId);
+  };
+
+  const handleDragOver = (e: React.DragEvent, colKey: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverCol(colKey);
+  };
+
+  const handleDragLeave = () => setDragOverCol(null);
+
+  const handleDrop = useCallback((e: React.DragEvent, colKey: string) => {
+    e.preventDefault();
+    const itemId = e.dataTransfer.getData("text/plain");
+    setDraggedItemId(null);
+    setDragOverCol(null);
+    if (!itemId) return;
+    const item = sprintItems?.find((i) => i.id === itemId);
+    if (item && item.column_name !== colKey) {
+      moveItemMutation.mutate({ itemId, newColumn: colKey });
+    }
+  }, [sprintItems, moveItemMutation]);
+
   return (
     <div className="space-y-6 scroll-reveal">
       <PageHeader
         title="Sprint Board"
-        description="ScrumBan-board med WIP-limits og kolonneflyt"
+        description="ScrumBan-board — dra kort mellom kolonner for å oppdatere status"
         action={
           <Button size="sm" onClick={() => setShowCreateSprint(true)}>
             <Plus className="h-4 w-4 mr-1" /> Ny sprint
@@ -106,7 +134,6 @@ export default function SprintBoardPage() {
         }
       />
 
-      {/* Sprint selector */}
       {sprints && sprints.length > 0 && (
         <div className="flex items-center gap-3">
           <Select value={currentSprintId ?? ""} onValueChange={setSelectedSprintId}>
@@ -128,7 +155,6 @@ export default function SprintBoardPage() {
         </div>
       )}
 
-      {/* Board */}
       {!currentSprintId ? (
         <EmptyState
           icon={Columns3}
@@ -142,27 +168,49 @@ export default function SprintBoardPage() {
           {columns.map((col) => {
             const colItems = sprintItems?.filter((i) => i.column_name === col.key) ?? [];
             const isOverWip = col.key === "in_progress" && colItems.length > wipLimit * (members?.length ?? 6);
+            const isDragTarget = dragOverCol === col.key;
 
             return (
-              <div key={col.key} className="space-y-2">
-                <div className={`flex items-center justify-between px-2 py-1.5 rounded-md ${isOverWip ? "bg-destructive/10 border border-destructive/30" : "bg-muted"}`}>
+              <div
+                key={col.key}
+                className="space-y-2"
+                onDragOver={(e) => handleDragOver(e, col.key)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, col.key)}
+              >
+                <div className={`flex items-center justify-between px-2 py-1.5 rounded-md transition-colors ${
+                  isOverWip ? "bg-destructive/10 border border-destructive/30" :
+                  isDragTarget ? "bg-primary/10 border border-primary/30" : "bg-muted"
+                }`}>
                   <span className="text-xs font-medium">{col.label}</span>
                   <Badge variant="secondary" className="text-[10px] tabular-nums">{colItems.length}</Badge>
                 </div>
                 {isOverWip && (
                   <p className="text-[10px] text-destructive px-1">⚠️ WIP-limit overskredet</p>
                 )}
-                <div className="space-y-2 min-h-[120px]">
+                <div className={`space-y-2 min-h-[120px] rounded-lg p-1 transition-colors ${
+                  isDragTarget ? "bg-primary/5 ring-2 ring-primary/20 ring-dashed" : ""
+                }`}>
                   {colItems.map((item) => {
                     const assignee = members?.find((m) => m.id === item.backlog_item?.assignee_id);
+                    const isDragging = draggedItemId === item.id;
                     return (
-                      <Card key={item.id} className="shadow-sm hover:shadow-md transition-shadow">
+                      <Card
+                        key={item.id}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, item.id)}
+                        onDragEnd={() => { setDraggedItemId(null); setDragOverCol(null); }}
+                        className={`shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing ${
+                          isDragging ? "opacity-40 scale-95" : ""
+                        }`}
+                      >
                         <CardContent className="p-3 space-y-2">
-                          <div className="flex items-start justify-between gap-1">
-                            <span className="text-sm font-medium leading-snug">{item.backlog_item?.title}</span>
+                          <div className="flex items-start gap-1.5">
+                            <GripVertical className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground/40" />
+                            <span className="text-sm font-medium leading-snug flex-1">{item.backlog_item?.title}</span>
                             {assignee && <MemberAvatar member={assignee} />}
                           </div>
-                          <div className="flex items-center gap-1 flex-wrap">
+                          <div className="flex items-center gap-1 flex-wrap pl-5">
                             {item.backlog_item?.type && (
                               <Badge className={`text-[9px] ${typeColors[item.backlog_item.type] ?? ""}`}>
                                 {item.backlog_item.type}
@@ -171,20 +219,6 @@ export default function SprintBoardPage() {
                             {item.backlog_item?.estimate && (
                               <Badge variant="outline" className="text-[9px] tabular-nums">{item.backlog_item.estimate}sp</Badge>
                             )}
-                          </div>
-                          {/* Move buttons */}
-                          <div className="flex gap-1">
-                            {columns.filter((c) => c.key !== col.key).map((c) => (
-                              <Button
-                                key={c.key}
-                                variant="ghost"
-                                size="sm"
-                                className="h-5 text-[9px] px-1.5"
-                                onClick={() => moveItemMutation.mutate({ itemId: item.id, newColumn: c.key })}
-                              >
-                                → {c.label}
-                              </Button>
-                            ))}
                           </div>
                         </CardContent>
                       </Card>
@@ -197,7 +231,6 @@ export default function SprintBoardPage() {
         </div>
       )}
 
-      {/* Create sprint dialog */}
       <Dialog open={showCreateSprint} onOpenChange={setShowCreateSprint}>
         <DialogContent>
           <DialogHeader><DialogTitle>Ny sprint</DialogTitle></DialogHeader>
