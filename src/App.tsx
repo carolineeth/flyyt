@@ -17,6 +17,7 @@ import MeetingCalendarPage from "@/pages/MeetingCalendarPage";
 import ResourcesPage from "@/pages/ResourcesPage";
 import ProcessLogExportPage from "@/pages/ProcessLogExportPage";
 import ReportPage from "@/pages/ReportPage";
+import ChangePasswordPage from "@/pages/ChangePasswordPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -68,6 +69,7 @@ const App = () => (
               <Route path="/ressurser" element={<ResourcesPage />} />
               <Route path="/prosesslogg" element={<ProcessLogExportPage />} />
               <Route path="/rapport" element={<ReportPage />} />
+              <Route path="/bytt-passord" element={<ChangePasswordPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AppLayout>
