@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import {
@@ -305,6 +307,38 @@ export function RegistrationModal({ open, onOpenChange, catalogItem, registratio
                 {form.completed_date && (
                   <p className="text-[10px] text-muted-foreground mt-0.5">Uke {getWeekNumber(form.completed_date)}</p>
                 )}
+                {form.completed_date && !catalogItem.is_mandatory && (() => {
+                  const weekNum = getWeekNumber(form.completed_date);
+                  const optionalInWeek = allRegistrations.filter((r) => {
+                    if (r.id === reg?.id) return false;
+                    const rWeek = r.status === "completed" && r.completed_week ? r.completed_week : r.planned_week;
+                    if (rWeek !== weekNum) return false;
+                    const cat = catalogItem; // We only know current item is optional
+                    // Check other regs - we need catalog data, approximate by checking all non-current
+                    return true;
+                  });
+                  // Count optional activities in the same week (excluding current reg)
+                  const sameWeekRegs = allRegistrations.filter((r) => {
+                    if (r.id === reg?.id) return false;
+                    const rWeek = r.status === "completed" && r.completed_week ? r.completed_week : r.planned_week;
+                    return rWeek === weekNum;
+                  });
+                  // We can't easily check is_mandatory of other regs here without catalog,
+                  // but we know at least the count
+                  if (sameWeekRegs.length >= 3) {
+                    return (
+                      <Alert variant="destructive" className="mt-2 py-2">
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className="h-3.5 w-3.5" />
+                          <AlertDescription className="text-xs">
+                            Denne uken har allerede {sameWeekRegs.length} andre aktiviteter. Denne vil kanskje ikke gi poeng.
+                          </AlertDescription>
+                        </div>
+                      </Alert>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             </div>
 
