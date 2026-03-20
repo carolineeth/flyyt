@@ -1,65 +1,32 @@
 import { useState } from "react";
-import { useActivities, useActivityParticipants, useUpdateActivity, useToggleParticipant } from "@/hooks/useActivities";
+import { useActivityCatalog, useActivityRegistrations } from "@/hooks/useActivityCatalog";
 import { PointsPlanner } from "@/components/activities/PointsPlanner";
-import { useTeamMembers } from "@/hooks/useTeamMembers";
+import { CatalogView } from "@/components/activities/CatalogView";
+import { RegistrationsView } from "@/components/activities/RegistrationsView";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "sonner";
-import { Calendar, ChevronDown, ChevronUp } from "lucide-react";
-import type { Activity } from "@/lib/types";
-
-const statusLabels: Record<string, string> = {
-  not_started: "Ikke startet",
-  in_progress: "Pågår",
-  completed: "Fullført",
-};
-
-const statusColors: Record<string, string> = {
-  not_started: "bg-muted text-muted-foreground",
-  in_progress: "bg-warning/10 text-warning",
-  completed: "bg-primary/10 text-primary",
-};
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 
 export default function ActivitiesPage() {
-  const { data: activities, isLoading } = useActivities();
-  const { data: participants } = useActivityParticipants();
-  const { data: members } = useTeamMembers();
-  const updateActivity = useUpdateActivity();
-  const toggleParticipant = useToggleParticipant();
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const { data: catalog, isLoading: loadingCatalog } = useActivityCatalog();
+  const { data: registrations, isLoading: loadingRegs } = useActivityRegistrations();
+  const [tab, setTab] = useState("catalog");
 
-  const handleStatusChange = (activity: Activity, status: string) => {
-    const updates: Partial<Activity> & { id: string } = { id: activity.id, status };
-    if (status === "completed") {
-      const now = new Date();
-      updates.completed_date = now.toISOString().split("T")[0];
-      // Calculate week number (ISO)
-      const startOfYear = new Date(now.getFullYear(), 0, 1);
-      const days = Math.floor((now.getTime() - startOfYear.getTime()) / 86400000);
-      updates.completed_week = Math.ceil((days + startOfYear.getDay() + 1) / 7);
-    }
-    updateActivity.mutate(updates, {
-      onSuccess: () => toast.success("Status oppdatert"),
-    });
-  };
+  if (loadingCatalog || loadingRegs) {
+    return <div className="p-8 text-muted-foreground">Laster aktiviteter...</div>;
+  }
 
-  const handleNotesUpdate = (id: string, notes: string) => {
-    updateActivity.mutate({ id, notes }, {
-      onSuccess: () => toast.success("Notater lagret"),
-    });
-  };
+  const cat = catalog || [];
+  const regs = registrations || [];
 
-  const handleFieldUpdate = (id: string, field: string, value: string) => {
-    updateActivity.mutate({ id, [field]: value } as any, {
-      onSuccess: () => toast.success("Lagret"),
-    });
-  };
-
-  if (isLoading) return <div className="p-8 text-muted-foreground">Laster aktiviteter...</div>;
+  // Summary
+  const earned = regs
+    .filter((r) => r.status === "completed")
+    .reduce((s, r) => {
+      const c = cat.find((c) => c.id === r.catalog_id);
+      return s + (c?.points ?? 0);
+    }, 0);
+  const progressPct = Math.min((earned / 30) * 100, 100);
 
   return (
     <div className="space-y-6 scroll-reveal">
@@ -68,167 +35,38 @@ export default function ActivitiesPage() {
         description="Teamaktiviteter teller 30% av prosjektkarakteren. Maks 3 aktiviteter gir poeng per uke."
       />
 
-      {/* Points Planner */}
-      {activities && <PointsPlanner activities={activities} />}
-
-      {/* Activity list */}
+      {/* Points overview */}
       <div className="space-y-2">
-        {activities?.map((activity) => {
-          const activityParticipants = participants?.filter((p) => p.activity_id === activity.id) ?? [];
-          const isExpanded = expandedId === activity.id;
-
-          return (
-            <Card key={activity.id} className="overflow-hidden">
-              <div
-                className="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-accent/30 transition-colors"
-                onClick={() => setExpandedId(isExpanded ? null : activity.id)}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-medium">{activity.name}</span>
-                    <Badge variant="secondary" className="text-[10px] tabular-nums">
-                      {activity.points}p
-                    </Badge>
-                    {activity.is_mandatory && (
-                      <Badge variant="destructive" className="text-[10px]">
-                        Obligatorisk
-                      </Badge>
-                    )}
-                    {activity.deadline_date && (
-                      <Badge variant="outline" className="text-[10px] gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {new Date(activity.deadline_date).toLocaleDateString("nb-NO", { day: "numeric", month: "short" })}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-                <Badge className={`text-[10px] ${statusColors[activity.status]}`}>
-                  {statusLabels[activity.status]}
-                </Badge>
-                {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-              </div>
-
-              {isExpanded && (
-                <div className="px-4 pb-4 border-t border-border pt-3 space-y-4">
-                  {/* Status */}
-                  <div className="flex items-center gap-3">
-                    <label className="text-sm text-muted-foreground w-16">Status</label>
-                    <Select value={activity.status} onValueChange={(v) => handleStatusChange(activity, v)}>
-                      <SelectTrigger className="w-40 h-8 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="not_started">Ikke startet</SelectItem>
-                        <SelectItem value="in_progress">Pågår</SelectItem>
-                        <SelectItem value="completed">Fullført</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Participants */}
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-2">Deltakere</p>
-                    <div className="flex flex-wrap gap-3">
-                      {members?.map((member) => {
-                        const isParticipant = activityParticipants.some((p) => p.member_id === member.id);
-                        return (
-                          <label key={member.id} className="flex items-center gap-1.5 text-sm cursor-pointer">
-                            <Checkbox
-                              checked={isParticipant}
-                              onCheckedChange={() =>
-                                toggleParticipant.mutate({
-                                  activityId: activity.id,
-                                  memberId: member.id,
-                                  isParticipant,
-                                })
-                              }
-                            />
-                            {member.name.split(" ")[0]}
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Timing rationale */}
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Hvorfor dette tidspunktet?</p>
-                    <Textarea
-                      defaultValue={(activity as any).timing_rationale ?? ""}
-                      placeholder="Hvorfor gjennomførte teamet aktiviteten akkurat nå?"
-                      rows={2}
-                      onBlur={(e) => {
-                        if (e.target.value !== ((activity as any).timing_rationale ?? "")) {
-                          handleFieldUpdate(activity.id, "timing_rationale", e.target.value);
-                        }
-                      }}
-                    />
-                  </div>
-
-                  {/* Notes */}
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Gjennomføring (prosesslogg)</p>
-                    <Textarea
-                      defaultValue={activity.notes ?? ""}
-                      placeholder="Hvordan ble aktiviteten gjennomført?"
-                      rows={3}
-                      onBlur={(e) => {
-                        if (e.target.value !== (activity.notes ?? "")) {
-                          handleNotesUpdate(activity.id, e.target.value);
-                        }
-                      }}
-                    />
-                  </div>
-
-                  {/* Experiences */}
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Erfaringer</p>
-                    <Textarea
-                      defaultValue={(activity as any).experiences ?? ""}
-                      placeholder="Positive og negative erfaringer fra aktiviteten..."
-                      rows={2}
-                      onBlur={(e) => {
-                        if (e.target.value !== ((activity as any).experiences ?? "")) {
-                          handleFieldUpdate(activity.id, "experiences", e.target.value);
-                        }
-                      }}
-                    />
-                  </div>
-
-                  {/* Reflections */}
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Refleksjoner</p>
-                    <Textarea
-                      defaultValue={(activity as any).reflections ?? ""}
-                      placeholder="Er dette noe teamet vil gjøre igjen? Hva lærte dere?"
-                      rows={2}
-                      onBlur={(e) => {
-                        if (e.target.value !== ((activity as any).reflections ?? "")) {
-                          handleFieldUpdate(activity.id, "reflections", e.target.value);
-                        }
-                      }}
-                    />
-                  </div>
-
-                  {/* Attachment links */}
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Vedlegg-lenker</p>
-                    <div className="text-xs text-muted-foreground">
-                      {activity.attachment_links && activity.attachment_links.length > 0
-                        ? activity.attachment_links.map((link, i) => (
-                            <a key={i} href={link} target="_blank" rel="noopener noreferrer" className="text-primary underline block">
-                              {link}
-                            </a>
-                          ))
-                        : "Ingen vedlegg ennå"}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </Card>
-          );
-        })}
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Opptjent: <strong className="text-foreground">{earned}p</strong> av 30p</span>
+          <span className="text-muted-foreground tabular-nums">{Math.round(progressPct)}%</span>
+        </div>
+        <Progress value={progressPct} className="h-2" />
       </div>
+
+      {/* Points Planner */}
+      <PointsPlanner catalog={cat} registrations={regs} />
+
+      {/* Catalog / Registrations tabs */}
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList>
+          <TabsTrigger value="catalog">Katalog</TabsTrigger>
+          <TabsTrigger value="registrations">
+            Gjennomføringer
+            {regs.filter((r) => r.status === "completed" || r.status === "in_progress").length > 0 && (
+              <span className="ml-1.5 bg-primary/10 text-primary text-[10px] px-1.5 py-0.5 rounded-full tabular-nums">
+                {regs.filter((r) => r.status === "completed" || r.status === "in_progress").length}
+              </span>
+            )}
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="catalog" className="mt-4">
+          <CatalogView catalog={cat} registrations={regs} />
+        </TabsContent>
+        <TabsContent value="registrations" className="mt-4">
+          <RegistrationsView catalog={cat} registrations={regs} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
