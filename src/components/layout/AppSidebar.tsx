@@ -6,6 +6,7 @@ import {
   Calendar,
   Link2,
   LogOut,
+  KeyRound,
   ClipboardCheck,
   FileText,
   MessageCircle,
@@ -98,6 +99,14 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter className="p-2">
         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild className="text-muted-foreground hover:text-foreground">
+              <NavLink to="/bytt-passord" activeClassName="bg-accent text-accent-foreground font-medium">
+                <KeyRound className="h-4 w-4" />
+                {!collapsed && <span>Bytt passord</span>}
+              </NavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton onClick={handleLogout} className="text-muted-foreground hover:text-foreground">
               <LogOut className="h-4 w-4" />
