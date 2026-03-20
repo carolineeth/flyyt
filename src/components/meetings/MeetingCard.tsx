@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { SubSessionBlock } from "./SubSessionBlock";
 import { toast } from "sonner";
-import { Plus, Play, Square, Copy, ChevronUp, ChevronDown, X, CalendarDays } from "lucide-react";
+import { Plus, Play, Square, Copy, ChevronUp, ChevronDown, X, CalendarDays, Save } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const subSessionTemplates: Record<string, string[]> = {
