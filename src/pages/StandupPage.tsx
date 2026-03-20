@@ -12,19 +12,9 @@ type Tab = "daily" | "overview";
 export default function StandupPage() {
   const [activeTab, setActiveTab] = useState<Tab>("daily");
   const { data: members } = useTeamMembers();
-  const { currentMember, userEmail } = useCurrentMember();
+  const { currentMember } = useCurrentMember();
   const week = useWeekNavigation();
   const { data: entries } = useDailyUpdates(week.weekStart, week.weekEnd);
-
-  if (userEmail && members && !currentMember) {
-    return (
-      <div className="p-8 text-center">
-        <p className="text-sm text-destructive">
-          Kontoen din er ikke koblet til et teammedlem. Kontakt admin.
-        </p>
-      </div>
-    );
-  }
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "daily", label: "Dag for dag" },
