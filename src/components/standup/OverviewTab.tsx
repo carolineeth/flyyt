@@ -286,7 +286,7 @@ export function OverviewTab({ members, weekStart, weekEnd, onNavigateToWeek, onS
             return (
               <div key={m.id} className="rounded-xl border border-border bg-card p-3">
                 <div className="flex items-center gap-2 mb-2">
-                  <MemberAvatar member={m} size={24} />
+                  <MemberAvatar member={m} size="sm" />
                   <span className="text-[13px] font-medium">{m.name.split(" ")[0]}</span>
                 </div>
                 <p className="text-xs text-muted-foreground">{count}/{periodDays.length} dager ({pct}%)</p>
