@@ -448,25 +448,19 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
 
             {/* Control buttons */}
             <div className="flex gap-2 pt-2 flex-wrap">
-              {status === "upcoming" && (
+              {!isPast && status === "upcoming" && (
                 <Button size="sm" className="h-7 text-xs" onClick={startMeeting}>
                   <Play className="h-3 w-3 mr-1" /> Start møte
                 </Button>
               )}
-              {status === "in_progress" && (
+              {!isPast && status === "in_progress" && (
                 <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={endMeeting}>
                   <Square className="h-3 w-3 mr-1" /> Avslutt møte
                 </Button>
               )}
-              {status === "completed" && (
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={async () => {
-                  await supabase.from("meetings").update({ status: "in_progress" } as any).eq("id", meeting.id);
-                  qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
-                  toast.success("Møte gjenåpnet for redigering");
-                }}>
-                  <Play className="h-3 w-3 mr-1" /> Gjenåpne møte
-                </Button>
-              )}
+              <Button size="sm" variant="default" className="h-7 text-xs" onClick={saveMeeting}>
+                <Save className="h-3 w-3 mr-1" /> Lagre
+              </Button>
               <Popover open={showReschedule} onOpenChange={setShowReschedule}>
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className="h-7 text-xs">
