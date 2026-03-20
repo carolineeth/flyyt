@@ -177,10 +177,10 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
     qc.invalidateQueries({ queryKey: ["meeting_action_points", meeting.id] });
   };
 
-  const overrideRole = async (field: "leader_id" | "notetaker_id", memberId: string) => {
+  const overrideRole = async (field: "leader_id" | "notetaker_id", memberId: string | null) => {
     await supabase.from("meetings").update({ [field]: memberId } as any).eq("id", meeting.id);
     qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
-    toast.success("Rolle oppdatert");
+    toast.success(memberId ? "Rolle oppdatert" : "Rolle fjernet");
   };
 
   const exportToProcessLog = () => {
@@ -260,22 +260,24 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
             <div className="flex gap-2 flex-wrap">
               <div className="flex items-center gap-1">
                 <Badge className="bg-teal-600 text-white text-[10px]">Leder</Badge>
-                <Select value={meeting.leader_id || ""} onValueChange={(v) => overrideRole("leader_id", v)}>
+                <Select value={meeting.leader_id || ""} onValueChange={(v) => overrideRole("leader_id", v === "none" ? null as any : v)}>
                   <SelectTrigger className="h-6 text-xs w-32 border-0 p-0 pl-1">
                     <SelectValue placeholder={leaderName} />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">Ingen</SelectItem>
                     {members?.map((m) => <SelectItem key={m.id} value={m.id}>{m.name.split(" ")[0]}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="flex items-center gap-1">
                 <Badge className="bg-purple-600 text-white text-[10px]">Referent</Badge>
-                <Select value={meeting.notetaker_id || ""} onValueChange={(v) => overrideRole("notetaker_id", v)}>
+                <Select value={meeting.notetaker_id || ""} onValueChange={(v) => overrideRole("notetaker_id", v === "none" ? null as any : v)}>
                   <SelectTrigger className="h-6 text-xs w-32 border-0 p-0 pl-1">
                     <SelectValue placeholder={notetakerName} />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">Ingen</SelectItem>
                     {members?.map((m) => <SelectItem key={m.id} value={m.id}>{m.name.split(" ")[0]}</SelectItem>)}
                   </SelectContent>
                 </Select>
