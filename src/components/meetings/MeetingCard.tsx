@@ -190,7 +190,10 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
 
     let log = `Møte: ${recurringMeeting?.label || "Møte"} — ${dateStr}\n`;
     log += `Tid: ${startTime}–${endTime}\n`;
-    log += `Møteleder: ${leaderName} | Referent: ${notetakerName}\n\n`;
+    log += `Møteleder: ${leaderName} | Referent: ${notetakerName}\n`;
+    const presentNames = (meeting.participants || []).map((pid: string) => members?.find((m) => m.id === pid)?.name?.split(" ")[0]).filter(Boolean);
+    if (presentNames.length > 0) log += `Deltakere: ${presentNames.join(", ")}\n`;
+    log += "\n";
 
     if (agendaItems?.length) {
       log += `Agenda:\n`;
