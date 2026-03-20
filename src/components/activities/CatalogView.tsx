@@ -30,19 +30,24 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
   const agileMeetings = meetingBased.filter((c) => ["daily_standup", "sprint_planning", "sprint_review"].includes(c.meeting_type || ""));
   const advisorMeeting = meetingBased.find((c) => c.meeting_type === "veiledermøte");
 
-  // Check for same-week agile meetings warning
+  // Check for same-week agile meetings warning (different types in same week)
   const agileWeekWarning = useMemo(() => {
     const agileRegs = agileMeetings.flatMap((c) => getRegistrationsFor(c.id).filter((r) => r.status === "completed" && r.completed_week));
-    const weekMap = new Map<number, string[]>();
+    const weekMap = new Map<number, Set<string>>();
     agileRegs.forEach((r) => {
       const cat = catalog.find((c) => c.id === r.catalog_id);
       const w = r.completed_week!;
-      if (!weekMap.has(w)) weekMap.set(w, []);
-      weekMap.get(w)!.push(cat?.name || "");
+      if (!weekMap.has(w)) weekMap.set(w, new Set());
+      weekMap.get(w)!.add(cat?.meeting_type || "");
     });
     const conflicts: string[] = [];
-    weekMap.forEach((names, w) => {
-      if (names.length > 1) conflicts.push(`Uke ${w}: ${names.join(" + ")}`);
+    weekMap.forEach((types, w) => {
+      if (types.size > 1) conflicts.push(`Uke ${w}: ${[...types].map(t => {
+        if (t === "daily_standup") return "Daily Standup";
+        if (t === "sprint_planning") return "Sprint Planning";
+        if (t === "sprint_review") return "Sprint Review";
+        return t;
+      }).join(" + ")}`);
     });
     return conflicts;
   }, [agileMeetings, registrations, catalog]);
@@ -167,21 +172,45 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
             <span>Smidige møter kan ikke gjennomføres i samme uke: {agileWeekWarning.join(", ")}</span>
           </div>
         )}
+        <p className="text-xs text-muted-foreground">1p per type per uke · Maks 3p totalt · Ulike typer ikke i samme uke</p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {agileMeetings.map((item) => {
-            const completed = isCompleted(item.id);
+            const regs = getRegistrationsFor(item.id);
+            const completedCount = regs.filter((r) => r.status === "completed").length;
+            const totalAgileCompleted = agileMeetings.reduce((sum, m) =>
+              sum + getRegistrationsFor(m.id).filter((r) => r.status === "completed").length, 0
+            );
+            const canAddMore = totalAgileCompleted < 3;
             return (
-              <Card
-                key={item.id}
-                className={`cursor-pointer hover:bg-accent/30 transition-colors ${completed ? "opacity-70" : ""}`}
-                onClick={() => openModal(item)}
-              >
-                <CardContent className="py-3 text-center space-y-1">
-                  <p className="text-sm font-medium">{item.name.replace("Smidige møter: ", "")}</p>
-                  <Badge variant="secondary" className="text-[10px]">{item.points}p</Badge>
-                  <div className="flex justify-center">
-                    <StatusIcon catId={item.id} />
+              <Card key={item.id} className="overflow-hidden">
+                <CardContent className="py-3 space-y-2">
+                  <div className="text-center">
+                    <p className="text-sm font-medium">{item.name.replace("Smidige møter: ", "")}</p>
+                    <Badge variant="secondary" className="text-[10px]">{item.points}p</Badge>
                   </div>
+                  {regs.map((reg, i) => (
+                    <div
+                      key={reg.id}
+                      className="flex items-center gap-2 text-xs px-2 py-1.5 rounded hover:bg-accent/30 cursor-pointer transition-colors"
+                      onClick={() => openModalWithRegistration(item, reg)}
+                    >
+                      <StatusIcon catId={item.id} />
+                      <span className="flex-1">#{i + 1}{reg.completed_date ? ` — ${reg.completed_date}` : ""}</span>
+                      <Badge variant={reg.status === "completed" ? "default" : "outline"} className="text-[10px]">
+                        {reg.status === "completed" ? "Fullført" : reg.status === "in_progress" ? "Pågår" : "Planlagt"}
+                      </Badge>
+                    </div>
+                  ))}
+                  {regs.length === 0 && (
+                    <div className="flex justify-center">
+                      <StatusIcon catId={item.id} />
+                    </div>
+                  )}
+                  {canAddMore && (
+                    <Button variant="outline" size="sm" className="w-full h-7 text-xs" onClick={() => openModalNew(item)}>
+                      + Registrer ny
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             );
