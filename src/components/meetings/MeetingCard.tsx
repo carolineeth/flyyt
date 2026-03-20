@@ -85,6 +85,14 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
   const meetingDate = meeting.meeting_date ? new Date(meeting.meeting_date + "T00:00:00") : new Date(meeting.date);
   const status = meeting.status || "upcoming";
   const isCancelled = status === "cancelled";
+  const todayDate = new Date();
+  todayDate.setHours(0, 0, 0, 0);
+  const isPast = meetingDate < todayDate;
+
+  const saveMeeting = async () => {
+    await saveNotes(notes);
+    toast.success("Møte lagret");
+  };
 
   const cancelMeeting = async () => {
     await supabase.from("meetings").update({ status: "cancelled" } as any).eq("id", meeting.id);
