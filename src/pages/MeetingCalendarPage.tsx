@@ -77,7 +77,6 @@ export default function MeetingCalendarPage() {
       const dateStr = meetingDate.toISOString().split("T")[0];
       const isToday = dateStr === todayStr;
 
-      // Get leader/notetaker names (with override support)
       const mLeader = meeting?.leader_id
         ? members?.find((m) => m.id === (meeting as any).leader_id)?.name.split(" ")[0] || leaderName
         : leaderName;
@@ -88,6 +87,13 @@ export default function MeetingCalendarPage() {
       return { rm, meeting, isToday, leaderName: mLeader, notetakerName: mNotetaker };
     });
   }, [recurringMeetings, weekMeetings, members, year, week, todayStr, leaderName, notetakerName]);
+
+  // Old meetings not linked to recurring meetings (legacy)
+  const unlinkedMeetings = useMemo(() => {
+    if (!weekMeetings) return [];
+    const recurringIds = new Set(recurringMeetings?.map((rm: any) => rm.id) || []);
+    return weekMeetings.filter((m: any) => !m.recurring_meeting_id || !recurringIds.has(m.recurring_meeting_id));
+  }, [weekMeetings, recurringMeetings]);
 
   const prevWeek = () => {
     if (week <= 1) { setWeek(52); setYear(year - 1); }
