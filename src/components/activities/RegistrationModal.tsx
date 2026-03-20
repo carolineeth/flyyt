@@ -186,162 +186,270 @@ export function RegistrationModal({ open, onOpenChange, catalogItem, registratio
           </div>
         )}
 
-        <div className="space-y-4">
-          {/* Status section */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Status</Label>
-              <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="not_started">Ikke startet</SelectItem>
-                  <SelectItem value="in_progress">Pågår</SelectItem>
-                  <SelectItem value="completed">Fullført</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Gjennomført dato</Label>
-              <Input
-                type="date"
-                value={form.completed_date}
-                onChange={(e) => setForm((p) => ({ ...p, completed_date: e.target.value }))}
-              />
-              {form.completed_date && (
-                <p className="text-[10px] text-muted-foreground mt-0.5">Uke {getWeekNumber(form.completed_date)}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Participants */}
-          {members && (
-            <div>
-              <Label className="mb-2 block">Deltakere</Label>
-              <div className="flex flex-wrap gap-3">
-                {members.map((member) => {
-                  const isSelected = form.selectedMembers.includes(member.id);
-                  return (
-                    <label key={member.id} className="flex items-center gap-1.5 text-sm cursor-pointer">
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={() => {
-                          const newMembers = isSelected
-                            ? form.selectedMembers.filter((id) => id !== member.id)
-                            : [...form.selectedMembers, member.id];
-                          setForm((p) => ({ ...p, selectedMembers: newMembers }));
-                          // If registration already exists, persist immediately
-                          if (reg) {
-                            toggleParticipant.mutate({ registrationId: reg.id, memberId: member.id, isParticipant: isSelected });
-                          }
-                        }}
-                      />
-                      {member.name.split(" ")[0]}
-                    </label>
-                  );
-                })}
+        {reg && !editing ? (
+          /* ===== PREVIEW MODE ===== */
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Badge variant={form.status === "completed" ? "default" : form.status === "in_progress" ? "secondary" : "outline"}>
+                  {form.status === "completed" ? "Fullført" : form.status === "in_progress" ? "Pågår" : "Ikke startet"}
+                </Badge>
+                {form.completed_date && (
+                  <span className="text-xs text-muted-foreground">
+                    {form.completed_date} (uke {getWeekNumber(form.completed_date)})
+                  </span>
+                )}
               </div>
-            </div>
-          )}
-
-          {/* Process log section */}
-          <div className="space-y-3 border-t pt-4">
-            <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-muted-foreground" />
-              <p className="text-sm font-medium">Prosesslogg</p>
-              {prosessloggComplete ? (
-                <Badge className="bg-primary/10 text-primary text-[10px]">✓ Komplett</Badge>
-              ) : (
-                <Badge variant="outline" className="text-[10px] text-amber-600">Mangler felt</Badge>
-              )}
-            </div>
-
-            <div>
-              <Label>Hvorfor dette tidspunktet?</Label>
-              <Textarea
-                value={form.timing_rationale}
-                onChange={(e) => setForm((p) => ({ ...p, timing_rationale: e.target.value }))}
-                placeholder="Forklar kort hvorfor teamet valgte å gjennomføre aktiviteten akkurat nå"
-                rows={2}
-              />
-            </div>
-            <div>
-              <Label>Gjennomføring</Label>
-              <Textarea
-                value={form.description}
-                onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-                placeholder={catalogItem.prosesslogg_template || "Hvordan ble aktiviteten gjennomført?"}
-                rows={3}
-              />
-            </div>
-            <div>
-              <Label>Erfaringer</Label>
-              <Textarea
-                value={form.experiences}
-                onChange={(e) => setForm((p) => ({ ...p, experiences: e.target.value }))}
-                placeholder="Beskriv positive og negative erfaringer"
-                rows={2}
-              />
-            </div>
-            <div>
-              <Label>Refleksjoner</Label>
-              <Textarea
-                value={form.reflections}
-                onChange={(e) => setForm((p) => ({ ...p, reflections: e.target.value }))}
-                placeholder="Er dette noe teamet kommer til å gjøre igjen?"
-                rows={2}
-              />
-            </div>
-          </div>
-
-          {/* Attachments — file upload + links */}
-          <div className="space-y-3 border-t pt-4">
-            <Label>Vedlegg (bilder og filer)</Label>
-            <FileUpload
-              files={form.attachment_links.filter((l) => !l.startsWith("http"))}
-              onFilesChange={(storagePaths) => {
-                const links = form.attachment_links.filter((l) => l.startsWith("http"));
-                setForm((p) => ({ ...p, attachment_links: [...storagePaths, ...links] }));
-              }}
-              folder="activities"
-            />
-
-            <Label className="mt-2">Lenker</Label>
-            {form.attachment_links.filter((l) => l.startsWith("http")).map((link, i) => (
-              <div key={`link-${i}`} className="flex items-center gap-2">
-                <a href={link} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline flex-1 truncate">
-                  {link}
-                </a>
-                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => {
-                  const storagePaths = form.attachment_links.filter((l) => !l.startsWith("http"));
-                  const links = form.attachment_links.filter((l) => l.startsWith("http")).filter((_, idx) => idx !== i);
-                  setForm((p) => ({ ...p, attachment_links: [...storagePaths, ...links] }));
-                }}>
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
-            ))}
-            <div className="flex gap-1">
-              <Input
-                value={form.newLink}
-                onChange={(e) => setForm((p) => ({ ...p, newLink: e.target.value }))}
-                placeholder="https://..."
-                className="h-7 text-xs"
-                onKeyDown={(e) => e.key === "Enter" && addLink()}
-              />
-              <Button variant="outline" size="sm" className="h-7 px-2" onClick={addLink}>
-                <Plus className="h-3 w-3" />
+              <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+                <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                Rediger
               </Button>
             </div>
-          </div>
-        </div>
 
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Lukk</Button>
-          <Button onClick={handleSave} disabled={createReg.isPending || updateReg.isPending}>
-            {reg ? "Oppdater" : "Opprett registrering"}
-          </Button>
-        </DialogFooter>
+            {/* Participants preview */}
+            {form.selectedMembers.length > 0 && members && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Deltakere</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {form.selectedMembers.map((mid) => {
+                    const m = members.find((m) => m.id === mid);
+                    return m ? (
+                      <Badge key={mid} variant="secondary" className="text-xs">{m.name.split(" ")[0]}</Badge>
+                    ) : null;
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Process log preview */}
+            <div className="space-y-3 border-t pt-4">
+              <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <p className="text-sm font-medium">Prosesslogg</p>
+                {prosessloggComplete ? (
+                  <Badge className="bg-primary/10 text-primary text-[10px]">✓ Komplett</Badge>
+                ) : (
+                  <Badge variant="outline" className="text-[10px] text-amber-600">Mangler felt</Badge>
+                )}
+              </div>
+
+              <PreviewField label="Hvorfor dette tidspunktet?" value={form.timing_rationale} />
+              <PreviewField label="Gjennomføring" value={form.description} />
+              <PreviewField label="Erfaringer" value={form.experiences} />
+              <PreviewField label="Refleksjoner" value={form.reflections} />
+            </div>
+
+            {/* Attachments preview */}
+            {form.attachment_links.length > 0 && (
+              <div className="space-y-2 border-t pt-4">
+                <p className="text-xs font-medium text-muted-foreground">Vedlegg</p>
+                <div className="flex flex-wrap gap-2">
+                  {form.attachment_links.filter((l) => !l.startsWith("http")).map((path, i) => {
+                    const url = getPublicUrl(path);
+                    const isImage = /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(path);
+                    return isImage ? (
+                      <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                        <img src={url} alt="" className="h-16 w-16 rounded object-cover border" />
+                      </a>
+                    ) : (
+                      <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">
+                        {path.split("/").pop()}
+                      </a>
+                    );
+                  })}
+                </div>
+                {form.attachment_links.filter((l) => l.startsWith("http")).map((link, i) => (
+                  <a key={`l-${i}`} href={link} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline block truncate">
+                    {link}
+                  </a>
+                ))}
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => onOpenChange(false)}>Lukk</Button>
+            </DialogFooter>
+          </div>
+        ) : (
+          /* ===== EDIT MODE ===== */
+          <div className="space-y-4">
+            {reg && (
+              <div className="flex justify-end">
+                <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>
+                  <Eye className="h-3.5 w-3.5 mr-1.5" />
+                  Forhåndsvis
+                </Button>
+              </div>
+            )}
+
+            {/* Status section */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Status</Label>
+                <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="not_started">Ikke startet</SelectItem>
+                    <SelectItem value="in_progress">Pågår</SelectItem>
+                    <SelectItem value="completed">Fullført</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Gjennomført dato</Label>
+                <Input
+                  type="date"
+                  value={form.completed_date}
+                  onChange={(e) => setForm((p) => ({ ...p, completed_date: e.target.value }))}
+                />
+                {form.completed_date && (
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Uke {getWeekNumber(form.completed_date)}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Participants */}
+            {members && (
+              <div>
+                <Label className="mb-2 block">Deltakere</Label>
+                <div className="flex flex-wrap gap-3">
+                  {members.map((member) => {
+                    const isSelected = form.selectedMembers.includes(member.id);
+                    return (
+                      <label key={member.id} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => {
+                            const newMembers = isSelected
+                              ? form.selectedMembers.filter((id) => id !== member.id)
+                              : [...form.selectedMembers, member.id];
+                            setForm((p) => ({ ...p, selectedMembers: newMembers }));
+                            if (reg) {
+                              toggleParticipant.mutate({ registrationId: reg.id, memberId: member.id, isParticipant: isSelected });
+                            }
+                          }}
+                        />
+                        {member.name.split(" ")[0]}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Process log section */}
+            <div className="space-y-3 border-t pt-4">
+              <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <p className="text-sm font-medium">Prosesslogg</p>
+                {prosessloggComplete ? (
+                  <Badge className="bg-primary/10 text-primary text-[10px]">✓ Komplett</Badge>
+                ) : (
+                  <Badge variant="outline" className="text-[10px] text-amber-600">Mangler felt</Badge>
+                )}
+              </div>
+
+              <div>
+                <Label>Hvorfor dette tidspunktet?</Label>
+                <Textarea
+                  value={form.timing_rationale}
+                  onChange={(e) => setForm((p) => ({ ...p, timing_rationale: e.target.value }))}
+                  placeholder="Forklar kort hvorfor teamet valgte å gjennomføre aktiviteten akkurat nå"
+                  rows={2}
+                />
+              </div>
+              <div>
+                <Label>Gjennomføring</Label>
+                <Textarea
+                  value={form.description}
+                  onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                  placeholder={catalogItem.prosesslogg_template || "Hvordan ble aktiviteten gjennomført?"}
+                  rows={3}
+                />
+              </div>
+              <div>
+                <Label>Erfaringer</Label>
+                <Textarea
+                  value={form.experiences}
+                  onChange={(e) => setForm((p) => ({ ...p, experiences: e.target.value }))}
+                  placeholder="Beskriv positive og negative erfaringer"
+                  rows={2}
+                />
+              </div>
+              <div>
+                <Label>Refleksjoner</Label>
+                <Textarea
+                  value={form.reflections}
+                  onChange={(e) => setForm((p) => ({ ...p, reflections: e.target.value }))}
+                  placeholder="Er dette noe teamet kommer til å gjøre igjen?"
+                  rows={2}
+                />
+              </div>
+            </div>
+
+            {/* Attachments — file upload + links */}
+            <div className="space-y-3 border-t pt-4">
+              <Label>Vedlegg (bilder og filer)</Label>
+              <FileUpload
+                files={form.attachment_links.filter((l) => !l.startsWith("http"))}
+                onFilesChange={(storagePaths) => {
+                  const links = form.attachment_links.filter((l) => l.startsWith("http"));
+                  setForm((p) => ({ ...p, attachment_links: [...storagePaths, ...links] }));
+                }}
+                folder="activities"
+              />
+
+              <Label className="mt-2">Lenker</Label>
+              {form.attachment_links.filter((l) => l.startsWith("http")).map((link, i) => (
+                <div key={`link-${i}`} className="flex items-center gap-2">
+                  <a href={link} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline flex-1 truncate">
+                    {link}
+                  </a>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => {
+                    const storagePaths = form.attachment_links.filter((l) => !l.startsWith("http"));
+                    const links = form.attachment_links.filter((l) => l.startsWith("http")).filter((_, idx) => idx !== i);
+                    setForm((p) => ({ ...p, attachment_links: [...storagePaths, ...links] }));
+                  }}>
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+              <div className="flex gap-1">
+                <Input
+                  value={form.newLink}
+                  onChange={(e) => setForm((p) => ({ ...p, newLink: e.target.value }))}
+                  placeholder="https://..."
+                  className="h-7 text-xs"
+                  onKeyDown={(e) => e.key === "Enter" && addLink()}
+                />
+                <Button variant="outline" size="sm" className="h-7 px-2" onClick={addLink}>
+                  <Plus className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => onOpenChange(false)}>Lukk</Button>
+              <Button onClick={handleSave} disabled={createReg.isPending || updateReg.isPending}>
+                {reg ? "Oppdater" : "Opprett registrering"}
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function PreviewField({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      {value ? (
+        <p className="text-sm whitespace-pre-wrap mt-0.5">{value}</p>
+      ) : (
+        <p className="text-sm text-muted-foreground/50 italic mt-0.5">Ikke utfylt</p>
+      )}
+    </div>
   );
 }
