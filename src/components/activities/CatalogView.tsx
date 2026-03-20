@@ -30,19 +30,24 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
   const agileMeetings = meetingBased.filter((c) => ["daily_standup", "sprint_planning", "sprint_review"].includes(c.meeting_type || ""));
   const advisorMeeting = meetingBased.find((c) => c.meeting_type === "veiledermøte");
 
-  // Check for same-week agile meetings warning
+  // Check for same-week agile meetings warning (different types in same week)
   const agileWeekWarning = useMemo(() => {
     const agileRegs = agileMeetings.flatMap((c) => getRegistrationsFor(c.id).filter((r) => r.status === "completed" && r.completed_week));
-    const weekMap = new Map<number, string[]>();
+    const weekMap = new Map<number, Set<string>>();
     agileRegs.forEach((r) => {
       const cat = catalog.find((c) => c.id === r.catalog_id);
       const w = r.completed_week!;
-      if (!weekMap.has(w)) weekMap.set(w, []);
-      weekMap.get(w)!.push(cat?.name || "");
+      if (!weekMap.has(w)) weekMap.set(w, new Set());
+      weekMap.get(w)!.add(cat?.meeting_type || "");
     });
     const conflicts: string[] = [];
-    weekMap.forEach((names, w) => {
-      if (names.length > 1) conflicts.push(`Uke ${w}: ${names.join(" + ")}`);
+    weekMap.forEach((types, w) => {
+      if (types.size > 1) conflicts.push(`Uke ${w}: ${[...types].map(t => {
+        if (t === "daily_standup") return "Daily Standup";
+        if (t === "sprint_planning") return "Sprint Planning";
+        if (t === "sprint_review") return "Sprint Review";
+        return t;
+      }).join(" + ")}`);
     });
     return conflicts;
   }, [agileMeetings, registrations, catalog]);
