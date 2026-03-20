@@ -8,11 +8,13 @@ import {
   LogOut,
   ClipboardCheck,
   FileText,
+  MessageCircle,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useCurrentMember, useTodayHasUpdate } from "@/hooks/useDailyUpdates";
 import {
   Sidebar,
   SidebarContent,
@@ -27,6 +29,7 @@ import {
 
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Standup", url: "/standup", icon: MessageCircle, hasNotification: true },
   { title: "Aktiviteter", url: "/aktiviteter", icon: Target },
   { title: "Backlog", url: "/backlog", icon: ListTodo },
   { title: "Sprint Board", url: "/sprint", icon: Columns3 },
@@ -41,6 +44,11 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const { currentMember } = useCurrentMember();
+  const { data: hasUpdate } = useTodayHasUpdate(currentMember?.id);
+  const today = new Date();
+  const isWorkday = today.getDay() >= 1 && today.getDay() <= 5;
+  const showDot = isWorkday && hasUpdate === false;
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -73,7 +81,12 @@ export function AppSidebar() {
                       className="hover:bg-accent/60 transition-colors duration-150"
                       activeClassName="bg-accent text-accent-foreground font-medium"
                     >
-                      <item.icon className="h-4 w-4 shrink-0" />
+                      <span className="relative shrink-0">
+                        <item.icon className="h-4 w-4" />
+                        {item.hasNotification && showDot && (
+                          <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-destructive" />
+                        )}
+                      </span>
                       {!collapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
