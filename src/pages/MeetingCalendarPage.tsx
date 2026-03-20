@@ -33,9 +33,11 @@ export default function MeetingCalendarPage() {
   const { data: members } = useTeamMembers();
   const autoGenerate = useAutoGenerateMeetings();
 
-  // Auto-generate meetings if none exist for this week
+  // Auto-generate meetings only for current or future weeks
+  const isPastWeek = year < current.year || (year === current.year && week < current.week);
   useEffect(() => {
     if (
+      !isPastWeek &&
       weekMeetings !== undefined &&
       weekMeetings.length === 0 &&
       recurringMeetings &&
@@ -46,7 +48,7 @@ export default function MeetingCalendarPage() {
     ) {
       autoGenerate.mutate({ year, week, recurringMeetings, rotation });
     }
-  }, [weekMeetings, recurringMeetings, rotation, year, week]);
+  }, [weekMeetings, recurringMeetings, rotation, year, week, isPastWeek]);
 
   const { start: weekStart, end: weekEnd } = getWeekDates(year, week);
   const position = getRotationPosition(week);
@@ -75,7 +77,6 @@ export default function MeetingCalendarPage() {
       const dateStr = meetingDate.toISOString().split("T")[0];
       const isToday = dateStr === todayStr;
 
-      // Get leader/notetaker names (with override support)
       const mLeader = meeting?.leader_id
         ? members?.find((m) => m.id === (meeting as any).leader_id)?.name.split(" ")[0] || leaderName
         : leaderName;
@@ -86,6 +87,13 @@ export default function MeetingCalendarPage() {
       return { rm, meeting, isToday, leaderName: mLeader, notetakerName: mNotetaker };
     });
   }, [recurringMeetings, weekMeetings, members, year, week, todayStr, leaderName, notetakerName]);
+
+  // Old meetings not linked to recurring meetings (legacy)
+  const unlinkedMeetings = useMemo(() => {
+    if (!weekMeetings) return [];
+    const recurringIds = new Set(recurringMeetings?.map((rm: any) => rm.id) || []);
+    return weekMeetings.filter((m: any) => !m.recurring_meeting_id || !recurringIds.has(m.recurring_meeting_id));
+  }, [weekMeetings, recurringMeetings]);
 
   const prevWeek = () => {
     if (week <= 1) { setWeek(52); setYear(year - 1); }
@@ -155,7 +163,36 @@ export default function MeetingCalendarPage() {
         </div>
       )}
 
-      {/* Rotation indicator */}
+      {/* Legacy/unlinked meetings from this week */}
+      {unlinkedMeetings.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-xs font-medium text-muted-foreground">Andre møter denne uken</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {unlinkedMeetings.map((m: any) => {
+              const mDate = new Date(m.date);
+              const mDateStr = mDate.toISOString().split("T")[0];
+              const mLeader = m.leader_id || m.facilitator_id
+                ? members?.find((mem) => mem.id === (m.leader_id || m.facilitator_id))?.name.split(" ")[0] || "–"
+                : "–";
+              const mNotetaker = m.notetaker_id || m.note_taker_id
+                ? members?.find((mem) => mem.id === (m.notetaker_id || m.note_taker_id))?.name.split(" ")[0] || "–"
+                : "–";
+              return (
+                <MeetingCard
+                  key={m.id}
+                  meeting={m}
+                  recurringMeeting={null}
+                  leaderName={mLeader}
+                  notetakerName={mNotetaker}
+                  isToday={mDateStr === todayStr}
+                  year={year}
+                  week={week}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
       {rotation && members && (
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground">Rotasjonsordning</p>
