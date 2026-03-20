@@ -101,20 +101,18 @@ export function SubSessionBlock({ subSession, meetingStatus, onDelete }: SubSess
         </ul>
       )}
 
-      {meetingStatus !== "completed" && (
-        <div className="flex gap-1">
-          <Input
-            value={newItem}
-            onChange={(e) => setNewItem(e.target.value)}
-            placeholder="Legg til punkt..."
-            className="h-7 text-xs"
-            onKeyDown={(e) => e.key === "Enter" && addItem()}
-          />
-          <Button variant="ghost" size="sm" className="h-7 px-2" onClick={addItem}>
-            <Plus className="h-3 w-3" />
-          </Button>
-        </div>
-      )}
+      <div className="flex gap-1">
+        <Input
+          value={newItem}
+          onChange={(e) => setNewItem(e.target.value)}
+          placeholder="Legg til punkt..."
+          className="h-7 text-xs"
+          onKeyDown={(e) => e.key === "Enter" && addItem()}
+        />
+        <Button variant="ghost" size="sm" className="h-7 px-2" onClick={addItem}>
+          <Plus className="h-3 w-3" />
+        </Button>
+      </div>
 
       {/* Notes */}
       <Textarea
