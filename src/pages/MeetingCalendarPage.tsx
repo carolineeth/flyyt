@@ -33,9 +33,11 @@ export default function MeetingCalendarPage() {
   const { data: members } = useTeamMembers();
   const autoGenerate = useAutoGenerateMeetings();
 
-  // Auto-generate meetings if none exist for this week
+  // Auto-generate meetings only for current or future weeks
+  const isPastWeek = year < current.year || (year === current.year && week < current.week);
   useEffect(() => {
     if (
+      !isPastWeek &&
       weekMeetings !== undefined &&
       weekMeetings.length === 0 &&
       recurringMeetings &&
@@ -46,7 +48,7 @@ export default function MeetingCalendarPage() {
     ) {
       autoGenerate.mutate({ year, week, recurringMeetings, rotation });
     }
-  }, [weekMeetings, recurringMeetings, rotation, year, week]);
+  }, [weekMeetings, recurringMeetings, rotation, year, week, isPastWeek]);
 
   const { start: weekStart, end: weekEnd } = getWeekDates(year, week);
   const position = getRotationPosition(week);

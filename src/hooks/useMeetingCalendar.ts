@@ -76,15 +76,34 @@ export function useRecurringMeetings() {
 }
 
 export function useWeekMeetings(year: number, week: number) {
+  const { start, end } = getWeekDates(year, week);
+  const startStr = start.toISOString().split("T")[0];
+  const endStr = end.toISOString().split("T")[0];
+
   return useQuery({
     queryKey: ["week_meetings", year, week],
     queryFn: async () => {
-      const query = supabase
+      // Query by week_number OR by date range (for old meetings without week_number)
+      const byWeek = supabase.from("meetings").select("*") as any;
+      const { data: d1, error: e1 } = await byWeek.eq("week_number", week);
+      if (e1) throw e1;
+
+      const { data: d2, error: e2 } = await supabase
         .from("meetings")
-        .select("*") as any;
-      const { data, error } = await query.eq("week_number", week);
-      if (error) throw error;
-      return (data || []) as any[];
+        .select("*")
+        .is("week_number" as any, null)
+        .gte("date", startStr)
+        .lte("date", endStr + "T23:59:59") as any;
+      if (e2) throw e2;
+
+      // Merge and deduplicate
+      const all = [...(d1 || []), ...(d2 || [])];
+      const seen = new Set<string>();
+      return all.filter((m: any) => {
+        if (seen.has(m.id)) return false;
+        seen.add(m.id);
+        return true;
+      }) as any[];
     },
   });
 }
