@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useActivities, useActivityParticipants, useUpdateActivity, useToggleParticipant } from "@/hooks/useActivities";
+import { PointsPlanner } from "@/components/activities/PointsPlanner";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
