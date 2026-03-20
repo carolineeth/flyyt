@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { useActivityCatalog, useActivityRegistrations } from "@/hooks/useActivityCatalog";
+import { useState, useCallback } from "react";
+import { useActivityCatalog, useActivityRegistrations, type CatalogItem, type Registration } from "@/hooks/useActivityCatalog";
 import { PointsPlanner } from "@/components/activities/PointsPlanner";
 import { CatalogView } from "@/components/activities/CatalogView";
 import { RegistrationsView } from "@/components/activities/RegistrationsView";
+import { RegistrationModal } from "@/components/activities/RegistrationModal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
@@ -11,6 +12,17 @@ export default function ActivitiesPage() {
   const { data: catalog, isLoading: loadingCatalog } = useActivityCatalog();
   const { data: registrations, isLoading: loadingRegs } = useActivityRegistrations();
   const [tab, setTab] = useState("catalog");
+
+  // Modal state for planner clicks
+  const [plannerModalOpen, setPlannerModalOpen] = useState(false);
+  const [plannerCatalog, setPlannerCatalog] = useState<CatalogItem | null>(null);
+  const [plannerReg, setPlannerReg] = useState<Registration | null>(null);
+
+  const handlePlannerClick = useCallback((reg: Registration, cat: CatalogItem) => {
+    setPlannerCatalog(cat);
+    setPlannerReg(reg);
+    setPlannerModalOpen(true);
+  }, []);
 
   if (loadingCatalog || loadingRegs) {
     return <div className="p-8 text-muted-foreground">Laster aktiviteter...</div>;
@@ -45,7 +57,7 @@ export default function ActivitiesPage() {
       </div>
 
       {/* Points Planner */}
-      <PointsPlanner catalog={cat} registrations={regs} />
+      <PointsPlanner catalog={cat} registrations={regs} onClickRegistration={handlePlannerClick} />
 
       {/* Catalog / Registrations tabs */}
       <Tabs value={tab} onValueChange={setTab}>
@@ -67,6 +79,17 @@ export default function ActivitiesPage() {
           <RegistrationsView catalog={cat} registrations={regs} />
         </TabsContent>
       </Tabs>
+
+      {/* Modal for planner clicks */}
+      {plannerCatalog && (
+        <RegistrationModal
+          open={plannerModalOpen}
+          onOpenChange={setPlannerModalOpen}
+          catalogItem={plannerCatalog}
+          registration={plannerReg}
+          allRegistrations={regs}
+        />
+      )}
     </div>
   );
 }
