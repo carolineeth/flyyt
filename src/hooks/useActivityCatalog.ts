@@ -31,6 +31,7 @@ export interface Registration {
   experiences: string | null;
   reflections: string | null;
   attachment_links: string[] | null;
+  short_status: string | null;
   created_at: string;
 }
 

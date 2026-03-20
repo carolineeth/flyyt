@@ -1,11 +1,54 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
-import { useRegistrationParticipants, type CatalogItem, type Registration } from "@/hooks/useActivityCatalog";
+import { useRegistrationParticipants, useUpdateRegistration, type CatalogItem, type Registration } from "@/hooks/useActivityCatalog";
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { RegistrationModal } from "./RegistrationModal";
-import { CheckCircle2, Clock, AlertTriangle, FileText } from "lucide-react";
+import { CheckCircle2, Clock } from "lucide-react";
+
+function InlineStatus({ value, regId }: { value: string | null; regId: string }) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(value ?? "");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const updateReg = useUpdateRegistration();
+
+  useEffect(() => { setText(value ?? ""); }, [value]);
+  useEffect(() => { if (editing) inputRef.current?.focus(); }, [editing]);
+
+  const save = () => {
+    setEditing(false);
+    const trimmed = text.trim().slice(0, 100);
+    if (trimmed !== (value ?? "")) {
+      updateReg.mutate({ id: regId, short_status: trimmed || null } as any);
+    }
+  };
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        className="text-xs text-muted-foreground bg-transparent border-b border-border outline-none w-full max-w-[300px] py-0.5"
+        value={text}
+        maxLength={100}
+        placeholder="Kort status (maks 100 tegn)…"
+        onChange={(e) => setText(e.target.value)}
+        onBlur={save}
+        onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") { setText(value ?? ""); setEditing(false); } }}
+        onClick={(e) => e.stopPropagation()}
+      />
+    );
+  }
+
+  return (
+    <span
+      className="text-xs text-muted-foreground hover:text-foreground cursor-text italic"
+      onClick={(e) => { e.stopPropagation(); setEditing(true); }}
+    >
+      {value || "Legg til kort status…"}
+    </span>
+  );
+}
 
 interface RegistrationsViewProps {
   catalog: CatalogItem[];
@@ -80,6 +123,10 @@ export function RegistrationsView({ catalog, registrations }: RegistrationsViewP
                         {reg.completed_date && ` — ${new Date(reg.completed_date + "T00:00:00").toLocaleDateString("nb-NO", { day: "numeric", month: "short" })}`}
                       </span>
                     )}
+                  </div>
+                  {/* Inline short status */}
+                  <div className="mt-0.5">
+                    <InlineStatus value={reg.short_status} regId={reg.id} />
                   </div>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     {regMembers.length > 0 && (
