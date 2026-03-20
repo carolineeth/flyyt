@@ -69,53 +69,8 @@ export default function ActivitiesPage() {
         description="Teamaktiviteter teller 30% av prosjektkarakteren. Maks 3 aktiviteter gir poeng per uke."
       />
 
-      {/* Summary */}
-      <Card>
-        <CardContent className="pt-5">
-          <div className="flex items-end gap-2 mb-2">
-            <span className="text-3xl font-bold tabular-nums">{totalEarned}</span>
-            <span className="text-muted-foreground text-sm mb-1">/ 30 poeng</span>
-          </div>
-          <Progress value={(totalEarned / 30) * 100} className="h-2 mb-3" />
-          <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-            <span>Uke 10–19 (3. mars – 9. mai)</span>
-            <span>Maks 3 per uke</span>
-            <span>{completedActivities.length} fullført</span>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Timeline bar - weeks 10-19 */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Ukesoversikt (uke 10–19)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-1">
-            {Array.from({ length: 10 }, (_, i) => {
-              const week = i + 10;
-              const weekActivities = completedActivities.filter((a) => a.completed_week === week);
-              const hasActivities = weekActivities.length > 0;
-              return (
-                <div key={week} className="flex-1 text-center">
-                  <div
-                    className={`h-8 rounded-sm flex items-center justify-center text-xs font-medium transition-colors ${
-                      hasActivities
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {week}
-                  </div>
-                  {hasActivities && (
-                    <p className="text-[10px] text-primary mt-0.5 tabular-nums">{weekActivities.length}p</p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Points Planner */}
+      {activities && <PointsPlanner activities={activities} />}
 
       {/* Activity list */}
       <div className="space-y-2">
