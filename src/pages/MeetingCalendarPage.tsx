@@ -163,7 +163,36 @@ export default function MeetingCalendarPage() {
         </div>
       )}
 
-      {/* Rotation indicator */}
+      {/* Legacy/unlinked meetings from this week */}
+      {unlinkedMeetings.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-xs font-medium text-muted-foreground">Andre møter denne uken</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {unlinkedMeetings.map((m: any) => {
+              const mDate = new Date(m.date);
+              const mDateStr = mDate.toISOString().split("T")[0];
+              const mLeader = m.leader_id || m.facilitator_id
+                ? members?.find((mem) => mem.id === (m.leader_id || m.facilitator_id))?.name.split(" ")[0] || "–"
+                : "–";
+              const mNotetaker = m.notetaker_id || m.note_taker_id
+                ? members?.find((mem) => mem.id === (m.notetaker_id || m.note_taker_id))?.name.split(" ")[0] || "–"
+                : "–";
+              return (
+                <MeetingCard
+                  key={m.id}
+                  meeting={m}
+                  recurringMeeting={null}
+                  leaderName={mLeader}
+                  notetakerName={mNotetaker}
+                  isToday={mDateStr === todayStr}
+                  year={year}
+                  week={week}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
       {rotation && members && (
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground">Rotasjonsordning</p>
