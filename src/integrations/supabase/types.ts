@@ -287,7 +287,9 @@ export type Database = {
           created_at: string
           date: string
           duration_minutes: number | null
+          facilitator_id: string | null
           id: string
+          note_taker_id: string | null
           notes: string | null
           participants: string[] | null
           planning_capacity: Json | null
@@ -300,7 +302,9 @@ export type Database = {
           created_at?: string
           date?: string
           duration_minutes?: number | null
+          facilitator_id?: string | null
           id?: string
+          note_taker_id?: string | null
           notes?: string | null
           participants?: string[] | null
           planning_capacity?: Json | null
@@ -313,7 +317,9 @@ export type Database = {
           created_at?: string
           date?: string
           duration_minutes?: number | null
+          facilitator_id?: string | null
           id?: string
+          note_taker_id?: string | null
           notes?: string | null
           participants?: string[] | null
           planning_capacity?: Json | null
@@ -323,6 +329,20 @@ export type Database = {
           type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "meetings_facilitator_id_fkey"
+            columns: ["facilitator_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetings_note_taker_id_fkey"
+            columns: ["note_taker_id"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "meetings_related_activity_id_fkey"
             columns: ["related_activity_id"]
