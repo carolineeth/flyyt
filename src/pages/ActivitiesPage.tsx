@@ -53,6 +53,12 @@ export default function ActivitiesPage() {
     });
   };
 
+  const handleFieldUpdate = (id: string, field: string, value: string) => {
+    updateActivity.mutate({ id, [field]: value } as any, {
+      onSuccess: () => toast.success("Lagret"),
+    });
+  };
+
   if (isLoading) return <div className="p-8 text-muted-foreground">Laster aktiviteter...</div>;
 
   return (
@@ -144,16 +150,61 @@ export default function ActivitiesPage() {
                     </div>
                   </div>
 
+                  {/* Timing rationale */}
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Hvorfor dette tidspunktet?</p>
+                    <Textarea
+                      defaultValue={(activity as any).timing_rationale ?? ""}
+                      placeholder="Hvorfor gjennomførte teamet aktiviteten akkurat nå?"
+                      rows={2}
+                      onBlur={(e) => {
+                        if (e.target.value !== ((activity as any).timing_rationale ?? "")) {
+                          handleFieldUpdate(activity.id, "timing_rationale", e.target.value);
+                        }
+                      }}
+                    />
+                  </div>
+
                   {/* Notes */}
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Notater (prosesslogg)</p>
+                    <p className="text-sm text-muted-foreground mb-1">Gjennomføring (prosesslogg)</p>
                     <Textarea
                       defaultValue={activity.notes ?? ""}
-                      placeholder="Hva ble gjort? Hvorfor? Refleksjoner..."
+                      placeholder="Hvordan ble aktiviteten gjennomført?"
                       rows={3}
                       onBlur={(e) => {
                         if (e.target.value !== (activity.notes ?? "")) {
                           handleNotesUpdate(activity.id, e.target.value);
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Experiences */}
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Erfaringer</p>
+                    <Textarea
+                      defaultValue={(activity as any).experiences ?? ""}
+                      placeholder="Positive og negative erfaringer fra aktiviteten..."
+                      rows={2}
+                      onBlur={(e) => {
+                        if (e.target.value !== ((activity as any).experiences ?? "")) {
+                          handleFieldUpdate(activity.id, "experiences", e.target.value);
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Reflections */}
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Refleksjoner</p>
+                    <Textarea
+                      defaultValue={(activity as any).reflections ?? ""}
+                      placeholder="Er dette noe teamet vil gjøre igjen? Hva lærte dere?"
+                      rows={2}
+                      onBlur={(e) => {
+                        if (e.target.value !== ((activity as any).reflections ?? "")) {
+                          handleFieldUpdate(activity.id, "reflections", e.target.value);
                         }
                       }}
                     />
