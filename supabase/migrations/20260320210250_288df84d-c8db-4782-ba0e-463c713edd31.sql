@@ -1,0 +1,1 @@
+ALTER TABLE public.activities ADD COLUMN planned_week INTEGER;

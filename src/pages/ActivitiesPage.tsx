@@ -1,17 +1,15 @@
 import { useState } from "react";
 import { useActivities, useActivityParticipants, useUpdateActivity, useToggleParticipant } from "@/hooks/useActivities";
+import { PointsPlanner } from "@/components/activities/PointsPlanner";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Target, Calendar, AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
+import { Calendar, ChevronDown, ChevronUp } from "lucide-react";
 import type { Activity } from "@/lib/types";
 
 const statusLabels: Record<string, string> = {
@@ -32,11 +30,7 @@ export default function ActivitiesPage() {
   const { data: members } = useTeamMembers();
   const updateActivity = useUpdateActivity();
   const toggleParticipant = useToggleParticipant();
-  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  const completedActivities = activities?.filter((a) => a.status === "completed") ?? [];
-  const totalEarned = completedActivities.reduce((sum, a) => sum + a.points, 0);
 
   const handleStatusChange = (activity: Activity, status: string) => {
     const updates: Partial<Activity> & { id: string } = { id: activity.id, status };
@@ -68,53 +62,8 @@ export default function ActivitiesPage() {
         description="Teamaktiviteter teller 30% av prosjektkarakteren. Maks 3 aktiviteter gir poeng per uke."
       />
 
-      {/* Summary */}
-      <Card>
-        <CardContent className="pt-5">
-          <div className="flex items-end gap-2 mb-2">
-            <span className="text-3xl font-bold tabular-nums">{totalEarned}</span>
-            <span className="text-muted-foreground text-sm mb-1">/ 30 poeng</span>
-          </div>
-          <Progress value={(totalEarned / 30) * 100} className="h-2 mb-3" />
-          <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-            <span>Uke 10–19 (3. mars – 9. mai)</span>
-            <span>Maks 3 per uke</span>
-            <span>{completedActivities.length} fullført</span>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Timeline bar - weeks 10-19 */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Ukesoversikt (uke 10–19)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-1">
-            {Array.from({ length: 10 }, (_, i) => {
-              const week = i + 10;
-              const weekActivities = completedActivities.filter((a) => a.completed_week === week);
-              const hasActivities = weekActivities.length > 0;
-              return (
-                <div key={week} className="flex-1 text-center">
-                  <div
-                    className={`h-8 rounded-sm flex items-center justify-center text-xs font-medium transition-colors ${
-                      hasActivities
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {week}
-                  </div>
-                  {hasActivities && (
-                    <p className="text-[10px] text-primary mt-0.5 tabular-nums">{weekActivities.length}p</p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Points Planner */}
+      {activities && <PointsPlanner activities={activities} />}
 
       {/* Activity list */}
       <div className="space-y-2">
