@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   getWeekNumber,
   getWeekDates,
@@ -14,8 +16,13 @@ import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { MeetingCard } from "@/components/meetings/MeetingCard";
-import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import { toast } from "sonner";
+import { ChevronLeft, ChevronRight, Calendar, Plus, RefreshCw } from "lucide-react";
 
 function getCurrentWeekYear() {
   const now = new Date();
@@ -26,7 +33,10 @@ export default function MeetingCalendarPage() {
   const current = getCurrentWeekYear();
   const [week, setWeek] = useState(current.week);
   const [year, setYear] = useState(current.year);
+  const [showAddMeeting, setShowAddMeeting] = useState(false);
+  const [addForm, setAddForm] = useState({ date: "", startTime: "12:00", endTime: "14:00", label: "", status: "upcoming" });
 
+  const qc = useQueryClient();
   const { data: rotation } = useRotation();
   const { data: recurringMeetings } = useRecurringMeetings();
   const { data: weekMeetings, isLoading } = useWeekMeetings(year, week);
@@ -88,12 +98,20 @@ export default function MeetingCalendarPage() {
     });
   }, [recurringMeetings, weekMeetings, members, year, week, todayStr, leaderName, notetakerName]);
 
-  // Old meetings not linked to recurring meetings (legacy)
+  // Meetings not linked to recurring meetings (ad-hoc + legacy)
   const unlinkedMeetings = useMemo(() => {
     if (!weekMeetings) return [];
     const recurringIds = new Set(recurringMeetings?.map((rm: any) => rm.id) || []);
     return weekMeetings.filter((m: any) => !m.recurring_meeting_id || !recurringIds.has(m.recurring_meeting_id));
   }, [weekMeetings, recurringMeetings]);
+
+  // Check if recurring meetings are missing for this past week
+  const hasRecurringMeetings = useMemo(() => {
+    if (!recurringMeetings || !weekMeetings) return true;
+    return recurringMeetings.some((rm: any) =>
+      weekMeetings.some((m: any) => m.recurring_meeting_id === rm.id)
+    );
+  }, [recurringMeetings, weekMeetings]);
 
   const prevWeek = () => {
     if (week <= 1) { setWeek(52); setYear(year - 1); }
@@ -105,11 +123,73 @@ export default function MeetingCalendarPage() {
   };
   const goToday = () => { setWeek(current.week); setYear(current.year); };
 
+  const generateForPastWeek = () => {
+    if (!recurringMeetings || !rotation) return;
+    autoGenerate.mutate(
+      { year, week, recurringMeetings, rotation },
+      {
+        onSuccess: () => toast.success("Faste møter generert for denne uken"),
+        onError: (e: any) => toast.error(e.message),
+      }
+    );
+  };
+
+  const openAddMeeting = () => {
+    const { start } = getWeekDates(year, week);
+    setAddForm({
+      date: start.toISOString().split("T")[0],
+      startTime: "12:00",
+      endTime: "14:00",
+      label: "",
+      status: isPastWeek ? "completed" : "upcoming",
+    });
+    setShowAddMeeting(true);
+  };
+
+  const createAdHocMeeting = async () => {
+    if (!addForm.date || !addForm.label) return;
+    const meetingDate = new Date(addForm.date);
+    const meetingWeek = getWeekNumber(meetingDate);
+
+    const rot = rotation?.find((r: any) => r.position === getRotationPosition(meetingWeek));
+
+    const { error } = await supabase.from("meetings").insert({
+      type: "other",
+      date: meetingDate.toISOString(),
+      meeting_date: addForm.date,
+      week_number: week,
+      leader_id: rot?.leader_id || null,
+      notetaker_id: rot?.notetaker_id || null,
+      rotation_position: getRotationPosition(week),
+      status: addForm.status,
+      notes: addForm.label,
+      participants: [],
+    } as any);
+
+    if (error) { toast.error(error.message); return; }
+    qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
+    setShowAddMeeting(false);
+    toast.success("Møte lagt til");
+  };
+
   return (
     <div className="space-y-6 scroll-reveal">
       <PageHeader
         title="Møtekalender"
         description="Planlegg, gjennomfør og dokumenter gruppemøter"
+        action={
+          <div className="flex gap-2">
+            {isPastWeek && !hasRecurringMeetings && recurringMeetings && rotation && (
+              <Button variant="outline" size="sm" onClick={generateForPastWeek} disabled={autoGenerate.isPending}>
+                <RefreshCw className={`h-4 w-4 mr-1 ${autoGenerate.isPending ? "animate-spin" : ""}`} />
+                Generer faste møter
+              </Button>
+            )}
+            <Button size="sm" onClick={openAddMeeting}>
+              <Plus className="h-4 w-4 mr-1" /> Legg til møte
+            </Button>
+          </div>
+        }
       />
 
       {/* Week navigation */}
@@ -163,7 +243,7 @@ export default function MeetingCalendarPage() {
         </div>
       )}
 
-      {/* Legacy/unlinked meetings from this week */}
+      {/* Ad-hoc / unlinked meetings */}
       {unlinkedMeetings.length > 0 && (
         <div className="space-y-3">
           <p className="text-xs font-medium text-muted-foreground">Andre møter denne uken</p>
@@ -193,6 +273,8 @@ export default function MeetingCalendarPage() {
           </div>
         </div>
       )}
+
+      {/* Rotation indicator */}
       {rotation && members && (
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground">Rotasjonsordning</p>
@@ -221,6 +303,65 @@ export default function MeetingCalendarPage() {
           </div>
         </div>
       )}
+
+      {/* Add meeting dialog */}
+      <Dialog open={showAddMeeting} onOpenChange={setShowAddMeeting}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Legg til møte</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Tittel / beskrivelse</Label>
+              <Input
+                value={addForm.label}
+                onChange={(e) => setAddForm((p) => ({ ...p, label: e.target.value }))}
+                placeholder="F.eks. Ekstra arbeidsmøte"
+              />
+            </div>
+            <div>
+              <Label>Dato</Label>
+              <Input
+                type="date"
+                value={addForm.date}
+                onChange={(e) => setAddForm((p) => ({ ...p, date: e.target.value }))}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Starttid</Label>
+                <Input
+                  type="time"
+                  value={addForm.startTime}
+                  onChange={(e) => setAddForm((p) => ({ ...p, startTime: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Sluttid</Label>
+                <Input
+                  type="time"
+                  value={addForm.endTime}
+                  onChange={(e) => setAddForm((p) => ({ ...p, endTime: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Status</Label>
+              <Select value={addForm.status} onValueChange={(v) => setAddForm((p) => ({ ...p, status: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="upcoming">Kommende</SelectItem>
+                  <SelectItem value="completed">Gjennomført</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowAddMeeting(false)}>Avbryt</Button>
+            <Button onClick={createAdHocMeeting} disabled={!addForm.label || !addForm.date}>Legg til</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
