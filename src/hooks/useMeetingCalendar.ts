@@ -79,12 +79,12 @@ export function useWeekMeetings(year: number, week: number) {
   return useQuery({
     queryKey: ["week_meetings", year, week],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const query = supabase
         .from("meetings")
-        .select("*")
-        .eq("week_number" as any, week) as any;
+        .select("*") as any;
+      const { data, error } = await query.eq("week_number", week);
       if (error) throw error;
-      return data as any[];
+      return (data || []) as any[];
     },
   });
 }
