@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { toast } from "sonner";
 import { Users, Plus, Clock, Link2, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { StandupTemplate } from "@/components/meetings/StandupTemplate";
 import { SprintPlanningTemplate } from "@/components/meetings/SprintPlanningTemplate";
 import { SprintReviewTemplate } from "@/components/meetings/SprintReviewTemplate";
