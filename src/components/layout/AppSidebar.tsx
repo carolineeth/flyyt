@@ -52,8 +52,8 @@ export function AppSidebar() {
       <SidebarContent className="pt-4">
         {!collapsed && (
           <div className="px-4 pb-4 mb-2">
-            <h1 className="text-lg font-bold text-foreground tracking-tight">Videre</h1>
-            <p className="text-xs text-muted-foreground">Mission Control</p>
+            <h1 className="text-lg font-bold text-foreground tracking-tight">Flyt</h1>
+            <p className="text-xs text-muted-foreground">Prosjektstyring for Team 34</p>
           </div>
         )}
         {collapsed && (
