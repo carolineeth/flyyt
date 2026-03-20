@@ -210,9 +210,10 @@ export function PointsPlanner({ catalog, registrations, onClickRegistration }: P
               return (
                 <div key={w.week} className="flex">
                   {isDeadlineBorder && (
-                    <div className="flex flex-col items-center justify-center mx-0.5 shrink-0">
-                      <div className="h-full border-l-2 border-dashed border-destructive relative">
-                        <span className="absolute -top-1 left-1/2 -translate-x-1/2 whitespace-nowrap text-[8px] font-medium text-destructive bg-card px-1 rounded">Frist 5. apr</span>
+                    <div className="flex flex-col items-center mx-1 shrink-0 relative">
+                      <div className="w-0 h-full border-l-2 border-dashed border-destructive" />
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground text-[9px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap shadow-sm">
+                        Frist 5. apr
                       </div>
                     </div>
                   )}
