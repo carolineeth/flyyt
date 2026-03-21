@@ -384,6 +384,23 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
                   <span className="text-xs font-medium">{notetakerName}</span>
                 )}
               </div>
+              {editMode ? (
+                <div className="flex items-center gap-1">
+                  <Badge variant="outline" className="text-[10px] shrink-0">Rom</Badge>
+                  <Input
+                    value={room}
+                    onChange={(e) => setRoom(e.target.value)}
+                    placeholder="F.eks. Grupperom 3"
+                    className="h-6 text-xs w-36"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
+              ) : room ? (
+                <div className="flex items-center gap-1">
+                  <Badge variant="outline" className="text-[10px]">Rom</Badge>
+                  <span className="text-xs font-medium">{room}</span>
+                </div>
+              ) : null}
               <div className="ml-auto">
                 <Button
                   variant={editMode ? "default" : "outline"}
