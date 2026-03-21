@@ -12,3 +12,4 @@ export type Meeting = Tables<"meetings">;
 export type MeetingActionPoint = Tables<"meeting_action_points">;
 export type StandupEntry = Tables<"standup_entries">;
 export type Resource = Tables<"resources">;
+export type Task = Tables<"tasks">;

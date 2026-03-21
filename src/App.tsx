@@ -11,8 +11,8 @@ import { useCurrentTeamMember } from "@/hooks/useCurrentTeamMember";
 import AuthPage from "@/pages/AuthPage";
 import DashboardPage from "@/pages/DashboardPage";
 import ActivitiesPage from "@/pages/ActivitiesPage";
-import BacklogPage from "@/pages/BacklogPage";
-import SprintBoardPage from "@/pages/SprintBoardPage";
+import SprinterPage from "@/pages/SprinterPage";
+import OppgaverPage from "@/pages/OppgaverPage";
 import StandupPage from "@/pages/StandupPage";
 import MeetingCalendarPage from "@/pages/MeetingCalendarPage";
 import ResourcesPage from "@/pages/ResourcesPage";
@@ -82,8 +82,8 @@ const App = () => (
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/aktiviteter" element={<ActivitiesPage />} />
                 <Route path="/standup" element={<StandupPage />} />
-                <Route path="/backlog" element={<BacklogPage />} />
-                <Route path="/sprint" element={<SprintBoardPage />} />
+                <Route path="/sprinter" element={<SprinterPage />} />
+                <Route path="/oppgaver" element={<OppgaverPage />} />
                 <Route path="/moter" element={<MeetingCalendarPage />} />
                 <Route path="/ressurser" element={<ResourcesPage />} />
                 <Route path="/prosesslogg" element={<ProcessLogExportPage />} />
