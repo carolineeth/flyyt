@@ -686,6 +686,7 @@ export type Database = {
           recurring_meeting_id: string | null
           related_activity_id: string | null
           review_feedback: string | null
+          room: string | null
           rotation_position: number | null
           sprint_id: string | null
           status: string
@@ -710,6 +711,7 @@ export type Database = {
           recurring_meeting_id?: string | null
           related_activity_id?: string | null
           review_feedback?: string | null
+          room?: string | null
           rotation_position?: number | null
           sprint_id?: string | null
           status?: string
@@ -734,6 +736,7 @@ export type Database = {
           recurring_meeting_id?: string | null
           related_activity_id?: string | null
           review_feedback?: string | null
+          room?: string | null
           rotation_position?: number | null
           sprint_id?: string | null
           status?: string
