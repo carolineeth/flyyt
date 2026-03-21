@@ -278,6 +278,19 @@ export default function OppgaverPage() {
                   </span>
                 )}
                 {assignee && <MemberAvatar member={assignee} />}
+                {((task as any).collaborator_ids ?? []).length > 0 && (
+                  <div className="flex -space-x-1">
+                    {((task as any).collaborator_ids as string[]).slice(0, 2).map((cid) => {
+                      const c = members?.find((m) => m.id === cid);
+                      return c ? <MemberAvatar key={cid} member={c} /> : null;
+                    })}
+                  </div>
+                )}
+                {(taskSubtasks?.filter(s => s.task_id === task.id).length ?? 0) > 0 && (
+                  <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
+                    {taskSubtasks?.filter(s => s.task_id === task.id && s.is_completed).length}/{taskSubtasks?.filter(s => s.task_id === task.id).length}
+                  </span>
+                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button className="h-6 w-6 flex items-center justify-center rounded hover:bg-accent shrink-0">
