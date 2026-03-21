@@ -500,16 +500,26 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
                   )
                 ))}
                 {editMode && (
-                  <Select onValueChange={addSubSession}>
-                    <SelectTrigger className="h-7 text-xs w-48">
-                      <SelectValue placeholder="+ Legg til delmøte" />
-                    </SelectTrigger>
-                    <SelectContent>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-7 text-xs">
+                        <Plus className="h-3 w-3 mr-1" /> Legg til delmøte
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-48 p-1" align="start">
                       {Object.entries(subSessionTypeLabels).map(([k, v]) => (
-                        <SelectItem key={k} value={k}>{v}</SelectItem>
+                        <Button
+                          key={k}
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-start h-8 text-xs"
+                          onClick={() => addSubSession(k)}
+                        >
+                          {v}
+                        </Button>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </PopoverContent>
+                  </Popover>
                 )}
               </div>
             )}
