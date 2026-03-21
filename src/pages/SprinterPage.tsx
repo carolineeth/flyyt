@@ -87,6 +87,16 @@ export default function SprinterPage() {
     },
   });
 
+  // Fetch ALL sprint item IDs (across all sprints) so backlog excludes them all
+  const { data: allSprintItemIds } = useQuery<string[]>({
+    queryKey: ["all_sprint_backlog_ids"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sprint_items").select("backlog_item_id");
+      if (error) throw error;
+      return data.map((r) => r.backlog_item_id);
+    },
+  });
+
   const { data: subtasks } = useQuery<Subtask[]>({
     queryKey: ["subtasks"],
     queryFn: async () => {
