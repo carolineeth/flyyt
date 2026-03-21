@@ -565,36 +565,54 @@ export default function SprinterPage() {
     </div>
   );
 
+  const nextSprints = (sprints ?? []).filter((s) => s.id !== currentSprintId && !s.completed_at);
+
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">
-      <div className="px-4 pt-4 pb-2">
+      <div className="px-4 pt-4 pb-2 flex items-end justify-between gap-4 flex-wrap">
         <PageHeader title="Sprinter" description="Product backlog og sprint board — dra items fra backlog til sprinten" />
-      </div>
-
-      {/* Mobile tabs */}
-      <div className="md:hidden flex border-b border-border px-4">
-        <button onClick={() => setActiveTab("backlog")}
-          className={`flex-1 py-2 text-sm font-medium text-center border-b-2 transition-colors ${activeTab === "backlog" ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}>
-          Backlog
-        </button>
-        <button onClick={() => setActiveTab("sprint")}
-          className={`flex-1 py-2 text-sm font-medium text-center border-b-2 transition-colors ${activeTab === "sprint" ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}>
-          Sprint
-        </button>
-      </div>
-
-      {/* Split view */}
-      <div className="flex-1 min-h-0 flex">
-        {/* Backlog panel */}
-        <div className={`border-r border-border ${activeTab === "sprint" ? "hidden md:flex" : "flex"} md:flex flex-col`}
-          style={{ width: "40%", minWidth: 280 }}>
-          {backlogPanel}
-        </div>
-        {/* Sprint panel */}
-        <div className={`flex-1 ${activeTab === "backlog" ? "hidden md:flex" : "flex"} md:flex flex-col min-w-0`}>
-          {sprintPanel}
+        <div className="flex gap-1.5 mb-1">
+          <Button size="sm" variant={pageView === "board" ? "default" : "outline"} className="h-7 text-xs"
+            onClick={() => setPageView("board")}>
+            <Layers className="h-3 w-3 mr-1" /> Board
+          </Button>
+          <Button size="sm" variant={pageView === "history" ? "default" : "outline"} className="h-7 text-xs"
+            onClick={() => setPageView("history")}>
+            <History className="h-3 w-3 mr-1" /> Historikk
+          </Button>
         </div>
       </div>
+
+      {pageView === "history" ? (
+        <div className="flex-1 overflow-y-auto">
+          <SprintHistory />
+        </div>
+      ) : (
+        <>
+          {/* Mobile tabs */}
+          <div className="md:hidden flex border-b border-border px-4">
+            <button onClick={() => setActiveTab("backlog")}
+              className={`flex-1 py-2 text-sm font-medium text-center border-b-2 transition-colors ${activeTab === "backlog" ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}>
+              Backlog
+            </button>
+            <button onClick={() => setActiveTab("sprint")}
+              className={`flex-1 py-2 text-sm font-medium text-center border-b-2 transition-colors ${activeTab === "sprint" ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}>
+              Sprint
+            </button>
+          </div>
+
+          {/* Split view */}
+          <div className="flex-1 min-h-0 flex">
+            <div className={`border-r border-border ${activeTab === "sprint" ? "hidden md:flex" : "flex"} md:flex flex-col`}
+              style={{ width: "40%", minWidth: 280 }}>
+              {backlogPanel}
+            </div>
+            <div className={`flex-1 ${activeTab === "backlog" ? "hidden md:flex" : "flex"} md:flex flex-col min-w-0`}>
+              {sprintPanel}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Create sprint dialog */}
       <Dialog open={showCreateSprint} onOpenChange={setShowCreateSprint}>
