@@ -1,8 +1,8 @@
 import {
   LayoutDashboard,
   Target,
-  ListTodo,
-  Columns3,
+  Layers,
+  CheckSquare,
   Calendar,
   Link2,
   LogOut,
@@ -32,9 +32,8 @@ const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Standup", url: "/standup", icon: MessageCircle, hasNotification: true },
   { title: "Aktiviteter", url: "/aktiviteter", icon: Target },
-  { title: "Backlog", url: "/backlog", icon: ListTodo },
-  { title: "Sprint Board", url: "/sprint", icon: Columns3 },
-  
+  { title: "Sprinter", url: "/sprinter", icon: Layers },
+  { title: "Oppgaver", url: "/oppgaver", icon: CheckSquare },
   { title: "Møtekalender", url: "/moter", icon: Calendar },
   { title: "Ressurser", url: "/ressurser", icon: Link2 },
   { title: "Prosesslogg", url: "/prosesslogg", icon: ClipboardCheck },
