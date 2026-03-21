@@ -16,8 +16,10 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Layers, Plus, GripVertical, Search, X, StickyNote, Settings2 } from "lucide-react";
+import { Layers, Plus, GripVertical, Search, X, StickyNote, Settings2, History, StopCircle } from "lucide-react";
 import type { Sprint, SprintItem, BacklogItem, Subtask } from "@/lib/types";
+import SprintHistory from "@/components/sprints/SprintHistory";
+import CloseSprintModal from "@/components/sprints/CloseSprintModal";
 
 const columns = [
   { key: "todo", label: "To Do", color: "bg-muted" },
@@ -95,6 +97,8 @@ export default function SprinterPage() {
   });
 
   // State
+  const [pageView, setPageView] = useState<"board" | "history">("board");
+  const [showCloseSprint, setShowCloseSprint] = useState(false);
   const [activeTab, setActiveTab] = useState<"backlog" | "sprint">("backlog");
   const [filterType, setFilterType] = useState("all");
   const [filterPriority, setFilterPriority] = useState("all");
@@ -435,6 +439,12 @@ export default function SprinterPage() {
             onClick={() => { setPlanningMode(!planningMode); setPlanningSelected(new Set()); }}>
             {planningMode ? "Avslutt planning" : "Sprint Planning"}
           </Button>
+          {currentSprint?.is_active && !planningMode && (
+            <Button size="sm" variant="outline" className="h-7 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
+              onClick={() => setShowCloseSprint(true)}>
+              <StopCircle className="h-3 w-3 mr-1" /> Avslutt sprint
+            </Button>
+          )}
         </div>
         {currentSprint?.goal && (
           <p className="text-xs text-muted-foreground italic flex items-center gap-1">
@@ -561,36 +571,54 @@ export default function SprinterPage() {
     </div>
   );
 
+  const nextSprints = (sprints ?? []).filter((s) => s.id !== currentSprintId && !s.completed_at);
+
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">
-      <div className="px-4 pt-4 pb-2">
+      <div className="px-4 pt-4 pb-2 flex items-end justify-between gap-4 flex-wrap">
         <PageHeader title="Sprinter" description="Product backlog og sprint board — dra items fra backlog til sprinten" />
-      </div>
-
-      {/* Mobile tabs */}
-      <div className="md:hidden flex border-b border-border px-4">
-        <button onClick={() => setActiveTab("backlog")}
-          className={`flex-1 py-2 text-sm font-medium text-center border-b-2 transition-colors ${activeTab === "backlog" ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}>
-          Backlog
-        </button>
-        <button onClick={() => setActiveTab("sprint")}
-          className={`flex-1 py-2 text-sm font-medium text-center border-b-2 transition-colors ${activeTab === "sprint" ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}>
-          Sprint
-        </button>
-      </div>
-
-      {/* Split view */}
-      <div className="flex-1 min-h-0 flex">
-        {/* Backlog panel */}
-        <div className={`border-r border-border ${activeTab === "sprint" ? "hidden md:flex" : "flex"} md:flex flex-col`}
-          style={{ width: "40%", minWidth: 280 }}>
-          {backlogPanel}
-        </div>
-        {/* Sprint panel */}
-        <div className={`flex-1 ${activeTab === "backlog" ? "hidden md:flex" : "flex"} md:flex flex-col min-w-0`}>
-          {sprintPanel}
+        <div className="flex gap-1.5 mb-1">
+          <Button size="sm" variant={pageView === "board" ? "default" : "outline"} className="h-7 text-xs"
+            onClick={() => setPageView("board")}>
+            <Layers className="h-3 w-3 mr-1" /> Board
+          </Button>
+          <Button size="sm" variant={pageView === "history" ? "default" : "outline"} className="h-7 text-xs"
+            onClick={() => setPageView("history")}>
+            <History className="h-3 w-3 mr-1" /> Historikk
+          </Button>
         </div>
       </div>
+
+      {pageView === "history" ? (
+        <div className="flex-1 overflow-y-auto">
+          <SprintHistory />
+        </div>
+      ) : (
+        <>
+          {/* Mobile tabs */}
+          <div className="md:hidden flex border-b border-border px-4">
+            <button onClick={() => setActiveTab("backlog")}
+              className={`flex-1 py-2 text-sm font-medium text-center border-b-2 transition-colors ${activeTab === "backlog" ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}>
+              Backlog
+            </button>
+            <button onClick={() => setActiveTab("sprint")}
+              className={`flex-1 py-2 text-sm font-medium text-center border-b-2 transition-colors ${activeTab === "sprint" ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}>
+              Sprint
+            </button>
+          </div>
+
+          {/* Split view */}
+          <div className="flex-1 min-h-0 flex">
+            <div className={`border-r border-border ${activeTab === "sprint" ? "hidden md:flex" : "flex"} md:flex flex-col`}
+              style={{ width: "40%", minWidth: 280 }}>
+              {backlogPanel}
+            </div>
+            <div className={`flex-1 ${activeTab === "backlog" ? "hidden md:flex" : "flex"} md:flex flex-col min-w-0`}>
+              {sprintPanel}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Create sprint dialog */}
       <Dialog open={showCreateSprint} onOpenChange={setShowCreateSprint}>
@@ -729,6 +757,18 @@ export default function SprinterPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Close sprint modal */}
+      {currentSprint && sprintItems && (
+        <CloseSprintModal
+          open={showCloseSprint}
+          onOpenChange={setShowCloseSprint}
+          sprint={currentSprint as any}
+          sprintItems={sprintItems}
+          nextSprints={nextSprints as any[]}
+          members={members ?? []}
+        />
+      )}
     </div>
   );
 }

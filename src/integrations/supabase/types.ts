@@ -938,6 +938,38 @@ export type Database = {
           },
         ]
       }
+      sprint_daily_stats: {
+        Row: {
+          completed_points: number
+          date: string
+          id: string
+          remaining_points: number
+          sprint_id: string
+        }
+        Insert: {
+          completed_points?: number
+          date: string
+          id?: string
+          remaining_points?: number
+          sprint_id: string
+        }
+        Update: {
+          completed_points?: number
+          date?: string
+          id?: string
+          remaining_points?: number
+          sprint_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sprint_daily_stats_sprint_id_fkey"
+            columns: ["sprint_id"]
+            isOneToOne: false
+            referencedRelation: "sprints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sprint_items: {
         Row: {
           backlog_item_id: string
@@ -977,32 +1009,97 @@ export type Database = {
           },
         ]
       }
+      sprint_snapshots: {
+        Row: {
+          completed_item_titles: string[] | null
+          completed_items: number
+          completed_points: number
+          created_at: string
+          daily_burndown: Json | null
+          id: string
+          incomplete_item_titles: string[] | null
+          items_by_person: Json | null
+          items_by_type: Json | null
+          sprint_id: string
+          total_items: number
+          total_points: number
+        }
+        Insert: {
+          completed_item_titles?: string[] | null
+          completed_items?: number
+          completed_points?: number
+          created_at?: string
+          daily_burndown?: Json | null
+          id?: string
+          incomplete_item_titles?: string[] | null
+          items_by_person?: Json | null
+          items_by_type?: Json | null
+          sprint_id: string
+          total_items?: number
+          total_points?: number
+        }
+        Update: {
+          completed_item_titles?: string[] | null
+          completed_items?: number
+          completed_points?: number
+          created_at?: string
+          daily_burndown?: Json | null
+          id?: string
+          incomplete_item_titles?: string[] | null
+          items_by_person?: Json | null
+          items_by_type?: Json | null
+          sprint_id?: string
+          total_items?: number
+          total_points?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sprint_snapshots_sprint_id_fkey"
+            columns: ["sprint_id"]
+            isOneToOne: false
+            referencedRelation: "sprints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sprints: {
         Row: {
+          completed_at: string | null
           created_at: string
           end_date: string
           goal: string | null
           id: string
           is_active: boolean
           name: string
+          notes: string | null
+          reflection: string | null
+          sprint_review_notes: string | null
           start_date: string
         }
         Insert: {
+          completed_at?: string | null
           created_at?: string
           end_date: string
           goal?: string | null
           id?: string
           is_active?: boolean
           name: string
+          notes?: string | null
+          reflection?: string | null
+          sprint_review_notes?: string | null
           start_date: string
         }
         Update: {
+          completed_at?: string | null
           created_at?: string
           end_date?: string
           goal?: string | null
           id?: string
           is_active?: boolean
           name?: string
+          notes?: string | null
+          reflection?: string | null
+          sprint_review_notes?: string | null
           start_date?: string
         }
         Relationships: []
