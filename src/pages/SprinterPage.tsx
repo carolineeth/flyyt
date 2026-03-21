@@ -293,6 +293,7 @@ export default function SprinterPage() {
       type: item.type, priority: item.priority,
       estimate: item.estimate, assignee_id: item.assignee_id,
       epic: item.epic ?? "", labels: (item.labels ?? []).join(", "),
+      collaborator_ids: (item as any).collaborator_ids ?? [],
     });
   };
 
@@ -304,6 +305,7 @@ export default function SprinterPage() {
       priority: editForm.priority, estimate: editForm.estimate,
       assignee_id: editForm.assignee_id, epic: editForm.epic || null,
       labels: editForm.labels ? editForm.labels.split(",").map((l: string) => l.trim()).filter(Boolean) : [],
+      collaborator_ids: editForm.collaborator_ids ?? [],
     });
     setDetailItem(null);
   };
@@ -384,6 +386,17 @@ export default function SprinterPage() {
               )}
               <span className={`h-2 w-2 rounded-full shrink-0 ${priorityDot[item.priority] ?? "bg-gray-400"}`} />
               {assignee && <MemberAvatar member={assignee} />}
+              {((item as any).collaborator_ids ?? []).length > 0 && (
+                <div className="flex -space-x-1">
+                  {((item as any).collaborator_ids as string[]).slice(0, 2).map((cid) => {
+                    const c = members?.find((m) => m.id === cid);
+                    return c ? <MemberAvatar key={cid} member={c} /> : null;
+                  })}
+                  {((item as any).collaborator_ids as string[]).length > 2 && (
+                    <span className="text-[9px] text-muted-foreground">+{((item as any).collaborator_ids as string[]).length - 2}</span>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
@@ -692,6 +705,29 @@ export default function SprinterPage() {
                   <div>
                     <Label>Epic</Label>
                     <Input value={editForm.epic} onChange={(e) => setEditForm((p: any) => ({ ...p, epic: e.target.value }))} />
+                  </div>
+                </div>
+                <div>
+                  <Label>Bidragsytere</Label>
+                  <div className="flex gap-1 flex-wrap mt-1">
+                    {members?.map((m) => {
+                      const selected = (editForm.collaborator_ids ?? []).includes(m.id);
+                      return (
+                        <button key={m.id} type="button"
+                          onClick={() => setEditForm((p: any) => ({
+                            ...p,
+                            collaborator_ids: selected
+                              ? (p.collaborator_ids ?? []).filter((id: string) => id !== m.id)
+                              : [...(p.collaborator_ids ?? []), m.id],
+                          }))}
+                          className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-colors ${
+                            selected ? "bg-primary/10 text-primary ring-1 ring-primary/30" : "bg-muted text-muted-foreground hover:bg-accent"
+                          }`}>
+                          <MemberAvatar member={m} />
+                          <span>{m.name.split(" ")[0]}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
                 <div>
