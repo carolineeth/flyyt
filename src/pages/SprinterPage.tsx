@@ -129,7 +129,7 @@ export default function SprinterPage() {
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
 
   // Computed
-  const sprintItemIds = useMemo(() => new Set(sprintItems?.map((si) => si.backlog_item_id) ?? []), [sprintItems]);
+  const sprintItemIds = useMemo(() => new Set(allSprintItemIds ?? []), [allSprintItemIds]);
 
   const backlogFiltered = useMemo(() => {
     return (allBacklogItems ?? [])
