@@ -757,6 +757,18 @@ export default function SprinterPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Close sprint modal */}
+      {currentSprint && sprintItems && (
+        <CloseSprintModal
+          open={showCloseSprint}
+          onOpenChange={setShowCloseSprint}
+          sprint={currentSprint as any}
+          sprintItems={sprintItems}
+          nextSprints={nextSprints as any[]}
+          members={members ?? []}
+        />
+      )}
     </div>
   );
 }
