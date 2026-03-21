@@ -194,7 +194,7 @@ export default function SprinterPage() {
       const { error } = await supabase.from("sprint_items").update({ column_name: newColumn }).eq("id", itemId);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["sprint_items"] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["sprint_items"] }); qc.invalidateQueries({ queryKey: ["all_sprint_backlog_ids"] }); },
   });
 
   const removeFromSprintMutation = useMutation({
