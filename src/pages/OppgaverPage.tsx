@@ -62,6 +62,15 @@ export default function OppgaverPage() {
     },
   });
 
+  const { data: taskSubtasks } = useQuery({
+    queryKey: ["task_subtasks"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("task_subtasks").select("*").order("created_at");
+      if (error) throw error;
+      return data as { id: string; task_id: string; title: string; is_completed: boolean; created_at: string }[];
+    },
+  });
+
   const [filterCategory, setFilterCategory] = useState("all");
   const [showCompleted, setShowCompleted] = useState(false);
   const [showMine, setShowMine] = useState(false);
@@ -127,6 +136,30 @@ export default function OppgaverPage() {
       setShowDetail(false);
       toast.success("Oppdatert");
     },
+  });
+
+  const addTaskSubtask = useMutation({
+    mutationFn: async ({ taskId, title }: { taskId: string; title: string }) => {
+      const { error } = await supabase.from("task_subtasks").insert({ task_id: taskId, title });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["task_subtasks"] }),
+  });
+
+  const toggleTaskSubtask = useMutation({
+    mutationFn: async ({ id, completed }: { id: string; completed: boolean }) => {
+      const { error } = await supabase.from("task_subtasks").update({ is_completed: completed }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["task_subtasks"] }),
+  });
+
+  const deleteTaskSubtask = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("task_subtasks").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["task_subtasks"] }),
   });
 
   const deleteMutation = useMutation({
