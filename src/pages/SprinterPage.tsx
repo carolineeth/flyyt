@@ -87,6 +87,16 @@ export default function SprinterPage() {
     },
   });
 
+  // Fetch ALL sprint item IDs (across all sprints) so backlog excludes them all
+  const { data: allSprintItemIds } = useQuery<string[]>({
+    queryKey: ["all_sprint_backlog_ids"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sprint_items").select("backlog_item_id");
+      if (error) throw error;
+      return data.map((r) => r.backlog_item_id);
+    },
+  });
+
   const { data: subtasks } = useQuery<Subtask[]>({
     queryKey: ["subtasks"],
     queryFn: async () => {
@@ -119,7 +129,7 @@ export default function SprinterPage() {
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
 
   // Computed
-  const sprintItemIds = useMemo(() => new Set(sprintItems?.map((si) => si.backlog_item_id) ?? []), [sprintItems]);
+  const sprintItemIds = useMemo(() => new Set(allSprintItemIds ?? []), [allSprintItemIds]);
 
   const backlogFiltered = useMemo(() => {
     return (allBacklogItems ?? [])
@@ -173,6 +183,7 @@ export default function SprinterPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["sprint_items"] });
+      qc.invalidateQueries({ queryKey: ["all_sprint_backlog_ids"] });
       setPlanningSelected(new Set());
       toast.success("Lagt til i sprint");
     },
@@ -183,7 +194,7 @@ export default function SprinterPage() {
       const { error } = await supabase.from("sprint_items").update({ column_name: newColumn }).eq("id", itemId);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["sprint_items"] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["sprint_items"] }); qc.invalidateQueries({ queryKey: ["all_sprint_backlog_ids"] }); },
   });
 
   const removeFromSprintMutation = useMutation({
@@ -193,6 +204,7 @@ export default function SprinterPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["sprint_items"] });
+      qc.invalidateQueries({ queryKey: ["all_sprint_backlog_ids"] });
       setDetailItem(null);
       toast.success("Fjernet fra sprint");
     },
@@ -212,6 +224,7 @@ export default function SprinterPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["sprint_items"] });
+      qc.invalidateQueries({ queryKey: ["all_sprint_backlog_ids"] });
       qc.invalidateQueries({ queryKey: ["backlog_items"] });
       setInlineAddCol(null);
       setInlineTitle("");
@@ -226,6 +239,7 @@ export default function SprinterPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["sprint_items"] });
+      qc.invalidateQueries({ queryKey: ["all_sprint_backlog_ids"] });
       qc.invalidateQueries({ queryKey: ["backlog_items"] });
       toast.success("Oppdatert");
     },
