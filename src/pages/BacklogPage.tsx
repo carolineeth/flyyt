@@ -81,6 +81,8 @@ export default function BacklogPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [filterType, setFilterType] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterPriority, setFilterPriority] = useState<string>("all");
+  const [filterEpic, setFilterEpic] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"list" | "board">("list");
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const [dragOverStatus, setDragOverStatus] = useState<string | null>(null);
@@ -184,10 +186,19 @@ export default function BacklogPage() {
     if (targetItem) updateSortMutation.mutate({ id: dragId, sort_order: targetItem.sort_order });
   }, [items, updateSortMutation]);
 
+  const priorityOrder: Record<string, number> = { must_have: 0, should_have: 1, nice_to_have: 2 };
+
   const filtered = items?.filter((i) => {
     if (filterType !== "all" && i.type !== filterType) return false;
     if (filterStatus !== "all" && i.status !== filterStatus) return false;
+    if (filterPriority !== "all" && i.priority !== filterPriority) return false;
+    if (filterEpic !== "all" && i.epic !== filterEpic) return false;
     return true;
+  })?.sort((a, b) => {
+    const pa = priorityOrder[a.priority] ?? 9;
+    const pb = priorityOrder[b.priority] ?? 9;
+    if (pa !== pb) return pa - pb;
+    return (a.epic ?? "").localeCompare(b.epic ?? "");
   });
 
   const renderItemCard = (item: BacklogItem, compact = false) => {
@@ -251,6 +262,20 @@ export default function BacklogPage() {
           <SelectContent>
             <SelectItem value="all">Alle statuser</SelectItem>
             {Object.entries(statusLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterPriority} onValueChange={setFilterPriority}>
+          <SelectTrigger className="w-36 h-8 text-sm"><SelectValue placeholder="Prioritet" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Alle prioriteter</SelectItem>
+            {Object.entries(priorityLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterEpic} onValueChange={setFilterEpic}>
+          <SelectTrigger className="w-40 h-8 text-sm"><SelectValue placeholder="Epic" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Alle epics</SelectItem>
+            {existingEpics.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
           </SelectContent>
         </Select>
         <div className="ml-auto flex rounded-md border border-border overflow-hidden">
