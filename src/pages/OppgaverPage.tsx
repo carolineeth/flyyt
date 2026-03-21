@@ -80,8 +80,6 @@ export default function OppgaverPage() {
   const [editTask, setEditTask] = useState<any>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
-  const [editTask, setEditTask] = useState<any>(null);
-  const [draggedId, setDraggedId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     let list = tasks ?? [];
