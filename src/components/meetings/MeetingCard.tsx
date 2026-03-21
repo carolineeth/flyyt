@@ -57,12 +57,24 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
 
   const [newAgenda, setNewAgenda] = useState("");
   const [notes, setNotes] = useState(meeting?.notes || "");
+  const [room, setRoom] = useState(meeting?.room || "");
   const [expanded, setExpanded] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [showReschedule, setShowReschedule] = useState(false);
   const [newDate, setNewDate] = useState("");
 
   useEffect(() => { setNotes(meeting?.notes || ""); }, [meeting?.notes]);
+  useEffect(() => { setRoom(meeting?.room || ""); }, [meeting?.room]);
+
+  // Auto-save room
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (meeting?.id && room !== (meeting?.room || "")) {
+        supabase.from("meetings").update({ room } as any).eq("id", meeting.id);
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [room, meeting?.room, meeting?.id]);
 
   const saveNotes = useCallback(async (val: string) => {
     if (!meeting?.id) return;
@@ -293,6 +305,9 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
                   {recurringMeeting.start_time?.slice(0, 5)}–{recurringMeeting.end_time?.slice(0, 5)}
                 </span>
               )}
+              {room && (
+                <Badge variant="outline" className="text-[10px] font-normal">{room}</Badge>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <span className={`text-sm font-semibold ${isCancelled ? "line-through text-muted-foreground" : ""}`}>
@@ -369,6 +384,23 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
                   <span className="text-xs font-medium">{notetakerName}</span>
                 )}
               </div>
+              {editMode ? (
+                <div className="flex items-center gap-1">
+                  <Badge variant="outline" className="text-[10px] shrink-0">Rom</Badge>
+                  <Input
+                    value={room}
+                    onChange={(e) => setRoom(e.target.value)}
+                    placeholder="F.eks. Grupperom 3"
+                    className="h-6 text-xs w-36"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
+              ) : room ? (
+                <div className="flex items-center gap-1">
+                  <Badge variant="outline" className="text-[10px]">Rom</Badge>
+                  <span className="text-xs font-medium">{room}</span>
+                </div>
+              ) : null}
               <div className="ml-auto">
                 <Button
                   variant={editMode ? "default" : "outline"}

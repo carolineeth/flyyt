@@ -1,0 +1,1 @@
+ALTER TABLE public.meetings ADD COLUMN room text DEFAULT NULL;
