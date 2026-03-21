@@ -183,6 +183,7 @@ export default function SprinterPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["sprint_items"] });
+      qc.invalidateQueries({ queryKey: ["all_sprint_backlog_ids"] });
       setPlanningSelected(new Set());
       toast.success("Lagt til i sprint");
     },
@@ -203,6 +204,7 @@ export default function SprinterPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["sprint_items"] });
+      qc.invalidateQueries({ queryKey: ["all_sprint_backlog_ids"] });
       setDetailItem(null);
       toast.success("Fjernet fra sprint");
     },
@@ -222,6 +224,7 @@ export default function SprinterPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["sprint_items"] });
+      qc.invalidateQueries({ queryKey: ["all_sprint_backlog_ids"] });
       qc.invalidateQueries({ queryKey: ["backlog_items"] });
       setInlineAddCol(null);
       setInlineTitle("");
@@ -236,6 +239,7 @@ export default function SprinterPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["sprint_items"] });
+      qc.invalidateQueries({ queryKey: ["all_sprint_backlog_ids"] });
       qc.invalidateQueries({ queryKey: ["backlog_items"] });
       toast.success("Oppdatert");
     },
