@@ -305,6 +305,9 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
                   {recurringMeeting.start_time?.slice(0, 5)}–{recurringMeeting.end_time?.slice(0, 5)}
                 </span>
               )}
+              {room && (
+                <Badge variant="outline" className="text-[10px] font-normal">{room}</Badge>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <span className={`text-sm font-semibold ${isCancelled ? "line-through text-muted-foreground" : ""}`}>
