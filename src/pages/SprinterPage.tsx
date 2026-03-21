@@ -108,6 +108,7 @@ export default function SprinterPage() {
 
   // State
   const [pageView, setPageView] = useState<"board" | "history">("board");
+  const [backlogCollapsed, setBacklogCollapsed] = useState(false);
   const [showCloseSprint, setShowCloseSprint] = useState(false);
   const [activeTab, setActiveTab] = useState<"backlog" | "sprint">("backlog");
   const [filterType, setFilterType] = useState("all");
