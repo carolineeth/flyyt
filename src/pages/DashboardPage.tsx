@@ -302,7 +302,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex items-center justify-between">
                       <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">{sprintStats.doneSp}</span> av {sprintStats.totalSp} SP</p>
-                      <Link to="/sprint" className="text-xs text-primary font-medium hover:underline flex items-center gap-1">Åpne Sprint Board <ArrowRight className="h-3 w-3" /></Link>
+                      <Link to="/sprinter" className="text-xs text-primary font-medium hover:underline flex items-center gap-1">Åpne Sprint Board <ArrowRight className="h-3 w-3" /></Link>
                     </div>
                   </>
                 )}
@@ -310,7 +310,7 @@ export default function DashboardPage() {
             ) : (
               <div className="py-6 text-center">
                 <p className="text-sm text-muted-foreground">Ingen aktiv sprint</p>
-                <Link to="/sprint" className="text-xs text-primary font-medium hover:underline mt-1 inline-block">Opprett en i Sprint Board →</Link>
+                <Link to="/sprinter" className="text-xs text-primary font-medium hover:underline mt-1 inline-block">Opprett en i Sprinter →</Link>
               </div>
             )}
           </CardContent>
@@ -404,9 +404,9 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: "Aktiviteter", to: "/aktiviteter", sub: `${totalEarned}p opptjent` },
-          { label: "Sprint Board", to: "/sprint", sub: `${inProgressCount} in progress` },
+          { label: "Sprinter", to: "/sprinter", sub: `${inProgressCount} in progress` },
           { label: "Møtekalender", to: "/moter", sub: enrichedMeetings[0] ? format(parseISO(enrichedMeetings[0].meeting_date!), "d. MMM", { locale: nb }) : "Vis møter" },
-          { label: "Backlog", to: "/backlog", sub: `${backlogCount ?? 0} items` },
+          { label: "Oppgaver", to: "/oppgaver", sub: `${backlogCount ?? 0} items` },
         ].map((link) => (
           <Link key={link.to} to={link.to}>
             <Card className="rounded-xl border-[0.5px] hover:shadow-md transition-shadow cursor-pointer group">
