@@ -79,6 +79,9 @@ export default function OppgaverPage() {
   const [showDetail, setShowDetail] = useState(false);
   const [editTask, setEditTask] = useState<any>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
+  const [editTask, setEditTask] = useState<any>(null);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     let list = tasks ?? [];
@@ -300,49 +303,106 @@ export default function OppgaverPage() {
 
       {/* Edit dialog */}
       <Dialog open={showDetail} onOpenChange={setShowDetail}>
-        <DialogContent>
-          {editTask && (
-            <>
-              <DialogHeader><DialogTitle>Rediger oppgave</DialogTitle></DialogHeader>
-              <div className="space-y-3">
-                <div><Label>Tittel</Label><Input value={editTask.title} onChange={(e) => setEditTask((p: any) => ({ ...p, title: e.target.value }))} /></div>
-                <div><Label>Beskrivelse</Label><Textarea value={editTask.description ?? ""} onChange={(e) => setEditTask((p: any) => ({ ...p, description: e.target.value }))} rows={3} /></div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>Kategori</Label>
-                    <Select value={editTask.category} onValueChange={(v) => setEditTask((p: any) => ({ ...p, category: v }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {categories.filter(c => c.key !== "all").map(c => (
-                          <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          {editTask && (() => {
+            const subs = taskSubtasks?.filter((s) => s.task_id === editTask.id) ?? [];
+            return (
+              <>
+                <DialogHeader><DialogTitle>Rediger oppgave</DialogTitle></DialogHeader>
+                <div className="space-y-3">
+                  <div><Label>Tittel</Label><Input value={editTask.title} onChange={(e) => setEditTask((p: any) => ({ ...p, title: e.target.value }))} /></div>
+                  <div><Label>Beskrivelse</Label><Textarea value={editTask.description ?? ""} onChange={(e) => setEditTask((p: any) => ({ ...p, description: e.target.value }))} rows={3} /></div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Kategori</Label>
+                      <Select value={editTask.category} onValueChange={(v) => setEditTask((p: any) => ({ ...p, category: v }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {categories.filter(c => c.key !== "all").map(c => (
+                            <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Ansvarlig</Label>
+                      <Select value={editTask.assignee_id ?? ""} onValueChange={(v) => setEditTask((p: any) => ({ ...p, assignee_id: v || null }))}>
+                        <SelectTrigger><SelectValue placeholder="Velg" /></SelectTrigger>
+                        <SelectContent>{members?.map(m => <SelectItem key={m.id} value={m.id}>{m.name.split(" ")[0]}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <div>
-                    <Label>Ansvarlig</Label>
-                    <Select value={editTask.assignee_id ?? ""} onValueChange={(v) => setEditTask((p: any) => ({ ...p, assignee_id: v || null }))}>
-                      <SelectTrigger><SelectValue placeholder="Velg" /></SelectTrigger>
-                      <SelectContent>{members?.map(m => <SelectItem key={m.id} value={m.id}>{m.name.split(" ")[0]}</SelectItem>)}</SelectContent>
-                    </Select>
+                    <Label>Bidragsytere</Label>
+                    <div className="flex gap-1 flex-wrap mt-1">
+                      {members?.map((m) => {
+                        const selected = (editTask.collaborator_ids ?? []).includes(m.id);
+                        return (
+                          <button key={m.id} type="button"
+                            onClick={() => setEditTask((p: any) => ({
+                              ...p,
+                              collaborator_ids: selected
+                                ? (p.collaborator_ids ?? []).filter((id: string) => id !== m.id)
+                                : [...(p.collaborator_ids ?? []), m.id],
+                            }))}
+                            className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-colors ${
+                              selected ? "bg-primary/10 text-primary ring-1 ring-primary/30" : "bg-muted text-muted-foreground hover:bg-accent"
+                            }`}>
+                            <MemberAvatar member={m} />
+                            <span>{m.name.split(" ")[0]}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Frist</Label>
+                    <Input type="date" value={editTask.due_date ?? ""} onChange={(e) => setEditTask((p: any) => ({ ...p, due_date: e.target.value || null }))} />
+                  </div>
+
+                  {/* Subtasks */}
+                  <div>
+                    <Label className="mb-1 block">Deloppgaver</Label>
+                    <div className="space-y-1">
+                      {subs.map((st) => (
+                        <div key={st.id} className="flex items-center gap-2">
+                          <Checkbox checked={st.is_completed} onCheckedChange={(v) => toggleTaskSubtask.mutate({ id: st.id, completed: !!v })} />
+                          <span className={`text-sm flex-1 ${st.is_completed ? "line-through text-muted-foreground" : ""}`}>{st.title}</span>
+                          <button onClick={() => deleteTaskSubtask.mutate(st.id)} className="text-muted-foreground hover:text-destructive">
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-1 mt-2">
+                      <Input value={newSubtaskTitle} onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                        placeholder="Ny deloppgave..." className="h-7 text-xs"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && newSubtaskTitle.trim()) {
+                            addTaskSubtask.mutate({ taskId: editTask.id, title: newSubtaskTitle.trim() });
+                            setNewSubtaskTitle("");
+                          }
+                        }} />
+                      <Button size="sm" variant="ghost" className="h-7 text-xs"
+                        onClick={() => { if (newSubtaskTitle.trim()) { addTaskSubtask.mutate({ taskId: editTask.id, title: newSubtaskTitle.trim() }); setNewSubtaskTitle(""); } }}>
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <Label>Frist</Label>
-                  <Input type="date" value={editTask.due_date ?? ""} onChange={(e) => setEditTask((p: any) => ({ ...p, due_date: e.target.value || null }))} />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="ghost" onClick={() => setShowDetail(false)}>Avbryt</Button>
-                <Button onClick={() => updateMutation.mutate({
-                  id: editTask.id, title: editTask.title,
-                  description: editTask.description || null,
-                  category: editTask.category, assignee_id: editTask.assignee_id,
-                  due_date: editTask.due_date || null,
-                })}>Lagre</Button>
-              </DialogFooter>
-            </>
-          )}
+                <DialogFooter>
+                  <Button variant="ghost" onClick={() => setShowDetail(false)}>Avbryt</Button>
+                  <Button onClick={() => updateMutation.mutate({
+                    id: editTask.id, title: editTask.title,
+                    description: editTask.description || null,
+                    category: editTask.category, assignee_id: editTask.assignee_id,
+                    due_date: editTask.due_date || null,
+                    collaborator_ids: editTask.collaborator_ids ?? [],
+                  })}>Lagre</Button>
+                </DialogFooter>
+              </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>
