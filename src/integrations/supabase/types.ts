@@ -311,6 +311,7 @@ export type Database = {
       backlog_items: {
         Row: {
           assignee_id: string | null
+          collaborator_ids: string[] | null
           created_at: string
           description: string | null
           epic: string | null
@@ -327,6 +328,7 @@ export type Database = {
         }
         Insert: {
           assignee_id?: string | null
+          collaborator_ids?: string[] | null
           created_at?: string
           description?: string | null
           epic?: string | null
@@ -343,6 +345,7 @@ export type Database = {
         }
         Update: {
           assignee_id?: string | null
+          collaborator_ids?: string[] | null
           created_at?: string
           description?: string | null
           epic?: string | null
@@ -1178,10 +1181,43 @@ export type Database = {
           },
         ]
       }
+      task_subtasks: {
+        Row: {
+          created_at: string
+          id: string
+          is_completed: boolean
+          task_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          task_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          task_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_subtasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           assignee_id: string | null
           category: string
+          collaborator_ids: string[] | null
           completed_at: string | null
           created_at: string
           created_by: string | null
@@ -1195,6 +1231,7 @@ export type Database = {
         Insert: {
           assignee_id?: string | null
           category?: string
+          collaborator_ids?: string[] | null
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -1208,6 +1245,7 @@ export type Database = {
         Update: {
           assignee_id?: string | null
           category?: string
+          collaborator_ids?: string[] | null
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
