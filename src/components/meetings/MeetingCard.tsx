@@ -5,7 +5,6 @@ import {
   useMeetingAgendaItems,
   useMeetingSubSessions,
   useMeetingActionPoints,
-  formatDateNb,
   formatWeekdayNb,
 } from "@/hooks/useMeetingCalendar";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
@@ -16,10 +15,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { SubSessionBlock } from "./SubSessionBlock";
 import { toast } from "sonner";
-import { Plus, Play, Square, Copy, ChevronUp, ChevronDown, X, CalendarDays, Save } from "lucide-react";
+import { Plus, Play, Square, Copy, ChevronUp, ChevronDown, X, CalendarDays, Save, Pencil, Eye, Users, ListChecks, FileText } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const subSessionTemplates: Record<string, string[]> = {
@@ -60,12 +58,12 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
   const [newAgenda, setNewAgenda] = useState("");
   const [notes, setNotes] = useState(meeting?.notes || "");
   const [expanded, setExpanded] = useState(true);
+  const [editMode, setEditMode] = useState(false);
   const [showReschedule, setShowReschedule] = useState(false);
   const [newDate, setNewDate] = useState("");
 
   useEffect(() => { setNotes(meeting?.notes || ""); }, [meeting?.notes]);
 
-  // Auto-save notes
   const saveNotes = useCallback(async (val: string) => {
     if (!meeting?.id) return;
     await supabase.from("meetings").update({ notes: val } as any).eq("id", meeting.id);
@@ -88,6 +86,11 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
   const todayDate = new Date();
   todayDate.setHours(0, 0, 0, 0);
   const isPast = meetingDate < todayDate;
+
+  const presentCount = (meeting.participants || []).length;
+  const presentNames = (meeting.participants || [])
+    .map((pid: string) => members?.find((m) => m.id === pid)?.name?.split(" ")[0])
+    .filter(Boolean);
 
   const saveMeeting = async () => {
     await saveNotes(notes);
@@ -168,7 +171,6 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
     } as any).select().single();
     if (error) { toast.error(error.message); return; }
 
-    // Pre-fill template items
     const templateItems = subSessionTemplates[type];
     if (templateItems && ss) {
       await supabase.from("meeting_sub_session_items" as any).insert(
@@ -235,7 +237,6 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
     let log = `Møte: ${recurringMeeting?.label || "Møte"} — ${dateStr}\n`;
     log += `Tid: ${startTime}–${endTime}\n`;
     log += `Møteleder: ${leaderName} | Referent: ${notetakerName}\n`;
-    const presentNames = (meeting.participants || []).map((pid: string) => members?.find((m) => m.id === pid)?.name?.split(" ")[0]).filter(Boolean);
     if (presentNames.length > 0) log += `Deltakere: ${presentNames.join(", ")}\n`;
     log += "\n";
 
@@ -272,120 +273,193 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
     toast.success("Kopiert til utklippstavlen");
   };
 
+  const meetingLabel = recurringMeeting?.label || meeting.notes || "Møte";
+
   return (
     <Card className={`overflow-hidden transition-shadow ${isToday ? "ring-2 ring-primary shadow-md" : ""} ${isCancelled ? "opacity-60" : ""}`}>
       <CardContent className="p-0">
-        {/* Header */}
+        {/* Header — always visible */}
         <div
           className="px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-accent/30 transition-colors"
           onClick={() => setExpanded(!expanded)}
         >
           <div className="space-y-0.5">
             <div className="flex items-center gap-2">
-              <span className={`text-sm font-semibold capitalize ${isCancelled ? "line-through text-muted-foreground" : ""}`}>
-                {formatWeekdayNb(meetingDate)} {meetingDate.getDate()}. {meetingDate.toLocaleDateString("nb-NO", { month: "long" })}
+              <span className="text-xs font-medium text-muted-foreground">
+                {formatWeekdayNb(meetingDate)} {meetingDate.getDate()}. {meetingDate.toLocaleDateString("nb-NO", { month: "short" })}
+              </span>
+              {recurringMeeting && (
+                <span className="text-xs text-muted-foreground">
+                  {recurringMeeting.start_time?.slice(0, 5)}–{recurringMeeting.end_time?.slice(0, 5)}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`text-sm font-semibold ${isCancelled ? "line-through text-muted-foreground" : ""}`}>
+                {meetingLabel}
               </span>
               {isToday && <Badge className="bg-primary text-primary-foreground text-[10px]">I dag</Badge>}
               {status === "in_progress" && <Badge className="bg-green-600 text-white text-[10px]">Pågår</Badge>}
               {status === "completed" && <Badge variant="secondary" className="text-[10px]">Fullført</Badge>}
               {isCancelled && <Badge variant="destructive" className="text-[10px]">Avlyst</Badge>}
             </div>
-            {recurringMeeting && (
-              <Badge variant="outline" className="text-[10px]">
-                {recurringMeeting.start_time?.slice(0, 5)} – {recurringMeeting.end_time?.slice(0, 5)}
-              </Badge>
-            )}
           </div>
-          {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          <div className="flex items-center gap-1">
+            {/* Quick stats in header */}
+            {!expanded && !isCancelled && (
+              <div className="flex items-center gap-2 mr-2 text-muted-foreground">
+                {(agendaItems?.length ?? 0) > 0 && (
+                  <span className="flex items-center gap-0.5 text-[10px]">
+                    <ListChecks className="h-3 w-3" />
+                    {agendaItems?.filter((a: any) => a.is_completed).length}/{agendaItems?.length}
+                  </span>
+                )}
+                {presentCount > 0 && (
+                  <span className="flex items-center gap-0.5 text-[10px]">
+                    <Users className="h-3 w-3" />
+                    {presentCount}
+                  </span>
+                )}
+                {(subSessions?.length ?? 0) > 0 && (
+                  <span className="flex items-center gap-0.5 text-[10px]">
+                    <FileText className="h-3 w-3" />
+                    {subSessions?.length}
+                  </span>
+                )}
+              </div>
+            )}
+            {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </div>
         </div>
 
+        {/* Expanded content */}
         {expanded && !isCancelled && (
-          <div className="px-4 pb-4 space-y-4 border-t border-border pt-3">
-            {/* Roles */}
-            <div className="flex gap-2 flex-wrap">
+          <div className="px-4 pb-4 space-y-3 border-t border-border pt-3">
+            {/* Roles row */}
+            <div className="flex items-center gap-3 flex-wrap">
               <div className="flex items-center gap-1">
                 <Badge className="bg-teal-600 text-white text-[10px]">Leder</Badge>
-                <Select value={meeting.leader_id || ""} onValueChange={(v) => overrideRole("leader_id", v === "none" ? null as any : v)}>
-                  <SelectTrigger className="h-6 text-xs w-32 border-0 p-0 pl-1">
-                    <SelectValue placeholder={leaderName} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Ingen</SelectItem>
-                    {members?.map((m) => <SelectItem key={m.id} value={m.id}>{m.name.split(" ")[0]}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                {editMode ? (
+                  <Select value={meeting.leader_id || ""} onValueChange={(v) => overrideRole("leader_id", v === "none" ? null as any : v)}>
+                    <SelectTrigger className="h-6 text-xs w-28 border-0 p-0 pl-1">
+                      <SelectValue placeholder={leaderName} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Ingen</SelectItem>
+                      {members?.map((m) => <SelectItem key={m.id} value={m.id}>{m.name.split(" ")[0]}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <span className="text-xs font-medium">{leaderName}</span>
+                )}
               </div>
               <div className="flex items-center gap-1">
                 <Badge className="bg-purple-600 text-white text-[10px]">Referent</Badge>
-                <Select value={meeting.notetaker_id || ""} onValueChange={(v) => overrideRole("notetaker_id", v === "none" ? null as any : v)}>
-                  <SelectTrigger className="h-6 text-xs w-32 border-0 p-0 pl-1">
-                    <SelectValue placeholder={notetakerName} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Ingen</SelectItem>
-                    {members?.map((m) => <SelectItem key={m.id} value={m.id}>{m.name.split(" ")[0]}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                {editMode ? (
+                  <Select value={meeting.notetaker_id || ""} onValueChange={(v) => overrideRole("notetaker_id", v === "none" ? null as any : v)}>
+                    <SelectTrigger className="h-6 text-xs w-28 border-0 p-0 pl-1">
+                      <SelectValue placeholder={notetakerName} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Ingen</SelectItem>
+                      {members?.map((m) => <SelectItem key={m.id} value={m.id}>{m.name.split(" ")[0]}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <span className="text-xs font-medium">{notetakerName}</span>
+                )}
+              </div>
+              <div className="ml-auto">
+                <Button
+                  variant={editMode ? "default" : "outline"}
+                  size="sm"
+                  className="h-6 text-[11px] px-2"
+                  onClick={(e) => { e.stopPropagation(); setEditMode(!editMode); }}
+                >
+                  {editMode ? <><Eye className="h-3 w-3 mr-1" /> Forhåndsvisning</> : <><Pencil className="h-3 w-3 mr-1" /> Rediger</>}
+                </Button>
               </div>
             </div>
 
             {/* Participants */}
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Tilstede</p>
-              <div className="flex flex-wrap gap-2.5">
-                {members?.map((m) => {
-                  const isPresent = (meeting.participants || []).includes(m.id);
-                  return (
-                    <label key={m.id} className="flex items-center gap-1.5 text-xs cursor-pointer">
-                      <Checkbox
-                        checked={isPresent}
-                        onCheckedChange={async (checked) => {
-                          const current: string[] = meeting.participants || [];
-                          const updated = checked
-                            ? [...current, m.id]
-                            : current.filter((id: string) => id !== m.id);
-                          await supabase.from("meetings").update({ participants: updated } as any).eq("id", meeting.id);
-                          qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
-                        }}
-                      />
-                      {m.name.split(" ")[0]}
-                    </label>
-                  );
-                })}
-              </div>
-              {(meeting.participants || []).length > 0 && (
-                <p className="text-[10px] text-muted-foreground">
-                  {(meeting.participants || []).length} av {members?.length ?? 0} tilstede
-                </p>
+              <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Users className="h-3 w-3" /> Tilstede
+                {presentCount > 0 && <span className="text-[10px]">({presentCount}/{members?.length ?? 0})</span>}
+              </p>
+              {editMode ? (
+                <div className="flex flex-wrap gap-2.5">
+                  {members?.map((m) => {
+                    const isPresent = (meeting.participants || []).includes(m.id);
+                    return (
+                      <label key={m.id} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                        <Checkbox
+                          checked={isPresent}
+                          onCheckedChange={async (checked) => {
+                            const current: string[] = meeting.participants || [];
+                            const updated = checked
+                              ? [...current, m.id]
+                              : current.filter((id: string) => id !== m.id);
+                            await supabase.from("meetings").update({ participants: updated } as any).eq("id", meeting.id);
+                            qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
+                          }}
+                        />
+                        {m.name.split(" ")[0]}
+                      </label>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-1">
+                  {presentCount > 0 ? (
+                    presentNames.map((name: string, i: number) => (
+                      <Badge key={i} variant="secondary" className="text-[10px] font-normal">{name}</Badge>
+                    ))
+                  ) : (
+                    <span className="text-xs text-muted-foreground italic">Ingen registrert ennå</span>
+                  )}
+                </div>
               )}
             </div>
+
+            {/* Agenda */}
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Agenda</p>
-              {agendaItems?.map((ai: any, idx: number) => (
-                <div key={ai.id} className="flex items-center gap-2 group">
-                  {(status === "in_progress" || status === "completed") && (
-                    <Checkbox
-                      checked={ai.is_completed}
-                      onCheckedChange={(v) => toggleAgendaItem(ai.id, !!v)}
-                    />
-                  )}
-                  <span className={`text-sm flex-1 ${ai.is_completed ? "line-through text-muted-foreground" : ""}`}>
-                    {ai.title}
+              <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <ListChecks className="h-3 w-3" /> Agenda
+                {(agendaItems?.length ?? 0) > 0 && (
+                  <span className="text-[10px]">
+                    ({agendaItems?.filter((a: any) => a.is_completed).length}/{agendaItems?.length})
                   </span>
-                  {ai.added_by && (() => {
-                    const m = members?.find((mm) => mm.id === ai.added_by);
-                    return m ? <span className="text-[10px] text-muted-foreground">{m.name.split(" ")[0]}</span> : null;
-                  })()}
-                  <div className="opacity-0 group-hover:opacity-100 flex gap-0.5">
-                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => moveAgendaItem(idx, "up")} disabled={idx === 0}>
-                      <ChevronUp className="h-3 w-3" />
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => moveAgendaItem(idx, "down")} disabled={idx === (agendaItems?.length ?? 0) - 1}>
-                      <ChevronDown className="h-3 w-3" />
-                    </Button>
-                  </div>
+                )}
+              </p>
+              {(agendaItems?.length ?? 0) > 0 ? (
+                <div className="space-y-0.5">
+                  {agendaItems?.map((ai: any, idx: number) => (
+                    <div key={ai.id} className="flex items-center gap-2 group">
+                      <Checkbox
+                        checked={ai.is_completed}
+                        onCheckedChange={(v) => toggleAgendaItem(ai.id, !!v)}
+                      />
+                      <span className={`text-xs flex-1 ${ai.is_completed ? "line-through text-muted-foreground" : ""}`}>
+                        {ai.title}
+                      </span>
+                      {editMode && (
+                        <div className="opacity-0 group-hover:opacity-100 flex gap-0.5">
+                          <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => moveAgendaItem(idx, "up")} disabled={idx === 0}>
+                            <ChevronUp className="h-3 w-3" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => moveAgendaItem(idx, "down")} disabled={idx === (agendaItems?.length ?? 0) - 1}>
+                            <ChevronDown className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                !editMode && <span className="text-xs text-muted-foreground italic">Ingen agendapunkter ennå</span>
+              )}
+              {/* Always allow adding agenda items */}
               <div className="flex gap-1 mt-1">
                 <Input
                   value={newAgenda}
@@ -401,56 +475,93 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
             </div>
 
             {/* Sub-sessions */}
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">Delmøter</p>
-              {subSessions?.map((ss: any) => (
-                <SubSessionBlock
-                  key={ss.id}
-                  subSession={ss}
-                  meetingStatus={status}
-                  meetingId={meeting.id}
-                  meetingDate={meeting.meeting_date || meetingDate.toISOString().split("T")[0]}
-                  meetingParticipants={meeting.participants || []}
-                  onDelete={() => deleteSubSession(ss.id)}
-                />
-              ))}
-              <Select onValueChange={addSubSession}>
-                <SelectTrigger className="h-7 text-xs w-48">
-                  <SelectValue placeholder="+ Legg til delmøte" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(subSessionTypeLabels).map(([k, v]) => (
-                    <SelectItem key={k} value={k}>{v}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {((subSessions?.length ?? 0) > 0 || editMode) && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Delmøter</p>
+                {subSessions?.map((ss: any) => (
+                  editMode ? (
+                    <SubSessionBlock
+                      key={ss.id}
+                      subSession={ss}
+                      meetingStatus={status}
+                      meetingId={meeting.id}
+                      meetingDate={meeting.meeting_date || meetingDate.toISOString().split("T")[0]}
+                      meetingParticipants={meeting.participants || []}
+                      onDelete={() => deleteSubSession(ss.id)}
+                    />
+                  ) : (
+                    <div key={ss.id} className="rounded-md border border-border px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px]">{subSessionTypeLabels[ss.type] || ss.type}</Badge>
+                        <span className="text-xs font-medium">{ss.title}</span>
+                      </div>
+                      {ss.notes && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{ss.notes}</p>}
+                    </div>
+                  )
+                ))}
+                {editMode && (
+                  <Select onValueChange={addSubSession}>
+                    <SelectTrigger className="h-7 text-xs w-48">
+                      <SelectValue placeholder="+ Legg til delmøte" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(subSessionTypeLabels).map(([k, v]) => (
+                        <SelectItem key={k} value={k}>{v}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            )}
 
             {/* Notes */}
-            <div>
-              <p className="text-xs font-medium text-muted-foreground mb-1">Notater</p>
-              <Textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Møtenotater..."
-                rows={3}
-                className="text-xs"
-              />
-            </div>
+            {(editMode || notes) && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1">Notater</p>
+                {editMode ? (
+                  <Textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Møtenotater..."
+                    rows={3}
+                    className="text-xs"
+                  />
+                ) : (
+                  <p className="text-xs bg-muted/50 rounded-md px-3 py-2 whitespace-pre-wrap">{notes}</p>
+                )}
+              </div>
+            )}
 
             {/* Action points */}
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">Action points</p>
-              {actionPoints?.map((ap) => (
-                <ActionPointRow key={ap.id} ap={ap} members={members || []} onUpdate={updateActionPoint} />
-              ))}
-              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={addActionPoint}>
-                <Plus className="h-3 w-3 mr-1" /> Action point
-              </Button>
-            </div>
+            {((actionPoints?.length ?? 0) > 0 || editMode) && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Action points</p>
+                {actionPoints?.map((ap) => (
+                  editMode ? (
+                    <ActionPointRow key={ap.id} ap={ap} members={members || []} onUpdate={updateActionPoint} />
+                  ) : (
+                    <div key={ap.id} className="flex items-center gap-2 text-xs">
+                      <Checkbox checked={ap.is_completed} onCheckedChange={(v) => updateActionPoint(ap.id, { is_completed: !!v })} />
+                      <span className={`flex-1 ${ap.is_completed ? "line-through text-muted-foreground" : ""}`}>{ap.title || "–"}</span>
+                      {ap.assignee_id && (
+                        <Badge variant="secondary" className="text-[10px] font-normal">
+                          {members?.find((m) => m.id === ap.assignee_id)?.name?.split(" ")[0]}
+                        </Badge>
+                      )}
+                      {ap.deadline && <span className="text-[10px] text-muted-foreground">{ap.deadline}</span>}
+                    </div>
+                  )
+                ))}
+                {editMode && (
+                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={addActionPoint}>
+                    <Plus className="h-3 w-3 mr-1" /> Action point
+                  </Button>
+                )}
+              </div>
+            )}
 
             {/* Control buttons */}
-            <div className="flex gap-2 pt-2 flex-wrap">
+            <div className="flex gap-2 pt-1 flex-wrap">
               {!isPast && status === "upcoming" && (
                 <Button size="sm" className="h-7 text-xs" onClick={startMeeting}>
                   <Play className="h-3 w-3 mr-1" /> Start møte
@@ -461,41 +572,45 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
                   <Square className="h-3 w-3 mr-1" /> Avslutt møte
                 </Button>
               )}
-              <Button size="sm" variant="default" className="h-7 text-xs" onClick={saveMeeting}>
-                <Save className="h-3 w-3 mr-1" /> Lagre
-              </Button>
-              <Popover open={showReschedule} onOpenChange={setShowReschedule}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-7 text-xs">
-                    <CalendarDays className="h-3 w-3 mr-1" /> Flytt møte
+              {editMode && (
+                <>
+                  <Button size="sm" variant="default" className="h-7 text-xs" onClick={saveMeeting}>
+                    <Save className="h-3 w-3 mr-1" /> Lagre
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-64 p-3" align="start">
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium">Velg ny dato</p>
-                    <Input
-                      type="date"
-                      value={newDate}
-                      onChange={(e) => setNewDate(e.target.value)}
-                      className="h-8 text-xs"
-                    />
-                    <Button size="sm" className="h-7 text-xs w-full" onClick={() => rescheduleMeeting(newDate)} disabled={!newDate}>
-                      Flytt hit
-                    </Button>
-                  </div>
-                </PopoverContent>
-              </Popover>
-              <Button variant="outline" size="sm" className="h-7 text-xs text-destructive hover:text-destructive" onClick={cancelMeeting}>
-                <X className="h-3 w-3 mr-1" /> Avlys
-              </Button>
+                  <Popover open={showReschedule} onOpenChange={setShowReschedule}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-7 text-xs">
+                        <CalendarDays className="h-3 w-3 mr-1" /> Flytt møte
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-3" align="start">
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium">Velg ny dato</p>
+                        <Input
+                          type="date"
+                          value={newDate}
+                          onChange={(e) => setNewDate(e.target.value)}
+                          className="h-8 text-xs"
+                        />
+                        <Button size="sm" className="h-7 text-xs w-full" onClick={() => rescheduleMeeting(newDate)} disabled={!newDate}>
+                          Flytt hit
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  <Button variant="outline" size="sm" className="h-7 text-xs text-destructive hover:text-destructive" onClick={cancelMeeting}>
+                    <X className="h-3 w-3 mr-1" /> Avlys
+                  </Button>
+                </>
+              )}
               <Button variant="outline" size="sm" className="h-7 text-xs" onClick={exportToProcessLog}>
-                <Copy className="h-3 w-3 mr-1" /> Eksporter til prosesslogg
+                <Copy className="h-3 w-3 mr-1" /> Eksporter
               </Button>
             </div>
           </div>
         )}
 
-        {/* Cancelled state - minimal controls */}
+        {/* Cancelled state */}
         {expanded && isCancelled && (
           <div className="px-4 pb-3 border-t border-border pt-3">
             <div className="flex gap-2">
