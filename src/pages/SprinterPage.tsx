@@ -439,6 +439,12 @@ export default function SprinterPage() {
             onClick={() => { setPlanningMode(!planningMode); setPlanningSelected(new Set()); }}>
             {planningMode ? "Avslutt planning" : "Sprint Planning"}
           </Button>
+          {currentSprint?.is_active && !planningMode && (
+            <Button size="sm" variant="outline" className="h-7 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
+              onClick={() => setShowCloseSprint(true)}>
+              <StopCircle className="h-3 w-3 mr-1" /> Avslutt sprint
+            </Button>
+          )}
         </div>
         {currentSprint?.goal && (
           <p className="text-xs text-muted-foreground italic flex items-center gap-1">
