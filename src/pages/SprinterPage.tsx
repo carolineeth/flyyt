@@ -16,7 +16,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Layers, Plus, GripVertical, Search, X, StickyNote, Settings2, History, StopCircle } from "lucide-react";
+import { Layers, Plus, GripVertical, Search, X, StickyNote, Settings2, History, StopCircle, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import type { Sprint, SprintItem, BacklogItem, Subtask } from "@/lib/types";
 import SprintHistory from "@/components/sprints/SprintHistory";
 import CloseSprintModal from "@/components/sprints/CloseSprintModal";
