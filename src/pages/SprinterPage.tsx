@@ -16,7 +16,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Layers, Plus, GripVertical, Search, X, StickyNote, Settings2, History, StopCircle } from "lucide-react";
+import { Layers, Plus, GripVertical, Search, X, StickyNote, Settings2, History, StopCircle, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import type { Sprint, SprintItem, BacklogItem, Subtask } from "@/lib/types";
 import SprintHistory from "@/components/sprints/SprintHistory";
 import CloseSprintModal from "@/components/sprints/CloseSprintModal";
@@ -108,6 +108,7 @@ export default function SprinterPage() {
 
   // State
   const [pageView, setPageView] = useState<"board" | "history">("board");
+  const [backlogCollapsed, setBacklogCollapsed] = useState(false);
   const [showCloseSprint, setShowCloseSprint] = useState(false);
   const [activeTab, setActiveTab] = useState<"backlog" | "sprint">("backlog");
   const [filterType, setFilterType] = useState("all");
@@ -636,11 +637,20 @@ export default function SprinterPage() {
 
           {/* Split view */}
           <div className="flex-1 min-h-0 flex">
-            <div className={`border-r border-border ${activeTab === "sprint" ? "hidden md:flex" : "flex"} md:flex flex-col`}
-              style={{ width: "40%", minWidth: 280 }}>
-              {backlogPanel}
-            </div>
-            <div className={`flex-1 ${activeTab === "backlog" ? "hidden md:flex" : "flex"} md:flex flex-col min-w-0`}>
+            {!backlogCollapsed && (
+              <div className={`border-r border-border ${activeTab === "sprint" ? "hidden md:flex" : "flex"} md:flex flex-col transition-all`}
+                style={{ width: "40%", minWidth: 280 }}>
+                {backlogPanel}
+              </div>
+            )}
+            <div className={`flex-1 ${activeTab === "backlog" && !backlogCollapsed ? "hidden md:flex" : "flex"} md:flex flex-col min-w-0`}>
+              <div className="hidden md:flex items-center px-1 pt-1">
+                <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                  onClick={() => setBacklogCollapsed(!backlogCollapsed)}
+                  title={backlogCollapsed ? "Vis backlog" : "Skjul backlog"}>
+                  {backlogCollapsed ? <PanelLeftOpen className="h-3.5 w-3.5" /> : <PanelLeftClose className="h-3.5 w-3.5" />}
+                </Button>
+              </div>
               {sprintPanel}
             </div>
           </div>
