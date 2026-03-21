@@ -50,7 +50,8 @@ type Task = {
 export default function OppgaverPage() {
   const qc = useQueryClient();
   const { data: members } = useTeamMembers();
-  const { memberId } = useCurrentTeamMember();
+  const { currentMember } = useCurrentTeamMember();
+  const memberId = currentMember?.id;
 
   const { data: tasks, isLoading } = useQuery<Task[]>({
     queryKey: ["tasks"],

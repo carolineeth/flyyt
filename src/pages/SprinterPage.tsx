@@ -197,7 +197,7 @@ export default function SprinterPage() {
   const inlineCreateMutation = useMutation({
     mutationFn: async ({ title, column }: { title: string; column?: string }) => {
       const { data, error } = await supabase.from("backlog_items").insert({
-        title, type: "user_story", priority: "should_have",
+        item_id: "TEMP", title, type: "user_story", priority: "should_have",
       }).select().single();
       if (error) throw error;
       if (column && currentSprintId) {
