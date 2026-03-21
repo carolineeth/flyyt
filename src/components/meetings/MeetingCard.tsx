@@ -57,12 +57,24 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
 
   const [newAgenda, setNewAgenda] = useState("");
   const [notes, setNotes] = useState(meeting?.notes || "");
+  const [room, setRoom] = useState(meeting?.room || "");
   const [expanded, setExpanded] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [showReschedule, setShowReschedule] = useState(false);
   const [newDate, setNewDate] = useState("");
 
   useEffect(() => { setNotes(meeting?.notes || ""); }, [meeting?.notes]);
+  useEffect(() => { setRoom(meeting?.room || ""); }, [meeting?.room]);
+
+  // Auto-save room
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (meeting?.id && room !== (meeting?.room || "")) {
+        supabase.from("meetings").update({ room } as any).eq("id", meeting.id);
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [room, meeting?.room, meeting?.id]);
 
   const saveNotes = useCallback(async (val: string) => {
     if (!meeting?.id) return;
