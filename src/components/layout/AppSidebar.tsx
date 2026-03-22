@@ -53,8 +53,14 @@ export function AppSidebar() {
   const showDot = isWorkday && hasUpdate === false;
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch {
+      // Clear storage manually as fallback
+      localStorage.removeItem('sb-gsaylhrzzobwuwsgytic-auth-token');
+    }
     toast.success("Logget ut");
+    window.location.href = "/";
   };
 
   return (
