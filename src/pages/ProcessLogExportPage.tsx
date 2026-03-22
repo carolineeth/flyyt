@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Copy, FileText, Code } from "lucide-react";
 import type { Sprint, SprintItem, BacklogItem, Decision } from "@/lib/types";
@@ -69,6 +70,8 @@ export default function ProcessLogExportPage() {
 
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [selectedActivityId, setSelectedActivityId] = useState<string>("all");
+  const [selectedSprintId, setSelectedSprintId] = useState<string>("all");
 
   const inRange = (dateStr: string | null | undefined) => {
     if (!dateStr) return true;
@@ -102,9 +105,14 @@ export default function ProcessLogExportPage() {
       .sort((a, b) => (a.completed_week ?? 0) - (b.completed_week ?? 0));
   }, [registrations, dateFrom, dateTo]);
 
+  const displayedRegistrations = useMemo(() => {
+    if (selectedActivityId === "all") return allRegistrations;
+    return allRegistrations.filter((r) => r.id === selectedActivityId);
+  }, [allRegistrations, selectedActivityId]);
+
   const activityPlain = useMemo(() => {
-    if (!allRegistrations.length) return "";
-    return allRegistrations.map((r) => {
+    if (!displayedRegistrations.length) return "";
+    return displayedRegistrations.map((r) => {
       const cat = catalogMap[r.catalog_id];
       const names = getRegParticipantNames(r.id);
       const statusLabel = r.status === "completed" ? "Fullført" : r.status === "in_progress" ? "Pågår" : r.status === "planned" ? "Planlagt" : r.status;
@@ -133,11 +141,11 @@ export default function ProcessLogExportPage() {
       ].filter(Boolean);
       return lines.join("\n");
     }).join("\n");
-  }, [allRegistrations, catalogMap, regParticipants, members]);
+  }, [displayedRegistrations, catalogMap, regParticipants, members]);
 
   const activityMarkdown = useMemo(() => {
-    if (!allRegistrations.length) return "";
-    return allRegistrations.map((r) => {
+    if (!displayedRegistrations.length) return "";
+    return displayedRegistrations.map((r) => {
       const cat = catalogMap[r.catalog_id];
       const names = getRegParticipantNames(r.id);
       const statusLabel = r.status === "completed" ? "✅ Fullført" : r.status === "in_progress" ? "🔄 Pågår" : r.status === "planned" ? "📋 Planlagt" : r.status;
@@ -167,11 +175,11 @@ export default function ProcessLogExportPage() {
       ].filter(Boolean);
       return lines.join("\n");
     }).join("\n");
-  }, [allRegistrations, catalogMap, regParticipants, members]);
+  }, [displayedRegistrations, catalogMap, regParticipants, members]);
 
   const activityLatex = useMemo(() => {
-    if (!allRegistrations.length) return "";
-    const items = allRegistrations.map((r) => {
+    if (!displayedRegistrations.length) return "";
+    const items = displayedRegistrations.map((r) => {
       const cat = catalogMap[r.catalog_id];
       const names = getRegParticipantNames(r.id);
       const statusLabel = r.status === "completed" ? "Fullført" : r.status === "in_progress" ? "Pågår" : r.status === "planned" ? "Planlagt" : r.status;
@@ -197,23 +205,28 @@ export default function ProcessLogExportPage() {
       ].filter(Boolean).join("\n");
     });
     return `\\section{Aktiviteter}\n\n${items.join("\n")}`;
-  }, [allRegistrations, catalogMap, regParticipants, members]);
+  }, [displayedRegistrations, catalogMap, regParticipants, members]);
 
   // --- Sprint export ---
   const filteredSprints = useMemo(() => {
     return (sprints ?? []).filter((s) => inRange(s.start_date) || inRange(s.end_date));
   }, [sprints, dateFrom, dateTo]);
 
+  const displayedSprints = useMemo(() => {
+    if (selectedSprintId === "all") return filteredSprints;
+    return filteredSprints.filter((s) => s.id === selectedSprintId);
+  }, [filteredSprints, selectedSprintId]);
+
   const sprintMarkdown = useMemo(() => {
     const header = "| Sprint | Periode | Mål | Fullførte items | Story points |\n|--------|---------|-----|-----------------|--------------|";
-    const rows = filteredSprints.map((s) => {
+    const rows = displayedSprints.map((s) => {
       const items = (sprintItems ?? []).filter((si) => si.sprint_id === s.id);
       const done = items.filter((si) => si.column_name === "done");
       const sp = done.reduce((sum, si) => sum + (si.backlog_item?.estimate ?? 0), 0);
       return `| ${s.name} | ${formatDate(s.start_date)}–${formatDate(s.end_date)} | ${s.goal ?? "-"} | ${done.length} | ${sp} |`;
     });
 
-    const details = filteredSprints.map((s) => {
+    const details = displayedSprints.map((s) => {
       const items = (sprintItems ?? []).filter((si) => si.sprint_id === s.id && si.column_name === "done");
       if (!items.length) return "";
       const listing = items.map((si) => `- **${si.backlog_item?.title}**: ${si.backlog_item?.description ?? "Ingen beskrivelse"}`).join("\n");
@@ -221,17 +234,17 @@ export default function ProcessLogExportPage() {
     }).filter(Boolean).join("\n");
 
     return `${header}\n${rows.join("\n")}\n${details}`;
-  }, [filteredSprints, sprintItems]);
+  }, [displayedSprints, sprintItems]);
 
   const sprintPlain = useMemo(() => {
-    const rows = filteredSprints.map((s) => {
+    const rows = displayedSprints.map((s) => {
       const items = (sprintItems ?? []).filter((si) => si.sprint_id === s.id);
       const done = items.filter((si) => si.column_name === "done");
       const sp = done.reduce((sum, si) => sum + (si.backlog_item?.estimate ?? 0), 0);
       return `${s.name} | ${formatDate(s.start_date)}–${formatDate(s.end_date)} | ${s.goal ?? "-"} | ${done.length} fullført | ${sp} SP`;
     });
 
-    const details = filteredSprints.map((s) => {
+    const details = displayedSprints.map((s) => {
       const items = (sprintItems ?? []).filter((si) => si.sprint_id === s.id && si.column_name === "done");
       if (!items.length) return "";
       const listing = items.map((si) => `  - ${si.backlog_item?.title}: ${si.backlog_item?.description ?? "Ingen beskrivelse"}`).join("\n");
@@ -239,10 +252,10 @@ export default function ProcessLogExportPage() {
     }).filter(Boolean).join("\n");
 
     return `${rows.join("\n")}\n${details}`;
-  }, [filteredSprints, sprintItems]);
+  }, [displayedSprints, sprintItems]);
 
   const sprintLatex = useMemo(() => {
-    const tableRows = filteredSprints.map((s) => {
+    const tableRows = displayedSprints.map((s) => {
       const items = (sprintItems ?? []).filter((si) => si.sprint_id === s.id);
       const done = items.filter((si) => si.column_name === "done");
       const sp = done.reduce((sum, si) => sum + (si.backlog_item?.estimate ?? 0), 0);
@@ -263,7 +276,7 @@ export default function ProcessLogExportPage() {
       "\\end{table}",
     ].join("\n");
 
-    const details = filteredSprints.map((s) => {
+    const details = displayedSprints.map((s) => {
       const items = (sprintItems ?? []).filter((si) => si.sprint_id === s.id && si.column_name === "done");
       if (!items.length) return "";
       const listing = items.map((si) => `  \\item \\textbf{${tex(si.backlog_item?.title ?? "")}} -- ${tex(si.backlog_item?.description ?? "Ingen beskrivelse")}`).join("\n");
@@ -271,7 +284,7 @@ export default function ProcessLogExportPage() {
     }).filter(Boolean).join("\n\n");
 
     return `\\section{Sprinter}\n\n${table}\n\n${details}`;
-  }, [filteredSprints, sprintItems]);
+  }, [displayedSprints, sprintItems]);
 
   // --- Decision export ---
   const filteredDecisions = useMemo(() => {
@@ -400,18 +413,36 @@ export default function ProcessLogExportPage() {
         </TabsList>
 
         <TabsContent value="activities" className="space-y-3 mt-4">
-          <div className="flex gap-2 flex-wrap">
-            <Button size="sm" variant="outline" onClick={() => copy(activityPlain, "Ren tekst")}>
-              <Copy className="h-3.5 w-3.5 mr-1" /> Ren tekst
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => copy(activityMarkdown, "Markdown")}>
-              <FileText className="h-3.5 w-3.5 mr-1" /> Markdown
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => copy(activityLatex, "LaTeX")}>
-              <Code className="h-3.5 w-3.5 mr-1" /> LaTeX
-            </Button>
+          <div className="flex gap-2 flex-wrap items-center">
+            <Select value={selectedActivityId} onValueChange={setSelectedActivityId}>
+              <SelectTrigger className="w-[260px] h-8 text-sm">
+                <SelectValue placeholder="Velg aktivitet" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle aktiviteter ({allRegistrations.length})</SelectItem>
+                {allRegistrations.map((r) => {
+                  const cat = catalogMap[r.catalog_id];
+                  return (
+                    <SelectItem key={r.id} value={r.id}>
+                      {cat?.name ?? "Ukjent"} #{r.occurrence_number}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => copy(activityPlain, "Ren tekst")}>
+                <Copy className="h-3.5 w-3.5 mr-1" /> Ren tekst
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => copy(activityMarkdown, "Markdown")}>
+                <FileText className="h-3.5 w-3.5 mr-1" /> Markdown
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => copy(activityLatex, "LaTeX")}>
+                <Code className="h-3.5 w-3.5 mr-1" /> LaTeX
+              </Button>
+            </div>
           </div>
-          {allRegistrations.length === 0 ? (
+          {displayedRegistrations.length === 0 ? (
             <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">Ingen aktivitetsregistreringer i valgt periode</CardContent></Card>
           ) : (
             <Card>
@@ -423,18 +454,31 @@ export default function ProcessLogExportPage() {
         </TabsContent>
 
         <TabsContent value="sprints" className="space-y-3 mt-4">
-          <div className="flex gap-2 flex-wrap">
-            <Button size="sm" variant="outline" onClick={() => copy(sprintPlain, "Ren tekst")}>
-              <Copy className="h-3.5 w-3.5 mr-1" /> Ren tekst
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => copy(sprintMarkdown, "Markdown")}>
-              <FileText className="h-3.5 w-3.5 mr-1" /> Markdown
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => copy(sprintLatex, "LaTeX")}>
-              <Code className="h-3.5 w-3.5 mr-1" /> LaTeX
-            </Button>
+          <div className="flex gap-2 flex-wrap items-center">
+            <Select value={selectedSprintId} onValueChange={setSelectedSprintId}>
+              <SelectTrigger className="w-[260px] h-8 text-sm">
+                <SelectValue placeholder="Velg sprint" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle sprinter ({filteredSprints.length})</SelectItem>
+                {filteredSprints.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => copy(sprintPlain, "Ren tekst")}>
+                <Copy className="h-3.5 w-3.5 mr-1" /> Ren tekst
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => copy(sprintMarkdown, "Markdown")}>
+                <FileText className="h-3.5 w-3.5 mr-1" /> Markdown
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => copy(sprintLatex, "LaTeX")}>
+                <Code className="h-3.5 w-3.5 mr-1" /> LaTeX
+              </Button>
+            </div>
           </div>
-          {filteredSprints.length === 0 ? (
+          {displayedSprints.length === 0 ? (
             <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">Ingen sprinter i valgt periode</CardContent></Card>
           ) : (
             <Card>
