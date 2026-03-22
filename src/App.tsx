@@ -19,6 +19,7 @@ import ResourcesPage from "@/pages/ResourcesPage";
 import ProcessLogExportPage from "@/pages/ProcessLogExportPage";
 import ReportPage from "@/pages/ReportPage";
 import ChangePasswordPage from "@/pages/ChangePasswordPage";
+import MilestonesPage from "@/pages/MilestonesPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -80,6 +81,7 @@ const App = () => (
             <AppLayout>
               <Routes>
                 <Route path="/" element={<DashboardPage />} />
+                <Route path="/milepaeler" element={<MilestonesPage />} />
                 <Route path="/aktiviteter" element={<ActivitiesPage />} />
                 <Route path="/standup" element={<StandupPage />} />
                 <Route path="/sprinter" element={<SprinterPage />} />
