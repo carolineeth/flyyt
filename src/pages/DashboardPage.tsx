@@ -157,7 +157,10 @@ export default function DashboardPage() {
     const done = sprintItems.filter((i) => i.column_name === "done");
     const totalSp = sprintItems.reduce((s, i) => s + (i.backlog_item?.estimate ?? 0), 0);
     const doneSp = done.reduce((s, i) => s + (i.backlog_item?.estimate ?? 0), 0);
-    return { todo: todo.length, inProgress: inProgress.length, review: review.length, done: done.length, total: sprintItems.length, totalSp, doneSp };
+    const todoSp = todo.reduce((s, i) => s + (i.backlog_item?.estimate ?? 0), 0);
+    const ipSp = inProgress.reduce((s, i) => s + (i.backlog_item?.estimate ?? 0), 0);
+    const reviewSp = review.reduce((s, i) => s + (i.backlog_item?.estimate ?? 0), 0);
+    return { todo: todo.length, inProgress: inProgress.length, review: review.length, done: done.length, total: sprintItems.length, totalSp, doneSp, todoSp, ipSp, reviewSp };
   }, [sprintItems]);
 
   // Action items
@@ -289,20 +292,29 @@ export default function DashboardPage() {
                         </div>
                       ))}
                     </div>
-                    {/* Stacked progress */}
+                    {/* Stacked progress (SP-based) */}
                     <div className="h-2 rounded-full bg-muted overflow-hidden flex">
-                      {sprintStats.total > 0 && (
+                      {sprintStats.totalSp > 0 && (
                         <>
-                          <div className="bg-gray-400 transition-all" style={{ width: `${(sprintStats.todo / sprintStats.total) * 100}%` }} />
-                          <div className="bg-blue-500 transition-all" style={{ width: `${(sprintStats.inProgress / sprintStats.total) * 100}%` }} />
-                          <div className="bg-amber-500 transition-all" style={{ width: `${(sprintStats.review / sprintStats.total) * 100}%` }} />
-                          <div className="bg-green-500 transition-all" style={{ width: `${(sprintStats.done / sprintStats.total) * 100}%` }} />
+                          <div className="bg-gray-400 transition-all" style={{ width: `${(sprintStats.todoSp / sprintStats.totalSp) * 100}%` }} />
+                          <div className="bg-blue-500 transition-all" style={{ width: `${(sprintStats.ipSp / sprintStats.totalSp) * 100}%` }} />
+                          <div className="bg-amber-500 transition-all" style={{ width: `${(sprintStats.reviewSp / sprintStats.totalSp) * 100}%` }} />
+                          <div className="bg-green-500 transition-all" style={{ width: `${(sprintStats.doneSp / sprintStats.totalSp) * 100}%` }} />
                         </>
                       )}
                     </div>
                     <div className="flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">{sprintStats.doneSp}</span> av {sprintStats.totalSp} SP</p>
-                      <Link to="/sprinter" className="text-xs text-primary font-medium hover:underline flex items-center gap-1">Åpne Sprint Board <ArrowRight className="h-3 w-3" /></Link>
+                      <p className="text-xs text-muted-foreground">
+                        <span className="text-gray-500">To Do: {sprintStats.todoSp}</span>
+                        <span className="mx-1">|</span>
+                        <span className="text-blue-600">In Progress: {sprintStats.ipSp}</span>
+                        {sprintStats.reviewSp > 0 && <><span className="mx-1">|</span><span className="text-amber-600">Review: {sprintStats.reviewSp}</span></>}
+                        <span className="mx-1">|</span>
+                        <span className="text-green-600">Done: {sprintStats.doneSp}</span>
+                        <span className="mx-1">—</span>
+                        <span className="font-medium text-foreground">{sprintStats.totalSp} SP</span>
+                      </p>
+                      <Link to="/sprinter" className="text-xs text-primary font-medium hover:underline flex items-center gap-1 shrink-0">Sprint Board <ArrowRight className="h-3 w-3" /></Link>
                     </div>
                   </>
                 )}

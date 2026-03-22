@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { format as formatDateFns } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -313,10 +314,16 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
               <span className={`text-sm font-semibold ${isCancelled ? "line-through text-muted-foreground" : ""}`}>
                 {meetingLabel}
               </span>
-              {isToday && <Badge className="bg-primary text-primary-foreground text-[10px]">I dag</Badge>}
-              {status === "in_progress" && <Badge className="bg-green-600 text-white text-[10px]">Pågår</Badge>}
-              {status === "completed" && <Badge variant="secondary" className="text-[10px]">Fullført</Badge>}
-              {isCancelled && <Badge variant="destructive" className="text-[10px]">Avlyst</Badge>}
+              {(() => {
+                if (isCancelled) return <Badge variant="destructive" className="text-[10px]">Avlyst</Badge>;
+                if (status === "in_progress") return <Badge className="bg-green-600 text-white text-[10px]">Pågår</Badge>;
+                if (status === "completed") return <Badge variant="secondary" className="text-[10px]">Fullført</Badge>;
+                const meetingDay = meeting.meeting_date || format(meetingDate, "yyyy-MM-dd");
+                const todayStr2 = format(new Date(), "yyyy-MM-dd");
+                if (meetingDay === todayStr2) return <Badge className="bg-teal-600 text-white text-[10px]">I dag</Badge>;
+                if (meetingDay < todayStr2) return <Badge className="bg-green-600/80 text-white text-[10px]">Fullført</Badge>;
+                return <Badge variant="outline" className="text-[10px] text-muted-foreground">Kommende</Badge>;
+              })()}
             </div>
           </div>
           <div className="flex items-center gap-1">
