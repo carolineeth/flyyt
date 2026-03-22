@@ -413,18 +413,36 @@ export default function ProcessLogExportPage() {
         </TabsList>
 
         <TabsContent value="activities" className="space-y-3 mt-4">
-          <div className="flex gap-2 flex-wrap">
-            <Button size="sm" variant="outline" onClick={() => copy(activityPlain, "Ren tekst")}>
-              <Copy className="h-3.5 w-3.5 mr-1" /> Ren tekst
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => copy(activityMarkdown, "Markdown")}>
-              <FileText className="h-3.5 w-3.5 mr-1" /> Markdown
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => copy(activityLatex, "LaTeX")}>
-              <Code className="h-3.5 w-3.5 mr-1" /> LaTeX
-            </Button>
+          <div className="flex gap-2 flex-wrap items-center">
+            <Select value={selectedActivityId} onValueChange={setSelectedActivityId}>
+              <SelectTrigger className="w-[260px] h-8 text-sm">
+                <SelectValue placeholder="Velg aktivitet" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle aktiviteter ({allRegistrations.length})</SelectItem>
+                {allRegistrations.map((r) => {
+                  const cat = catalogMap[r.catalog_id];
+                  return (
+                    <SelectItem key={r.id} value={r.id}>
+                      {cat?.name ?? "Ukjent"} #{r.occurrence_number}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => copy(activityPlain, "Ren tekst")}>
+                <Copy className="h-3.5 w-3.5 mr-1" /> Ren tekst
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => copy(activityMarkdown, "Markdown")}>
+                <FileText className="h-3.5 w-3.5 mr-1" /> Markdown
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => copy(activityLatex, "LaTeX")}>
+                <Code className="h-3.5 w-3.5 mr-1" /> LaTeX
+              </Button>
+            </div>
           </div>
-          {allRegistrations.length === 0 ? (
+          {displayedRegistrations.length === 0 ? (
             <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">Ingen aktivitetsregistreringer i valgt periode</CardContent></Card>
           ) : (
             <Card>
@@ -436,18 +454,31 @@ export default function ProcessLogExportPage() {
         </TabsContent>
 
         <TabsContent value="sprints" className="space-y-3 mt-4">
-          <div className="flex gap-2 flex-wrap">
-            <Button size="sm" variant="outline" onClick={() => copy(sprintPlain, "Ren tekst")}>
-              <Copy className="h-3.5 w-3.5 mr-1" /> Ren tekst
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => copy(sprintMarkdown, "Markdown")}>
-              <FileText className="h-3.5 w-3.5 mr-1" /> Markdown
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => copy(sprintLatex, "LaTeX")}>
-              <Code className="h-3.5 w-3.5 mr-1" /> LaTeX
-            </Button>
+          <div className="flex gap-2 flex-wrap items-center">
+            <Select value={selectedSprintId} onValueChange={setSelectedSprintId}>
+              <SelectTrigger className="w-[260px] h-8 text-sm">
+                <SelectValue placeholder="Velg sprint" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Alle sprinter ({filteredSprints.length})</SelectItem>
+                {filteredSprints.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => copy(sprintPlain, "Ren tekst")}>
+                <Copy className="h-3.5 w-3.5 mr-1" /> Ren tekst
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => copy(sprintMarkdown, "Markdown")}>
+                <FileText className="h-3.5 w-3.5 mr-1" /> Markdown
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => copy(sprintLatex, "LaTeX")}>
+                <Code className="h-3.5 w-3.5 mr-1" /> LaTeX
+              </Button>
+            </div>
           </div>
-          {filteredSprints.length === 0 ? (
+          {displayedSprints.length === 0 ? (
             <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">Ingen sprinter i valgt periode</CardContent></Card>
           ) : (
             <Card>
