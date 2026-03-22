@@ -418,8 +418,9 @@ export default function DashboardPage() {
       )}
 
       {/* 6. Quick links */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {[
+          { label: "Milepæler", to: "/milepaeler", sub: `${milestonesThisMonth} denne mnd` },
           { label: "Aktiviteter", to: "/aktiviteter", sub: `${totalEarned}p opptjent` },
           { label: "Sprinter", to: "/sprinter", sub: `${inProgressCount} in progress` },
           { label: "Møtekalender", to: "/moter", sub: enrichedMeetings[0] ? format(parseISO(enrichedMeetings[0].meeting_date!), "d. MMM", { locale: nb }) : "Vis møter" },
