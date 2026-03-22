@@ -260,10 +260,10 @@ export default function DashboardPage() {
                     <div className="h-2 rounded-full bg-muted overflow-hidden flex">
                       {sprintStats.totalSp > 0 && (
                         <>
-                          <div className="bg-gray-400 transition-all duration-700 ease-out animate-[grow-bar_0.8s_ease-out]" style={{ width: `${(sprintStats.todoSp / sprintStats.totalSp) * 100}%` }} />
-                          <div className="bg-blue-500 transition-all duration-700 ease-out animate-[grow-bar_0.8s_ease-out_0.1s_both]" style={{ width: `${(sprintStats.ipSp / sprintStats.totalSp) * 100}%` }} />
-                          <div className="bg-amber-500 transition-all duration-700 ease-out animate-[grow-bar_0.8s_ease-out_0.2s_both]" style={{ width: `${(sprintStats.reviewSp / sprintStats.totalSp) * 100}%` }} />
-                          <div className="bg-green-500 transition-all duration-700 ease-out animate-[grow-bar_0.8s_ease-out_0.3s_both]" style={{ width: `${(sprintStats.doneSp / sprintStats.totalSp) * 100}%` }} />
+                          <div className="bg-gray-400 origin-left animate-grow-bar" style={{ width: `${(sprintStats.todoSp / sprintStats.totalSp) * 100}%`, animationDuration: '0.8s' }} />
+                          <div className="bg-blue-500 origin-left animate-grow-bar" style={{ width: `${(sprintStats.ipSp / sprintStats.totalSp) * 100}%`, animationDuration: '0.8s', animationDelay: '0.1s', animationFillMode: 'both' }} />
+                          <div className="bg-amber-500 origin-left animate-grow-bar" style={{ width: `${(sprintStats.reviewSp / sprintStats.totalSp) * 100}%`, animationDuration: '0.8s', animationDelay: '0.2s', animationFillMode: 'both' }} />
+                          <div className="bg-green-500 origin-left animate-grow-bar" style={{ width: `${(sprintStats.doneSp / sprintStats.totalSp) * 100}%`, animationDuration: '0.8s', animationDelay: '0.3s', animationFillMode: 'both' }} />
                         </>
                       )}
                     </div>
