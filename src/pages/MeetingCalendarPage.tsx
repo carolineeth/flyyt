@@ -178,10 +178,18 @@ export default function MeetingCalendarPage() {
   return (
     <div className="space-y-6 scroll-reveal">
       <PageHeader
-        title="Møtekalender"
+        title="Møter"
         description="Planlegg, gjennomfør og dokumenter gruppemøter"
-        action={
-          <div className="flex gap-2">
+      />
+
+      <Tabs defaultValue="calendar">
+        <TabsList>
+          <TabsTrigger value="calendar"><Calendar className="h-3.5 w-3.5 mr-1.5" />Kalender</TabsTrigger>
+          <TabsTrigger value="minutes"><FileText className="h-3.5 w-3.5 mr-1.5" />Møtereferater</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="calendar" className="mt-4 space-y-6">
+          <div className="flex justify-end gap-2">
             {isPastWeek && !hasRecurringMeetings && recurringMeetings && rotation && (
               <Button variant="outline" size="sm" onClick={generateForPastWeek} disabled={autoGenerate.isPending}>
                 <RefreshCw className={`h-4 w-4 mr-1 ${autoGenerate.isPending ? "animate-spin" : ""}`} />
@@ -192,8 +200,6 @@ export default function MeetingCalendarPage() {
               <Plus className="h-4 w-4 mr-1" /> Legg til møte
             </Button>
           </div>
-        }
-      />
 
       {/* Week navigation */}
       <div className="flex items-center justify-between flex-wrap gap-2">
