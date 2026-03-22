@@ -110,11 +110,22 @@ export default function ResourcesPage() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    setPendingFiles(Array.from(files));
+    openUploadDialog(Array.from(files));
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const openUploadDialog = (files: File[]) => {
+    setPendingFiles(files);
     setUploadCategory("Fildeling");
     setShowUploadNewCategory(false);
     setUploadNewCategory("");
-    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) openUploadDialog(files);
   };
 
   const confirmUpload = async () => {
