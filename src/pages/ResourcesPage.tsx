@@ -30,12 +30,16 @@ export default function ResourcesPage() {
 
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ title: "", url: "", category: "Kode", description: "" });
+  const [newCategory, setNewCategory] = useState("");
+  const [showNewCategory, setShowNewCategory] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Edit state
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
   const [editForm, setEditForm] = useState({ title: "", url: "", category: "", description: "" });
+  const [editNewCategory, setEditNewCategory] = useState("");
+  const [showEditNewCategory, setShowEditNewCategory] = useState(false);
 
   // Delete state
   const [deletingResource, setDeletingResource] = useState<Resource | null>(null);
@@ -54,6 +58,8 @@ export default function ResourcesPage() {
       qc.invalidateQueries({ queryKey: ["resources"] });
       setShowCreate(false);
       setForm({ title: "", url: "", category: "Kode", description: "" });
+      setNewCategory("");
+      setShowNewCategory(false);
       toast.success("Ressurs lagt til");
     },
   });
@@ -134,12 +140,24 @@ export default function ResourcesPage() {
   const isFileUrl = (url: string) =>
     url.includes("/storage/v1/object/public/attachments/resources/");
 
+  // Merge default + existing categories
+  const allCategories = Array.from(new Set([...defaultCategories, ...(resources?.map((r) => r.category) ?? [])])).sort();
+
   // Group by category
   const grouped = resources?.reduce((acc, r) => {
     if (!acc[r.category]) acc[r.category] = [];
     acc[r.category].push(r);
     return acc;
   }, {} as Record<string, Resource[]>) ?? {};
+
+  const handleCategorySelect = (v: string, setter: typeof setForm, setShowNew: typeof setShowNewCategory) => {
+    if (v === "__new__") {
+      setShowNew(true);
+    } else {
+      setShowNew(false);
+      setter((p) => ({ ...p, category: v }));
+    }
+  };
 
   return (
     <div className="space-y-6 scroll-reveal">
@@ -219,12 +237,25 @@ export default function ResourcesPage() {
             <div><Label>URL</Label><Input value={form.url} onChange={(e) => setForm((p) => ({ ...p, url: e.target.value }))} placeholder="https://..." /></div>
             <div>
               <Label>Kategori</Label>
-              <Select value={form.category} onValueChange={(v) => setForm((p) => ({ ...p, category: v }))}>
+              <Select value={showNewCategory ? "__new__" : form.category} onValueChange={(v) => handleCategorySelect(v, setForm, setShowNewCategory)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {defaultCategories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  {allCategories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  <SelectItem value="__new__">+ Ny kategori…</SelectItem>
                 </SelectContent>
               </Select>
+              {showNewCategory && (
+                <Input
+                  className="mt-2"
+                  placeholder="Skriv inn ny kategori"
+                  value={newCategory}
+                  onChange={(e) => {
+                    setNewCategory(e.target.value);
+                    setForm((p) => ({ ...p, category: e.target.value }));
+                  }}
+                  autoFocus
+                />
+              )}
             </div>
             <div><Label>Beskrivelse</Label><Textarea value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} placeholder="Kort beskrivelse" rows={2} /></div>
           </div>
@@ -244,12 +275,25 @@ export default function ResourcesPage() {
             <div><Label>URL</Label><Input value={editForm.url} onChange={(e) => setEditForm((p) => ({ ...p, url: e.target.value }))} /></div>
             <div>
               <Label>Kategori</Label>
-              <Select value={editForm.category} onValueChange={(v) => setEditForm((p) => ({ ...p, category: v }))}>
+              <Select value={showEditNewCategory ? "__new__" : editForm.category} onValueChange={(v) => handleCategorySelect(v, setEditForm, setShowEditNewCategory)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {defaultCategories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  {allCategories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  <SelectItem value="__new__">+ Ny kategori…</SelectItem>
                 </SelectContent>
               </Select>
+              {showEditNewCategory && (
+                <Input
+                  className="mt-2"
+                  placeholder="Skriv inn ny kategori"
+                  value={editNewCategory}
+                  onChange={(e) => {
+                    setEditNewCategory(e.target.value);
+                    setEditForm((p) => ({ ...p, category: e.target.value }));
+                  }}
+                  autoFocus
+                />
+              )}
             </div>
             <div><Label>Beskrivelse</Label><Textarea value={editForm.description} onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))} rows={2} /></div>
           </div>
