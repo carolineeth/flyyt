@@ -50,9 +50,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { currentMember } = useCurrentMember();
   const { data: hasUpdate } = useTodayHasUpdate(currentMember?.id);
-  const today = new Date();
-  const isWorkday = today.getDay() >= 1 && today.getDay() <= 5;
-  const showDot = isWorkday && hasUpdate === false;
+  const showDot = hasUpdate === false;
 
   const handleLogout = async () => {
     const { error } = await logoutUser();

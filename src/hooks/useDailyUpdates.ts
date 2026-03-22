@@ -41,11 +41,10 @@ export function useWeekNavigation() {
 
   const weekLabel = `Uke ${weekNumber} — ${format(weekStart, "d.", { locale: nb })}–${format(weekEnd, "d. MMMM yyyy", { locale: nb })}`;
 
-  // Weekdays in this week (mon-fri), filtered to not show future days and not before project start
+  // All days in this week (mon-sun), filtered to not show future days and not before project start
   const weekdays = useMemo(() => {
     const allDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
     return allDays.filter((d) => {
-      if (isWeekend(d)) return false;
       if (isAfter(d, today)) return false;
       if (isBefore(d, PROJECT_START)) return false;
       return true;
