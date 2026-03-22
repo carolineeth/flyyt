@@ -100,9 +100,9 @@ export default function ProcessLogExportPage() {
   }, [registrations, dateFrom, dateTo]);
 
   const displayedRegistrations = useMemo(() => {
-    if (selectedActivityId === "all") return allRegistrations;
-    return allRegistrations.filter((r) => r.id === selectedActivityId);
-  }, [allRegistrations, selectedActivityId]);
+    if (selectedActivityIds.size === 0) return allRegistrations;
+    return allRegistrations.filter((r) => selectedActivityIds.has(r.id));
+  }, [allRegistrations, selectedActivityIds]);
 
   const activityPlain = useMemo(() => {
     if (!displayedRegistrations.length) return "";
