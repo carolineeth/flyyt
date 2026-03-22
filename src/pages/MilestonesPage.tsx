@@ -168,9 +168,9 @@ function Timeline({ milestones, sprints, onSelect }: { milestones: Milestone[]; 
   }
 
   const totalDays = differenceInDays(projectEnd, projectStart);
-  const colWidth = 72;
+  const colWidth = 220; // much wider – ~4-5 weeks visible
   const totalWidth = weeks.length * colWidth;
-  const labelWidth = 72;
+  const labelWidth = 90;
   const now = new Date();
   const todayFrac = Math.max(0, Math.min(1, differenceInDays(now, projectStart) / totalDays));
 
@@ -180,7 +180,6 @@ function Timeline({ milestones, sprints, onSelect }: { milestones: Milestone[]; 
     el.scrollLeft = Math.max(0, todayPx - el.clientWidth / 3);
   }, [todayFrac, totalWidth]);
 
-  // Group milestones by category for swim lanes
   const lanes = useMemo(() => {
     return CATEGORY_ORDER.map((cat) => ({
       cat,
@@ -190,17 +189,17 @@ function Timeline({ milestones, sprints, onSelect }: { milestones: Milestone[]; 
     })).filter((l) => l.items.length > 0);
   }, [milestones]);
 
-  const rowH = 36;
+  const rowH = 56;
 
   return (
     <Card className="rounded-xl border-[0.5px] overflow-hidden">
       {/* Legend */}
-      <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border/60 bg-muted/30 flex-wrap">
-        <p className="text-[11px] font-medium text-muted-foreground mr-1">Kategorier:</p>
+      <div className="flex items-center gap-4 px-4 py-2.5 border-b border-border/60 bg-muted/30 flex-wrap">
+        <p className="text-xs font-semibold text-muted-foreground mr-1">Kategorier:</p>
         {CATEGORY_ORDER.map((cat) => (
           <div key={cat} className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[cat] }} />
-            <span className="text-[11px] text-muted-foreground">{CATEGORY_LABELS[cat]}</span>
+            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[cat] }} />
+            <span className="text-xs text-muted-foreground font-medium">{CATEGORY_LABELS[cat]}</span>
           </div>
         ))}
       </div>
@@ -209,18 +208,20 @@ function Timeline({ milestones, sprints, onSelect }: { milestones: Milestone[]; 
         {/* Fixed category labels */}
         <div className="shrink-0 border-r border-border/60 bg-muted/20" style={{ width: labelWidth }}>
           {/* Week header spacer */}
-          <div className="h-8 border-b border-border/60" />
+          <div className="h-10 border-b border-border/60" />
           {/* Sprint bar spacer */}
-          <div className="h-6" />
+          <div className="h-7 border-b border-border/20 flex items-center px-3">
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Sprinter</span>
+          </div>
           {/* Lane labels */}
           {lanes.map((lane) => (
             <div
               key={lane.cat}
-              className="flex items-center gap-1.5 px-2 border-b border-border/20"
-              style={{ height: rowH }}
+              className="flex items-center gap-2 px-3 border-b border-border/20"
+              style={{ height: rowH, backgroundColor: CATEGORY_BG[lane.cat] }}
             >
-              <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: lane.color }} />
-              <span className="text-[10px] font-medium text-muted-foreground truncate">{lane.label}</span>
+              <div className="w-3 h-3 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: lane.color }} />
+              <span className="text-xs font-semibold text-foreground/80">{lane.label}</span>
             </div>
           ))}
         </div>
@@ -229,29 +230,32 @@ function Timeline({ milestones, sprints, onSelect }: { milestones: Milestone[]; 
         <div ref={scrollToToday} className="overflow-x-auto flex-1">
           <div className="relative" style={{ width: totalWidth }}>
             {/* Week headers */}
-            <div className="flex border-b border-border/60 h-8">
+            <div className="flex border-b border-border/60 h-10">
               {weeks.map((w, i) => {
                 const isCurrentWeek = getISOWeek(now) === w.weekNum;
+                const weekEnd = addWeeks(w.start, 1);
                 return (
                   <div
                     key={i}
                     className={cn(
-                      "flex-shrink-0 flex flex-col items-center justify-center border-r border-border/20",
-                      isCurrentWeek && "bg-teal-50/60"
+                      "flex-shrink-0 flex flex-col items-center justify-center border-r border-border/30",
+                      isCurrentWeek && "bg-teal-50/80"
                     )}
                     style={{ width: colWidth }}
                   >
-                    <span className={cn("text-[10px] font-semibold", isCurrentWeek ? "text-teal-700" : "text-foreground")}>
+                    <span className={cn("text-xs font-bold", isCurrentWeek ? "text-teal-700" : "text-foreground")}>
                       Uke {w.weekNum}
                     </span>
-                    <span className="text-[9px] text-muted-foreground">{format(w.start, "d. MMM", { locale: nb })}</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {format(w.start, "d. MMM", { locale: nb })} – {format(weekEnd, "d. MMM", { locale: nb })}
+                    </span>
                   </div>
                 );
               })}
             </div>
 
             {/* Sprint bars row */}
-            <div className="relative h-6 border-b border-border/20">
+            <div className="relative h-7 border-b border-border/20">
               {sprints.map((s) => {
                 const sStart = parseISO(s.start_date);
                 const sEnd = parseISO(s.end_date);
@@ -262,12 +266,12 @@ function Timeline({ milestones, sprints, onSelect }: { milestones: Milestone[]; 
                   <div
                     key={s.id}
                     className={cn(
-                      "absolute top-1 h-4 rounded-sm text-[9px] font-medium flex items-center justify-center overflow-hidden",
+                      "absolute top-1 h-5 rounded text-[11px] font-semibold flex items-center justify-center overflow-hidden",
                       isActive ? "text-teal-800 border border-teal-300" : "text-teal-700/70"
                     )}
                     style={{
                       left: Math.max(0, left),
-                      width: Math.max(30, width),
+                      width: Math.max(40, width),
                       backgroundColor: isActive ? "rgba(15, 110, 86, 0.18)" : "rgba(15, 110, 86, 0.08)",
                     }}
                   >
@@ -286,7 +290,7 @@ function Timeline({ milestones, sprints, onSelect }: { milestones: Milestone[]; 
               >
                 {/* Vertical week lines */}
                 {weeks.map((_, i) => (
-                  <div key={i} className="absolute top-0 bottom-0 border-r border-border/10" style={{ left: (i + 1) * colWidth }} />
+                  <div key={i} className="absolute top-0 bottom-0 border-r border-border/15" style={{ left: (i + 1) * colWidth }} />
                 ))}
 
                 {/* Milestone markers */}
@@ -294,51 +298,66 @@ function Timeline({ milestones, sprints, onSelect }: { milestones: Milestone[]; 
                   const mDate = parseISO(m.date);
                   const left = (differenceInDays(mDate, projectStart) / totalDays) * totalWidth;
                   const isPast = m.is_completed;
+                  const daysLeft = differenceInDays(mDate, now);
+                  const isUrgent = !isPast && daysLeft >= 0 && daysLeft < 7;
                   return (
                     <Tooltip key={m.id}>
                       <TooltipTrigger asChild>
                         <button
                           onClick={() => onSelect(m.id)}
                           className={cn(
-                            "absolute top-1/2 -translate-y-1/2 flex items-center gap-1 cursor-pointer group",
-                            isPast && "opacity-40"
+                            "absolute top-1/2 -translate-y-1/2 flex items-center gap-2 cursor-pointer group",
+                            isPast && "opacity-35"
                           )}
-                          style={{ left: Math.max(4, left - 6) }}
+                          style={{ left: Math.max(4, left - 8) }}
                         >
-                          <div className="relative">
+                          <div className="relative shrink-0">
                             <div
-                              className="w-4 h-4 rotate-45 rounded-[2px] border-2 border-white shadow-md transition-transform group-hover:scale-125"
+                              className="w-5 h-5 rotate-45 rounded-[3px] border-2 border-white shadow-lg transition-transform group-hover:scale-125"
                               style={{ backgroundColor: lane.color }}
                             />
                             {isPast && (
-                              <Check className="absolute inset-0 m-auto h-2.5 w-2.5 text-white -rotate-45" />
+                              <Check className="absolute inset-0 m-auto h-3 w-3 text-white -rotate-45" />
                             )}
                           </div>
-                          {/* Inline label for non-cluttered items */}
-                          <span className={cn(
-                            "text-[9px] font-medium whitespace-nowrap max-w-[60px] truncate hidden sm:inline",
-                            isPast ? "text-muted-foreground" : "text-foreground/70"
-                          )}>
-                            {m.title.length > 12 ? m.title.slice(0, 10) + "…" : m.title}
-                          </span>
+                          <div className="flex flex-col items-start">
+                            <span className={cn(
+                              "text-[12px] font-semibold whitespace-nowrap leading-tight",
+                              isPast ? "text-muted-foreground line-through" : "text-foreground/90"
+                            )}>
+                              {m.title}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground leading-tight">
+                              {format(mDate, "d. MMM", { locale: nb })}
+                              {!isPast && daysLeft >= 0 && (
+                                <span className={cn(
+                                  "ml-1.5 font-semibold",
+                                  isUrgent ? "text-red-600" : "text-muted-foreground"
+                                )}>
+                                  · {daysLeft === 0 ? "i dag" : daysLeft === 1 ? "i morgen" : `om ${daysLeft}d`}
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                          {m.priority === "critical" && !isPast && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 font-bold shrink-0">!</span>
+                          )}
+                          {m.is_fixed && !isPast && (
+                            <Lock className="h-3 w-3 text-muted-foreground/60 shrink-0" />
+                          )}
                         </button>
                       </TooltipTrigger>
                       <TooltipContent side="top" className="max-w-xs z-50">
                         <div className="flex items-center gap-2 mb-1">
-                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: lane.color }} />
-                          <p className="font-semibold text-xs">{m.title}</p>
+                          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: lane.color }} />
+                          <p className="font-semibold text-sm">{m.title}</p>
                         </div>
-                        <p className="text-[11px] text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           {format(mDate, "EEEE d. MMMM yyyy", { locale: nb })}
                           {m.priority === "critical" && " · 🔴 Kritisk"}
                           {m.priority === "high" && " · 🟡 Høy"}
                         </p>
-                        {m.description && <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{m.description}</p>}
-                        {!m.is_completed && (
-                          <p className="text-[11px] font-medium mt-1" style={{ color: lane.color }}>
-                            Om {differenceInDays(mDate, new Date())} dager
-                          </p>
-                        )}
+                        {m.description && <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{m.description}</p>}
                       </TooltipContent>
                     </Tooltip>
                   );
@@ -349,10 +368,10 @@ function Timeline({ milestones, sprints, onSelect }: { milestones: Milestone[]; 
             {/* Today line */}
             <div
               className="absolute top-0 pointer-events-none"
-              style={{ left: todayFrac * totalWidth, height: 8 + 6 + lanes.length * rowH + 30 }}
+              style={{ left: todayFrac * totalWidth, height: 10 + 7 + lanes.length * rowH + 30 }}
             >
-              <div className="w-0 h-full border-l-2 border-dashed border-teal-500/70" />
-              <div className="absolute top-0 -left-[14px] bg-teal-600 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded-b-md">
+              <div className="w-0 h-full border-l-2 border-dashed border-teal-500/80" />
+              <div className="absolute top-0 -left-[16px] bg-teal-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-b-md shadow-md">
                 I dag
               </div>
             </div>
