@@ -70,6 +70,8 @@ export default function ProcessLogExportPage() {
 
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [selectedActivityId, setSelectedActivityId] = useState<string>("all");
+  const [selectedSprintId, setSelectedSprintId] = useState<string>("all");
 
   const inRange = (dateStr: string | null | undefined) => {
     if (!dateStr) return true;
