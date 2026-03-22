@@ -1,8 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { nb } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useUpsertDailyUpdate, useInProgressBacklogItems, type DailyUpdate } from "@/hooks/useDailyUpdates";
 import { X, Link2 } from "lucide-react";
@@ -22,9 +21,10 @@ interface Props {
   date: Date;
   dayLabel: string;
   onSaved?: () => void;
+  compact?: boolean;
 }
 
-export function StandupInput({ memberId, existingEntry, date, dayLabel, onSaved }: Props) {
+export function StandupInput({ memberId, existingEntry, date, dayLabel, onSaved, compact }: Props) {
   const [content, setContent] = useState(existingEntry?.content ?? "");
   const [categories, setCategories] = useState<string[]>(() => {
     const raw = existingEntry?.category;
@@ -34,6 +34,7 @@ export function StandupInput({ memberId, existingEntry, date, dayLabel, onSaved 
   const [backlogOpen, setBacklogOpen] = useState(false);
   const upsert = useUpsertDailyUpdate();
   const { data: backlogItems } = useInProgressBacklogItems(memberId);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (existingEntry) {
@@ -47,6 +48,14 @@ export function StandupInput({ memberId, existingEntry, date, dayLabel, onSaved 
       setBacklogItemId(null);
     }
   }, [existingEntry]);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 96) + "px"; // max ~3 lines
+  }, [content]);
 
   const toggleCategory = (key: string) => {
     setCategories((prev) =>
@@ -79,21 +88,27 @@ export function StandupInput({ memberId, existingEntry, date, dayLabel, onSaved 
   const selectedBacklog = backlogItems?.find((b) => b.id === backlogItemId);
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-      <div>
-        <h3 className="text-sm font-medium text-foreground capitalize">{dayLabel}</h3>
-        <p className="text-xs text-muted-foreground">
-          {existingEntry
-            ? `Oppdatering sendt kl. ${format(new Date(existingEntry.updated_at), "HH:mm")}`
-            : "Skriv din oppdatering"}
-        </p>
-      </div>
+    <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+      {/* Only show heading in non-compact mode */}
+      {!compact && dayLabel && (
+        <div>
+          <h3 className="text-sm font-medium text-foreground capitalize">{dayLabel}</h3>
+          <p className="text-xs text-muted-foreground">
+            {existingEntry
+              ? `Oppdatering sendt kl. ${format(new Date(existingEntry.updated_at), "HH:mm")}`
+              : "Skriv din oppdatering"}
+          </p>
+        </div>
+      )}
 
-      <Textarea
+      <textarea
+        ref={textareaRef}
         placeholder="Hva har du gjort/jobbet med?"
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        className="min-h-[80px] resize-none text-sm"
+        className="w-full bg-transparent text-sm resize-none border border-input rounded-md px-3 py-2 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        style={{ minHeight: "40px", maxHeight: "96px" }}
+        rows={1}
       />
 
       {selectedBacklog && (
@@ -107,60 +122,60 @@ export function StandupInput({ memberId, existingEntry, date, dayLabel, onSaved 
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.key}
-              onClick={() => toggleCategory(cat.key)}
-              className="px-2.5 py-0.5 rounded-md text-[11px] font-medium transition-opacity"
-              style={{
-                backgroundColor: cat.bg,
-                color: cat.fg,
-                opacity: categories.includes(cat.key) ? 1 : 0.5,
-              }}
-            >
-              {cat.label}
+      <div className="flex flex-wrap items-center gap-1.5">
+        {CATEGORIES.map((cat) => (
+          <button
+            key={cat.key}
+            onClick={() => toggleCategory(cat.key)}
+            className="px-2.5 py-0.5 rounded-md text-[11px] font-medium transition-opacity"
+            style={{
+              backgroundColor: cat.bg,
+              color: cat.fg,
+              opacity: categories.includes(cat.key) ? 1 : 0.5,
+            }}
+          >
+            {cat.label}
+          </button>
+        ))}
+        <Popover open={backlogOpen} onOpenChange={setBacklogOpen}>
+          <PopoverTrigger asChild>
+            <button className="text-xs text-primary hover:underline flex items-center gap-1 ml-1">
+              <Link2 className="h-3 w-3" />
+              Koble til oppgave
             </button>
-          ))}
-          <Popover open={backlogOpen} onOpenChange={setBacklogOpen}>
-            <PopoverTrigger asChild>
-              <button className="text-xs text-primary hover:underline flex items-center gap-1 ml-2">
-                <Link2 className="h-3 w-3" />
-                Koble til oppgave
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-2" align="start">
-              <div className="space-y-1 max-h-48 overflow-y-auto">
-                {backlogItems && backlogItems.length > 0 ? (
-                  backlogItems.map((item) => (
-                    <button
-                      key={item.id}
-                      className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-accent truncate"
-                      onClick={() => {
-                        setBacklogItemId(item.id);
-                        setBacklogOpen(false);
-                      }}
-                    >
-                      <span className="text-muted-foreground">{item.item_id}</span>{" "}
-                      {item.title}
-                    </button>
-                  ))
-                ) : (
-                  <p className="text-xs text-muted-foreground p-2">Ingen oppgaver pågår</p>
-                )}
-              </div>
-            </PopoverContent>
-          </Popover>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-2" align="start">
+            <div className="space-y-1 max-h-48 overflow-y-auto">
+              {backlogItems && backlogItems.length > 0 ? (
+                backlogItems.map((item) => (
+                  <button
+                    key={item.id}
+                    className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-accent truncate"
+                    onClick={() => {
+                      setBacklogItemId(item.id);
+                      setBacklogOpen(false);
+                    }}
+                  >
+                    <span className="text-muted-foreground">{item.item_id}</span>{" "}
+                    {item.title}
+                  </button>
+                ))
+              ) : (
+                <p className="text-xs text-muted-foreground p-2">Ingen oppgaver pågår</p>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+        <div className="ml-auto">
+          <Button
+            size="sm"
+            className="h-7 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={handlePublish}
+            disabled={upsert.isPending}
+          >
+            {existingEntry ? "Oppdater" : "Publiser"}
+          </Button>
         </div>
-        <Button
-          size="sm"
-          className="h-8 bg-primary text-primary-foreground hover:bg-primary/90"
-          onClick={handlePublish}
-          disabled={upsert.isPending}
-        >
-          {existingEntry ? "Oppdater" : "Publiser"}
-        </Button>
       </div>
     </div>
   );
