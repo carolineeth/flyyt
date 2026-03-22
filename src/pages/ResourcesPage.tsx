@@ -33,6 +33,10 @@ export default function ResourcesPage() {
   const [newCategory, setNewCategory] = useState("");
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
+  const [uploadCategory, setUploadCategory] = useState("Fildeling");
+  const [showUploadNewCategory, setShowUploadNewCategory] = useState(false);
+  const [uploadNewCategory, setUploadNewCategory] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Edit state
@@ -102,13 +106,22 @@ export default function ResourcesPage() {
     setEditingResource(r);
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+    setPendingFiles(Array.from(files));
+    setUploadCategory("Fildeling");
+    setShowUploadNewCategory(false);
+    setUploadNewCategory("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
+  const confirmUpload = async () => {
+    if (!pendingFiles) return;
     setUploading(true);
+    const category = showUploadNewCategory ? uploadNewCategory : uploadCategory;
     try {
-      for (const file of Array.from(files)) {
+      for (const file of pendingFiles) {
         const safeName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
         const path = `resources/${safeName}`;
 
@@ -122,18 +135,18 @@ export default function ResourcesPage() {
         const { error: insertError } = await supabase.from("resources").insert({
           title: file.name,
           url: urlData.publicUrl,
-          category: "Fildeling",
+          category,
           description: `Opplastet fil (${(file.size / 1024).toFixed(0)} KB)`,
         });
         if (insertError) throw insertError;
       }
       qc.invalidateQueries({ queryKey: ["resources"] });
-      toast.success(`${files.length === 1 ? "Fil" : `${files.length} filer`} lastet opp`);
+      toast.success(`${pendingFiles.length === 1 ? "Fil" : `${pendingFiles.length} filer`} lastet opp`);
     } catch (err: any) {
       toast.error("Opplasting feilet: " + (err.message ?? "Ukjent feil"));
     } finally {
       setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      setPendingFiles(null);
     }
   };
 
@@ -172,7 +185,7 @@ export default function ResourcesPage() {
             <Button size="sm" onClick={() => setShowCreate(true)}>
               <Plus className="h-4 w-4 mr-1" /> Legg til lenke
             </Button>
-            <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileUpload} />
+            <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileSelect} />
           </div>
         }
       />
@@ -321,6 +334,55 @@ export default function ResourcesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Upload category dialog */}
+      <Dialog open={!!pendingFiles} onOpenChange={(open) => !open && setPendingFiles(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Last opp {pendingFiles?.length === 1 ? "fil" : `${pendingFiles?.length} filer`}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="text-sm text-muted-foreground">
+              {pendingFiles?.map((f) => f.name).join(", ")}
+            </div>
+            <div>
+              <Label>Kategori</Label>
+              <Select
+                value={showUploadNewCategory ? "__new__" : uploadCategory}
+                onValueChange={(v) => {
+                  if (v === "__new__") {
+                    setShowUploadNewCategory(true);
+                  } else {
+                    setShowUploadNewCategory(false);
+                    setUploadCategory(v);
+                  }
+                }}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {allCategories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  <SelectItem value="__new__">+ Ny kategori…</SelectItem>
+                </SelectContent>
+              </Select>
+              {showUploadNewCategory && (
+                <Input
+                  className="mt-2"
+                  placeholder="Skriv inn ny kategori"
+                  value={uploadNewCategory}
+                  onChange={(e) => setUploadNewCategory(e.target.value)}
+                  autoFocus
+                />
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPendingFiles(null)}>Avbryt</Button>
+            <Button onClick={confirmUpload} disabled={uploading || (showUploadNewCategory && !uploadNewCategory)}>
+              {uploading ? "Laster opp…" : "Last opp"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
