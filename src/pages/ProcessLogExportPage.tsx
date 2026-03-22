@@ -7,10 +7,12 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { Copy, FileText, Code } from "lucide-react";
+import { Copy, FileText, Code, ChevronDown } from "lucide-react";
 import type { Sprint, SprintItem, BacklogItem } from "@/lib/types";
 
 function formatDate(d: string) {
