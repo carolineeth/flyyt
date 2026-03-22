@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Clock, Circle, Check } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { CheckCircle2, Clock, Circle, AlertTriangle } from "lucide-react";
 import type { CatalogItem, Registration } from "@/hooks/useActivityCatalog";
 import { RegistrationModal } from "./RegistrationModal";
 
@@ -14,7 +15,6 @@ interface CatalogViewProps {
 export function CatalogView({ catalog, registrations }: CatalogViewProps) {
   const [selectedCatalog, setSelectedCatalog] = useState<CatalogItem | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedRegistration, setSelectedRegistration] = useState<Registration | null | undefined>(undefined);
 
   const getRegistrationsFor = (catId: string) => registrations.filter((r) => r.catalog_id === catId);
   const isCompleted = (catId: string) => getRegistrationsFor(catId).some((r) => r.status === "completed");
@@ -26,18 +26,43 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
   const secondHalf = catalog.filter((c) => c.period === "second_half");
   const custom = catalog.filter((c) => c.name === "Egendefinert aktivitet");
 
+  // Agile meetings (standup, planning, review)
   const agileMeetings = meetingBased.filter((c) => ["daily_standup", "sprint_planning", "sprint_review"].includes(c.meeting_type || ""));
   const advisorMeeting = meetingBased.find((c) => c.meeting_type === "veiledermøte");
 
+  // Check for same-week agile meetings warning (different types in same week)
+  const agileWeekWarning = useMemo(() => {
+    const agileRegs = agileMeetings.flatMap((c) => getRegistrationsFor(c.id).filter((r) => r.status === "completed" && r.completed_week));
+    const weekMap = new Map<number, Set<string>>();
+    agileRegs.forEach((r) => {
+      const cat = catalog.find((c) => c.id === r.catalog_id);
+      const w = r.completed_week!;
+      if (!weekMap.has(w)) weekMap.set(w, new Set());
+      weekMap.get(w)!.add(cat?.meeting_type || "");
+    });
+    const conflicts: string[] = [];
+    weekMap.forEach((types, w) => {
+      if (types.size > 1) conflicts.push(`Uke ${w}: ${[...types].map(t => {
+        if (t === "daily_standup") return "Daily Standup";
+        if (t === "sprint_planning") return "Sprint Planning";
+        if (t === "sprint_review") return "Sprint Review";
+        return t;
+      }).join(" + ")}`);
+    });
+    return conflicts;
+  }, [agileMeetings, registrations, catalog]);
+
+  const [selectedRegistration, setSelectedRegistration] = useState<Registration | null | undefined>(undefined);
+
   const openModal = (item: CatalogItem) => {
     setSelectedCatalog(item);
-    setSelectedRegistration(undefined);
+    setSelectedRegistration(undefined); // will use getExistingRegistration
     setModalOpen(true);
   };
 
   const openModalNew = (item: CatalogItem) => {
     setSelectedCatalog(item);
-    setSelectedRegistration(null);
+    setSelectedRegistration(null); // force new registration
     setModalOpen(true);
   };
 
@@ -60,7 +85,7 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
 
   return (
     <div className="space-y-6">
-      {/* Mandatory first half — no per-row deadline badge */}
+      {/* Mandatory first half */}
       <Section title="Obligatoriske — første halvdel" subtitle="Frist 5. april" variant="mandatory">
         {mandatoryFirstHalf
           .sort((a, b) => (isCompleted(a.id) ? 1 : 0) - (isCompleted(b.id) ? 1 : 0))
@@ -70,6 +95,7 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
               <span className="text-sm flex-1">{item.name}</span>
               <Badge variant="secondary" className="text-[10px] tabular-nums">{item.points}p</Badge>
               <Badge variant="destructive" className="text-[10px]">Obligatorisk</Badge>
+              <Badge variant="outline" className="text-[10px]">5. apr</Badge>
             </CatalogRow>
           ))}
       </Section>
@@ -82,6 +108,7 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
               <StatusIcon catId={item.id} />
               <span className="text-sm flex-1">{item.name}</span>
               <Badge variant="secondary" className="text-[10px] tabular-nums">{item.points}p</Badge>
+              {item.period_deadline && <Badge variant="outline" className="text-[10px]">5. apr</Badge>}
             </CatalogRow>
           ))}
         </Section>
@@ -89,7 +116,7 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
 
       {/* Meeting-based activities */}
       <Section title="Møtebaserte aktiviteter" subtitle="Kobles automatisk fra møtekalenderen">
-        {/* Advisor meetings — keep detailed */}
+        {/* Advisor meetings */}
         {advisorMeeting && (
           <Card className="overflow-hidden">
             <CardContent className="py-3 space-y-2">
@@ -104,6 +131,20 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
                   </Button>
                 )}
               </div>
+              {/* Existing registrations */}
+              {getRegistrationsFor(advisorMeeting.id).map((reg, i) => (
+                <div
+                  key={reg.id}
+                  className="flex items-center gap-2 text-xs px-2 py-1.5 rounded hover:bg-accent/30 cursor-pointer transition-colors"
+                  onClick={() => openModalWithRegistration(advisorMeeting, reg)}
+                >
+                  <StatusIcon catId={advisorMeeting.id} />
+                  <span className="flex-1">Møte #{i + 1}{reg.completed_date ? ` — ${reg.completed_date}` : ""}</span>
+                  <Badge variant={reg.status === "completed" ? "default" : "outline"} className="text-[10px]">
+                    {reg.status === "completed" ? "Fullført" : reg.status === "in_progress" ? "Pågår" : "Ikke startet"}
+                  </Badge>
+                </div>
+              ))}
               <div className="flex gap-1.5">
                 {Array.from({ length: 4 }).map((_, i) => {
                   const completed = getRegistrationsFor(advisorMeeting.id).filter((r) => r.status === "completed").length;
@@ -124,36 +165,52 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
           </Card>
         )}
 
-        {/* Agile meetings — compact cards */}
+        {/* Agile meetings */}
+        {agileWeekWarning.length > 0 && (
+          <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/5 rounded-md px-3 py-2">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span>Smidige møter kan ikke gjennomføres i samme uke: {agileWeekWarning.join(", ")}</span>
+          </div>
+        )}
         <p className="text-xs text-muted-foreground">1p per type per uke · Maks 3p totalt · Ulike typer ikke i samme uke</p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {agileMeetings.map((item) => {
             const regs = getRegistrationsFor(item.id);
             const completedCount = regs.filter((r) => r.status === "completed").length;
-            const hasEarned = completedCount > 0;
+            const totalAgileCompleted = agileMeetings.reduce((sum, m) =>
+              sum + getRegistrationsFor(m.id).filter((r) => r.status === "completed").length, 0
+            );
+            const canAddMore = totalAgileCompleted < 3;
             return (
-              <Card
-                key={item.id}
-                className="overflow-hidden cursor-pointer hover:bg-accent/30 transition-colors"
-                onClick={() => {
-                  if (regs.length > 0) {
-                    openModalWithRegistration(item, regs[0]);
-                  } else {
-                    openModalNew(item);
-                  }
-                }}
-              >
-                <CardContent className="py-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{item.name.replace("Smidige møter: ", "")}</span>
-                      <Badge variant="secondary" className="text-[10px]">{item.points}p</Badge>
-                    </div>
-                    {hasEarned && <Check className="h-4 w-4 text-primary" />}
+              <Card key={item.id} className="overflow-hidden">
+                <CardContent className="py-3 space-y-2">
+                  <div className="text-center">
+                    <p className="text-sm font-medium">{item.name.replace("Smidige møter: ", "")}</p>
+                    <Badge variant="secondary" className="text-[10px]">{item.points}p</Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {completedCount > 0 ? `${completedCount} gjennomført` : "Ikke gjennomført"}
-                  </p>
+                  {regs.map((reg, i) => (
+                    <div
+                      key={reg.id}
+                      className="flex items-center gap-2 text-xs px-2 py-1.5 rounded hover:bg-accent/30 cursor-pointer transition-colors"
+                      onClick={() => openModalWithRegistration(item, reg)}
+                    >
+                      <StatusIcon catId={item.id} />
+                      <span className="flex-1">#{i + 1}{reg.completed_date ? ` — ${reg.completed_date}` : ""}</span>
+                      <Badge variant={reg.status === "completed" ? "default" : "outline"} className="text-[10px]">
+                        {reg.status === "completed" ? "Fullført" : reg.status === "in_progress" ? "Pågår" : "Planlagt"}
+                      </Badge>
+                    </div>
+                  ))}
+                  {regs.length === 0 && (
+                    <div className="flex justify-center">
+                      <StatusIcon catId={item.id} />
+                    </div>
+                  )}
+                  {canAddMore && (
+                    <Button variant="outline" size="sm" className="w-full h-7 text-xs" onClick={() => openModalNew(item)}>
+                      + Registrer ny
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             );
@@ -161,23 +218,22 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
         </div>
       </Section>
 
-      {/* Second half — compact single line */}
-      <div className="opacity-60">
-        <p className="text-xs text-muted-foreground font-medium mb-1">Andre halvdel — tilgjengelig etter 5. april</p>
-        <div className="space-y-1">
-          {secondHalf.length > 0 ? (
-            secondHalf.map((item) => (
-              <CatalogRow key={item.id} item={item} onClick={() => openModal(item)}>
-                <StatusIcon catId={item.id} />
-                <span className="text-sm flex-1">{item.name}</span>
-                <Badge variant="secondary" className="text-[10px] tabular-nums">{item.points}p</Badge>
-              </CatalogRow>
-            ))
-          ) : (
-            <p className="text-xs text-muted-foreground py-2">Nye aktiviteter publiseres etter 5. april.</p>
-          )}
-        </div>
-      </div>
+      {/* Second half */}
+      <Section title="Andre halvdel" subtitle="Tilgjengelig etter 5. april" variant="dimmed">
+        {secondHalf.length > 0 ? (
+          secondHalf.map((item) => (
+            <CatalogRow key={item.id} item={item} onClick={() => openModal(item)}>
+              <StatusIcon catId={item.id} />
+              <span className="text-sm flex-1">{item.name}</span>
+              <Badge variant="secondary" className="text-[10px] tabular-nums">{item.points}p</Badge>
+            </CatalogRow>
+          ))
+        ) : (
+          <div className="text-sm text-muted-foreground py-4 text-center">
+            Nye aktiviteter publiseres etter 5. april. Du kan legge dem til her når de er klare.
+          </div>
+        )}
+      </Section>
 
       {/* Custom */}
       {custom.length > 0 && (

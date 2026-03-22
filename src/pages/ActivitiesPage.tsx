@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useActivityCatalog, useActivityRegistrations, type CatalogItem, type Registration } from "@/hooks/useActivityCatalog";
 import { PointsPlanner, getRegWeek, calcWeekPoints } from "@/components/activities/PointsPlanner";
 import { CatalogView } from "@/components/activities/CatalogView";
@@ -8,22 +8,13 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Info, ChevronRight } from "lucide-react";
+import { Info } from "lucide-react";
+import { useMemo } from "react";
 
 export default function ActivitiesPage() {
   const { data: catalog, isLoading: loadingCatalog } = useActivityCatalog();
   const { data: registrations, isLoading: loadingRegs } = useActivityRegistrations();
-
-  // Default to registrations tab
-  const [tab, setTab] = useState("registrations");
-
-  // Planner collapsed state, persisted in localStorage
-  const [plannerOpen, setPlannerOpen] = useState(() => {
-    try { return localStorage.getItem("activities-planner-open") === "true"; } catch { return false; }
-  });
-  useEffect(() => {
-    try { localStorage.setItem("activities-planner-open", String(plannerOpen)); } catch {}
-  }, [plannerOpen]);
+  const [tab, setTab] = useState("catalog");
 
   // Modal state for planner clicks
   const [plannerModalOpen, setPlannerModalOpen] = useState(false);
@@ -43,7 +34,7 @@ export default function ActivitiesPage() {
   const cat = catalog || [];
   const regs = registrations || [];
 
-  // Calculate earned & planned using mandatory-exempt logic
+  // Calculate earned using mandatory-exempt logic
   const weekMap: Record<number, Registration[]> = {};
   regs.forEach((r) => {
     const w = getRegWeek(r);
@@ -54,120 +45,62 @@ export default function ActivitiesPage() {
   });
 
   let earned = 0;
-  let planned = 0;
   Object.values(weekMap).forEach((weekRegs) => {
     const calc = calcWeekPoints(weekRegs, cat);
     earned += calc.mandatoryEarned + calc.optionalEarned;
-    planned += calc.mandatoryPlanned + calc.optionalPlanned;
   });
-  const remaining = Math.max(30 - earned - planned, 0);
 
   const progressPct = Math.min((earned / 30) * 100, 100);
 
-  // Status line info
-  const mandatoryCats = cat.filter((c) => c.is_mandatory && c.period === "first_half");
-  const mandatoryRemaining = mandatoryCats.filter((c) => {
-    const catRegs = regs.filter((r) => r.catalog_id === c.id);
-    return !catRegs.some((r) => r.status === "completed");
-  }).length;
-
-  const weeksOverLimit = Object.entries(weekMap).filter(([, weekRegs]) => {
-    const optionalCount = weekRegs.filter((r) => {
-      const c = cat.find((ci) => ci.id === r.catalog_id);
-      return c && !c.is_mandatory;
-    }).length;
-    return optionalCount > 3;
-  }).length;
-
-  // Registrations count + missing details
-  const activeRegs = regs.filter((r) => r.status === "completed" || r.status === "in_progress");
-  const missingDetails = activeRegs.filter((r) => !(r.timing_rationale && r.description && r.experiences && r.reflections)).length;
-
-  const statusParts: string[] = [];
-  if (mandatoryRemaining > 0) statusParts.push(`${mandatoryRemaining} obligatoriske gjenstår`);
-  if (weeksOverLimit > 0) statusParts.push(`${weeksOverLimit} uke${weeksOverLimit > 1 ? "r" : ""} med for mange valgfrie`);
-
   return (
-    <div className="space-y-4 scroll-reveal">
+    <div className="space-y-6 scroll-reveal">
       <PageHeader
         title="Aktivitets-tracker"
         description={
           <span className="inline-flex items-center gap-1">
-            Teamaktiviteter teller 30% av prosjektkarakteren.
+            Teamaktiviteter teller 30% av prosjektkarakteren. Maks 3 valgfrie aktiviteter gir poeng per uke.
             <Tooltip>
               <TooltipTrigger asChild>
                 <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help inline" />
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-[280px] text-xs">
-                Maks 3 valgfrie aktiviteter gir poeng per uke. Obligatoriske er unntatt denne grensen.
+                Grensen på 3 aktiviteter per uke gjelder kun valgfrie aktiviteter. Obligatoriske aktiviteter gir alltid poeng og teller ikke mot denne grensen.
               </TooltipContent>
             </Tooltip>
           </span>
         }
       />
 
-      {/* Progress bar */}
-      <div className="space-y-1.5">
+      {/* Points overview */}
+      <div className="space-y-2">
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Opptjent: <strong className="text-foreground">{earned}p</strong> av 30p</span>
           <span className="text-muted-foreground tabular-nums">{Math.round(progressPct)}%</span>
         </div>
         <Progress value={progressPct} className="h-2" />
-
-        {/* Compact status line */}
-        {statusParts.length > 0 && (
-          <p className="text-xs text-muted-foreground">{statusParts.join(" · ")}</p>
-        )}
-
-        {/* Compact metric line */}
-        <p className="text-[13px]">
-          <span className="text-primary font-medium">{earned}p opptjent</span>
-          <span className="text-muted-foreground"> · </span>
-          <span className="text-info font-medium">{planned}p planlagt</span>
-          <span className="text-muted-foreground"> · </span>
-          <span className="text-muted-foreground">{remaining}p gjenstår</span>
-        </p>
       </div>
 
-      {/* Collapsible Planner */}
-      <div>
-        <button
-          onClick={() => setPlannerOpen(!plannerOpen)}
-          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wider font-medium"
-        >
-          <ChevronRight className={`h-3 w-3 transition-transform ${plannerOpen ? "rotate-90" : ""}`} />
-          Poengplanlegger
-        </button>
-        {plannerOpen && (
-          <div className="mt-3 animate-fade-in">
-            <PointsPlanner catalog={cat} registrations={regs} onClickRegistration={handlePlannerClick} />
-          </div>
-        )}
-      </div>
+      {/* Points Planner */}
+      <PointsPlanner catalog={cat} registrations={regs} onClickRegistration={handlePlannerClick} />
 
       {/* Catalog / Registrations tabs */}
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
+          <TabsTrigger value="catalog">Katalog</TabsTrigger>
           <TabsTrigger value="registrations">
             Gjennomføringer
-            {activeRegs.length > 0 && (
+            {regs.filter((r) => r.status === "completed" || r.status === "in_progress").length > 0 && (
               <span className="ml-1.5 bg-primary/10 text-primary text-[10px] px-1.5 py-0.5 rounded-full tabular-nums">
-                {activeRegs.length}
-              </span>
-            )}
-            {missingDetails > 0 && (
-              <span className="ml-1 bg-amber-100 text-amber-700 text-[10px] px-1.5 py-0.5 rounded-full tabular-nums">
-                {missingDetails} mangler
+                {regs.filter((r) => r.status === "completed" || r.status === "in_progress").length}
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="catalog">Katalog</TabsTrigger>
         </TabsList>
-        <TabsContent value="registrations" className="mt-4">
-          <RegistrationsView catalog={cat} registrations={regs} />
-        </TabsContent>
         <TabsContent value="catalog" className="mt-4">
           <CatalogView catalog={cat} registrations={regs} />
+        </TabsContent>
+        <TabsContent value="registrations" className="mt-4">
+          <RegistrationsView catalog={cat} registrations={regs} />
         </TabsContent>
       </Tabs>
 
