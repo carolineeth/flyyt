@@ -446,12 +446,15 @@ export default function ProcessLogExportPage() {
         </TabsContent>
 
         <TabsContent value="standups" className="space-y-3 mt-4">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button size="sm" variant="outline" onClick={() => copy(standupPlain, "Ren tekst")}>
-              <Copy className="h-3.5 w-3.5 mr-1" /> Kopier ren tekst
+              <Copy className="h-3.5 w-3.5 mr-1" /> Ren tekst
             </Button>
             <Button size="sm" variant="outline" onClick={() => copy(standupMarkdown, "Markdown")}>
-              <FileText className="h-3.5 w-3.5 mr-1" /> Kopier som Markdown
+              <FileText className="h-3.5 w-3.5 mr-1" /> Markdown
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => copy(standupLatex, "LaTeX")}>
+              <Code className="h-3.5 w-3.5 mr-1" /> LaTeX
             </Button>
           </div>
           {filteredStandups.length === 0 ? (
