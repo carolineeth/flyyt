@@ -185,7 +185,7 @@ export default function ResourcesPage() {
             <Button size="sm" onClick={() => setShowCreate(true)}>
               <Plus className="h-4 w-4 mr-1" /> Legg til lenke
             </Button>
-            <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileUpload} />
+            <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileSelect} />
           </div>
         }
       />
