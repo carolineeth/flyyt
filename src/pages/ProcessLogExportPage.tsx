@@ -178,8 +178,8 @@ export default function ProcessLogExportPage() {
   }, [displayedRegistrations, catalogMap, regParticipants, members]);
 
   const activityLatex = useMemo(() => {
-    if (!allRegistrations.length) return "";
-    const items = allRegistrations.map((r) => {
+    if (!displayedRegistrations.length) return "";
+    const items = displayedRegistrations.map((r) => {
       const cat = catalogMap[r.catalog_id];
       const names = getRegParticipantNames(r.id);
       const statusLabel = r.status === "completed" ? "Fullført" : r.status === "in_progress" ? "Pågår" : r.status === "planned" ? "Planlagt" : r.status;
@@ -205,23 +205,28 @@ export default function ProcessLogExportPage() {
       ].filter(Boolean).join("\n");
     });
     return `\\section{Aktiviteter}\n\n${items.join("\n")}`;
-  }, [allRegistrations, catalogMap, regParticipants, members]);
+  }, [displayedRegistrations, catalogMap, regParticipants, members]);
 
   // --- Sprint export ---
   const filteredSprints = useMemo(() => {
     return (sprints ?? []).filter((s) => inRange(s.start_date) || inRange(s.end_date));
   }, [sprints, dateFrom, dateTo]);
 
+  const displayedSprints = useMemo(() => {
+    if (selectedSprintId === "all") return filteredSprints;
+    return filteredSprints.filter((s) => s.id === selectedSprintId);
+  }, [filteredSprints, selectedSprintId]);
+
   const sprintMarkdown = useMemo(() => {
     const header = "| Sprint | Periode | Mål | Fullførte items | Story points |\n|--------|---------|-----|-----------------|--------------|";
-    const rows = filteredSprints.map((s) => {
+    const rows = displayedSprints.map((s) => {
       const items = (sprintItems ?? []).filter((si) => si.sprint_id === s.id);
       const done = items.filter((si) => si.column_name === "done");
       const sp = done.reduce((sum, si) => sum + (si.backlog_item?.estimate ?? 0), 0);
       return `| ${s.name} | ${formatDate(s.start_date)}–${formatDate(s.end_date)} | ${s.goal ?? "-"} | ${done.length} | ${sp} |`;
     });
 
-    const details = filteredSprints.map((s) => {
+    const details = displayedSprints.map((s) => {
       const items = (sprintItems ?? []).filter((si) => si.sprint_id === s.id && si.column_name === "done");
       if (!items.length) return "";
       const listing = items.map((si) => `- **${si.backlog_item?.title}**: ${si.backlog_item?.description ?? "Ingen beskrivelse"}`).join("\n");
@@ -229,17 +234,17 @@ export default function ProcessLogExportPage() {
     }).filter(Boolean).join("\n");
 
     return `${header}\n${rows.join("\n")}\n${details}`;
-  }, [filteredSprints, sprintItems]);
+  }, [displayedSprints, sprintItems]);
 
   const sprintPlain = useMemo(() => {
-    const rows = filteredSprints.map((s) => {
+    const rows = displayedSprints.map((s) => {
       const items = (sprintItems ?? []).filter((si) => si.sprint_id === s.id);
       const done = items.filter((si) => si.column_name === "done");
       const sp = done.reduce((sum, si) => sum + (si.backlog_item?.estimate ?? 0), 0);
       return `${s.name} | ${formatDate(s.start_date)}–${formatDate(s.end_date)} | ${s.goal ?? "-"} | ${done.length} fullført | ${sp} SP`;
     });
 
-    const details = filteredSprints.map((s) => {
+    const details = displayedSprints.map((s) => {
       const items = (sprintItems ?? []).filter((si) => si.sprint_id === s.id && si.column_name === "done");
       if (!items.length) return "";
       const listing = items.map((si) => `  - ${si.backlog_item?.title}: ${si.backlog_item?.description ?? "Ingen beskrivelse"}`).join("\n");
@@ -247,10 +252,10 @@ export default function ProcessLogExportPage() {
     }).filter(Boolean).join("\n");
 
     return `${rows.join("\n")}\n${details}`;
-  }, [filteredSprints, sprintItems]);
+  }, [displayedSprints, sprintItems]);
 
   const sprintLatex = useMemo(() => {
-    const tableRows = filteredSprints.map((s) => {
+    const tableRows = displayedSprints.map((s) => {
       const items = (sprintItems ?? []).filter((si) => si.sprint_id === s.id);
       const done = items.filter((si) => si.column_name === "done");
       const sp = done.reduce((sum, si) => sum + (si.backlog_item?.estimate ?? 0), 0);
@@ -271,7 +276,7 @@ export default function ProcessLogExportPage() {
       "\\end{table}",
     ].join("\n");
 
-    const details = filteredSprints.map((s) => {
+    const details = displayedSprints.map((s) => {
       const items = (sprintItems ?? []).filter((si) => si.sprint_id === s.id && si.column_name === "done");
       if (!items.length) return "";
       const listing = items.map((si) => `  \\item \\textbf{${tex(si.backlog_item?.title ?? "")}} -- ${tex(si.backlog_item?.description ?? "Ingen beskrivelse")}`).join("\n");
@@ -279,7 +284,7 @@ export default function ProcessLogExportPage() {
     }).filter(Boolean).join("\n\n");
 
     return `\\section{Sprinter}\n\n${table}\n\n${details}`;
-  }, [filteredSprints, sprintItems]);
+  }, [displayedSprints, sprintItems]);
 
   // --- Decision export ---
   const filteredDecisions = useMemo(() => {
