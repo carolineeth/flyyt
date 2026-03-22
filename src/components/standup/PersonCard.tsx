@@ -12,7 +12,9 @@ interface Props {
 }
 
 export function PersonCard({ member, entry, isCurrentUser, isToday }: Props) {
-  const cat = entry?.category ? CATEGORIES.find((c) => c.key === entry.category) : null;
+  const cats = entry?.category
+    ? entry.category.split(",").map((k) => CATEGORIES.find((c) => c.key === k)).filter(Boolean)
+    : [];
 
   if (!entry) {
     return (
@@ -38,13 +40,18 @@ export function PersonCard({ member, entry, isCurrentUser, isToday }: Props) {
         </span>
       </div>
       <p className="text-[13px] text-foreground leading-relaxed whitespace-pre-wrap">{entry.content}</p>
-      {cat && (
-        <span
-          className="inline-block mt-2 text-[10px] font-medium px-2 py-0.5 rounded-md"
-          style={{ backgroundColor: cat.bg, color: cat.fg }}
-        >
-          {cat.label}
-        </span>
+      {cats.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-2">
+          {cats.map((cat) => (
+            <span
+              key={cat!.key}
+              className="inline-block text-[10px] font-medium px-2 py-0.5 rounded-md"
+              style={{ backgroundColor: cat!.bg, color: cat!.fg }}
+            >
+              {cat!.label}
+            </span>
+          ))}
+        </div>
       )}
     </div>
   );
