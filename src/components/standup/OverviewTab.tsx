@@ -93,12 +93,13 @@ export function OverviewTab({ members, weekStart, weekEnd, onNavigateToWeek, onS
   // Category distribution
   const catDist = useMemo(() => {
     const withCat = filteredUpdates.filter((u) => u.category);
-    const total = withCat.length;
+    const allCatKeys = withCat.flatMap((u) => u.category!.split(",").filter(Boolean));
+    const total = allCatKeys.length;
     if (total === 0) return [];
     return CATEGORIES.map((cat) => ({
       ...cat,
-      count: withCat.filter((u) => u.category === cat.key).length,
-      pct: Math.round((withCat.filter((u) => u.category === cat.key).length / total) * 100),
+      count: allCatKeys.filter((k) => k === cat.key).length,
+      pct: Math.round((allCatKeys.filter((k) => k === cat.key).length / total) * 100),
     }));
   }, [filteredUpdates]);
 
@@ -274,7 +275,7 @@ export function OverviewTab({ members, weekStart, weekEnd, onNavigateToWeek, onS
             const memberCats = filteredUpdates.filter((u) => u.member_id === m.id && u.category);
             const topCat = memberCats.length > 0
               ? CATEGORIES.reduce((best, cat) => {
-                  const c = memberCats.filter((u) => u.category === cat.key).length;
+                  const c = memberCats.filter((u) => u.category!.split(",").includes(cat.key)).length;
                   return c > best.count ? { label: cat.label, count: c } : best;
                 }, { label: "", count: 0 })
               : null;

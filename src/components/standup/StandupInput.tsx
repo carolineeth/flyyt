@@ -26,7 +26,10 @@ interface Props {
 
 export function StandupInput({ memberId, existingEntry, date, dayLabel, onSaved }: Props) {
   const [content, setContent] = useState(existingEntry?.content ?? "");
-  const [category, setCategory] = useState<string | null>(existingEntry?.category ?? null);
+  const [categories, setCategories] = useState<string[]>(() => {
+    const raw = existingEntry?.category;
+    return raw ? raw.split(",").filter(Boolean) : [];
+  });
   const [backlogItemId, setBacklogItemId] = useState<string | null>(existingEntry?.backlog_item_id ?? null);
   const [backlogOpen, setBacklogOpen] = useState(false);
   const upsert = useUpsertDailyUpdate();
@@ -35,14 +38,21 @@ export function StandupInput({ memberId, existingEntry, date, dayLabel, onSaved 
   useEffect(() => {
     if (existingEntry) {
       setContent(existingEntry.content ?? "");
-      setCategory(existingEntry.category ?? null);
+      const raw = existingEntry.category;
+      setCategories(raw ? raw.split(",").filter(Boolean) : []);
       setBacklogItemId(existingEntry.backlog_item_id ?? null);
     } else {
       setContent("");
-      setCategory(null);
+      setCategories([]);
       setBacklogItemId(null);
     }
   }, [existingEntry]);
+
+  const toggleCategory = (key: string) => {
+    setCategories((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
+    );
+  };
 
   const dateStr = format(date, "yyyy-MM-dd");
 
@@ -56,7 +66,7 @@ export function StandupInput({ memberId, existingEntry, date, dayLabel, onSaved 
         member_id: memberId,
         entry_date: dateStr,
         content: content.trim(),
-        category,
+        category: categories.length > 0 ? categories.join(",") : null,
         backlog_item_id: backlogItemId,
       });
       toast.success("Oppdatering publisert!");
@@ -102,12 +112,12 @@ export function StandupInput({ memberId, existingEntry, date, dayLabel, onSaved 
           {CATEGORIES.map((cat) => (
             <button
               key={cat.key}
-              onClick={() => setCategory(category === cat.key ? null : cat.key)}
+              onClick={() => toggleCategory(cat.key)}
               className="px-2.5 py-0.5 rounded-md text-[11px] font-medium transition-opacity"
               style={{
                 backgroundColor: cat.bg,
                 color: cat.fg,
-                opacity: category === cat.key ? 1 : 0.5,
+                opacity: categories.includes(cat.key) ? 1 : 0.5,
               }}
             >
               {cat.label}
