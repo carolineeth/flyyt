@@ -308,6 +308,51 @@ export type Database = {
           },
         ]
       }
+      backlog_changelog: {
+        Row: {
+          backlog_item_id: string
+          change_type: string
+          changed_by: string | null
+          created_at: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+        }
+        Insert: {
+          backlog_item_id: string
+          change_type: string
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Update: {
+          backlog_item_id?: string
+          change_type?: string
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "backlog_changelog_backlog_item_id_fkey"
+            columns: ["backlog_item_id"]
+            isOneToOne: false
+            referencedRelation: "backlog_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "backlog_changelog_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       backlog_items: {
         Row: {
           assignee_id: string | null
