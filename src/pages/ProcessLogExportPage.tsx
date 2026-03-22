@@ -241,6 +241,38 @@ export default function ProcessLogExportPage() {
     return `${rows.join("\n")}\n${details}`;
   }, [filteredSprints, sprintItems]);
 
+  const sprintLatex = useMemo(() => {
+    const tableRows = filteredSprints.map((s) => {
+      const items = (sprintItems ?? []).filter((si) => si.sprint_id === s.id);
+      const done = items.filter((si) => si.column_name === "done");
+      const sp = done.reduce((sum, si) => sum + (si.backlog_item?.estimate ?? 0), 0);
+      return `      ${tex(s.name)} & ${tex(formatDate(s.start_date))}--${tex(formatDate(s.end_date))} & ${tex(s.goal ?? "-")} & ${done.length} & ${sp} \\\\`;
+    });
+
+    const table = [
+      "\\begin{table}[H]",
+      "\\centering",
+      "\\begin{tabular}{|l|l|p{5cm}|c|c|}",
+      "\\hline",
+      "\\textbf{Sprint} & \\textbf{Periode} & \\textbf{Mål} & \\textbf{Fullført} & \\textbf{SP} \\\\",
+      "\\hline",
+      ...tableRows,
+      "\\hline",
+      "\\end{tabular}",
+      "\\caption{Sprintoversikt}",
+      "\\end{table}",
+    ].join("\n");
+
+    const details = filteredSprints.map((s) => {
+      const items = (sprintItems ?? []).filter((si) => si.sprint_id === s.id && si.column_name === "done");
+      if (!items.length) return "";
+      const listing = items.map((si) => `  \\item \\textbf{${tex(si.backlog_item?.title ?? "")}} -- ${tex(si.backlog_item?.description ?? "Ingen beskrivelse")}`).join("\n");
+      return `\\subsection{${tex(s.name)}}\n\\begin{itemize}\n${listing}\n\\end{itemize}`;
+    }).filter(Boolean).join("\n\n");
+
+    return `\\section{Sprinter}\n\n${table}\n\n${details}`;
+  }, [filteredSprints, sprintItems]);
+
   // --- Decision export ---
   const filteredDecisions = useMemo(() => {
     return (decisions ?? []).filter((d) => inRange(d.date));
@@ -256,6 +288,19 @@ export default function ProcessLogExportPage() {
     return filteredDecisions.map((d) => {
       return `${formatDate(d.date)}: ${d.title}\n  Kontekst: ${d.context ?? "-"} | Valg: ${d.choice ?? "-"} | Begrunnelse: ${d.rationale ?? "-"}`;
     }).join("\n\n");
+  }, [filteredDecisions]);
+
+  const decisionLatex = useMemo(() => {
+    const items = filteredDecisions.map((d) => {
+      return [
+        `\\subsection{${tex(d.title)} (${tex(formatDate(d.date))})}`,
+        `\\textbf{Kontekst:} ${tex(d.context ?? "-")}\\\\`,
+        `\\textbf{Valg:} ${tex(d.choice ?? "-")}\\\\`,
+        `\\textbf{Begrunnelse:} ${tex(d.rationale ?? "-")}`,
+        "",
+      ].join("\n");
+    });
+    return `\\section{Beslutninger}\n\n${items.join("\n")}`;
   }, [filteredDecisions]);
 
   // --- Standup export ---
@@ -297,6 +342,24 @@ export default function ProcessLogExportPage() {
         }).join("\n");
         return `${header}\n${entries}`;
       }).join("\n\n");
+  }, [filteredStandups, members]);
+
+  const standupLatex = useMemo(() => {
+    const byDate: Record<string, typeof filteredStandups> = {};
+    filteredStandups.forEach((u) => {
+      if (!byDate[u.entry_date]) byDate[u.entry_date] = [];
+      byDate[u.entry_date].push(u);
+    });
+    const sections = Object.entries(byDate)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, updates]) => {
+        const entries = updates.map((u) => {
+          const member = (members ?? []).find((m) => m.id === u.member_id);
+          return `  \\item \\textbf{${tex(member?.name ?? "Ukjent")}}: ${tex(u.content || "(tomt)")} \\textit{(${tex(u.category || "annet")})}`;
+        }).join("\n");
+        return `\\subsection{${tex(formatDate(date))}}\n\\begin{itemize}\n${entries}\n\\end{itemize}`;
+      });
+    return `\\section{Standup-oppdateringer}\n\n${sections.join("\n\n")}`;
   }, [filteredStandups, members]);
 
   const copy = (text: string, label: string) => {
