@@ -21,9 +21,10 @@ interface Props {
   existingEntry: DailyUpdate | null;
   date: Date;
   dayLabel: string;
+  onSaved?: () => void;
 }
 
-export function StandupInput({ memberId, existingEntry, date, dayLabel }: Props) {
+export function StandupInput({ memberId, existingEntry, date, dayLabel, onSaved }: Props) {
   const [content, setContent] = useState(existingEntry?.content ?? "");
   const [category, setCategory] = useState<string | null>(existingEntry?.category ?? null);
   const [backlogItemId, setBacklogItemId] = useState<string | null>(existingEntry?.backlog_item_id ?? null);
@@ -59,6 +60,7 @@ export function StandupInput({ memberId, existingEntry, date, dayLabel }: Props)
         backlog_item_id: backlogItemId,
       });
       toast.success("Oppdatering publisert!");
+      onSaved?.();
     } catch {
       toast.error("Kunne ikke publisere oppdatering");
     }
