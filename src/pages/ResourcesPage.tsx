@@ -37,6 +37,7 @@ export default function ResourcesPage() {
   const [uploadCategory, setUploadCategory] = useState("Fildeling");
   const [showUploadNewCategory, setShowUploadNewCategory] = useState(false);
   const [uploadNewCategory, setUploadNewCategory] = useState("");
+  const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Edit state
@@ -109,11 +110,22 @@ export default function ResourcesPage() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    setPendingFiles(Array.from(files));
+    openUploadDialog(Array.from(files));
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const openUploadDialog = (files: File[]) => {
+    setPendingFiles(files);
     setUploadCategory("Fildeling");
     setShowUploadNewCategory(false);
     setUploadNewCategory("");
-    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) openUploadDialog(files);
   };
 
   const confirmUpload = async () => {
@@ -173,7 +185,21 @@ export default function ResourcesPage() {
   };
 
   return (
-    <div className="space-y-6 scroll-reveal">
+    <div
+      className="space-y-6 scroll-reveal relative"
+      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+      onDragLeave={(e) => { if (e.currentTarget === e.target || !e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false); }}
+      onDrop={handleDrop}
+    >
+      {dragOver && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div className="border-2 border-dashed border-primary rounded-xl p-12 text-center">
+            <Upload className="h-10 w-10 text-primary mx-auto mb-3" />
+            <p className="text-lg font-medium text-foreground">Slipp filer her for å laste opp</p>
+            <p className="text-sm text-muted-foreground mt-1">Velg kategori i neste steg</p>
+          </div>
+        </div>
+      )}
       <PageHeader
         title="Ressurs-hub"
         description="Samlet lenkesamling og filer for alle prosjektressurser"
