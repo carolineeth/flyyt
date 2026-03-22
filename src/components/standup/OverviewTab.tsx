@@ -26,7 +26,7 @@ function getWorkdays(start: Date, end: Date): Date[] {
   const effectiveEnd = isAfter(end, today) ? today : end;
   if (isBefore(effectiveEnd, start)) return [];
   return eachDayOfInterval({ start, end: effectiveEnd }).filter(
-    (d) => !isWeekend(d) && !isBefore(d, PROJECT_START)
+    (d) => !isBefore(d, PROJECT_START)
   );
 }
 
