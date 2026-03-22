@@ -18,7 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SubSessionBlock } from "./SubSessionBlock";
 import { toast } from "sonner";
-import { Plus, Play, Square, Copy, ChevronUp, ChevronDown, X, CalendarDays, Save, Pencil, Eye, Users, ListChecks, FileText } from "lucide-react";
+import { Plus, Play, Square, Copy, ChevronUp, ChevronDown, X, CalendarDays, Save, Pencil, Eye, Users, ListChecks, FileText, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const subSessionTemplates: Record<string, string[]> = {
@@ -37,6 +37,83 @@ const subSessionTypeLabels: Record<string, string> = {
   veiledermøte: "Veiledermøte",
   annet: "Annet",
 };
+
+// ISO week calculation (shared utility)
+function isoWeek(dateStr: string): number {
+  const d = new Date(dateStr + "T00:00:00");
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  return Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+}
+
+// Auto-links a new sub-session to the matching activity_catalog entry.
+// If a registration already exists for this type+week, it links to that instead.
+async function autoLinkSubSessionToActivity(
+  ssId: string,
+  type: string,
+  meetingId: string,
+  meetingDateStr: string,
+  participants: string[],
+  qc: ReturnType<typeof import("@tanstack/react-query").useQueryClient>
+) {
+  const { data: catalogItems } = await (supabase
+    .from("activity_catalog" as any)
+    .select("*")
+    .eq("meeting_type", type) as any);
+  if (!catalogItems || (catalogItems as any[]).length === 0) return;
+  const catalog = (catalogItems as any[])[0];
+
+  const completedWeek = isoWeek(meetingDateStr);
+
+  // Check if a registration already exists for this catalog+week
+  const { data: weekRegs } = await (supabase
+    .from("activity_registrations" as any)
+    .select("id")
+    .eq("catalog_id", catalog.id)
+    .eq("completed_week", completedWeek) as any);
+
+  if (weekRegs && (weekRegs as any[]).length > 0) {
+    await (supabase
+      .from("activity_registrations" as any)
+      .update({ linked_sub_session_id: ssId, linked_meeting_id: meetingId } as any)
+      .eq("id", (weekRegs as any[])[0].id) as any);
+    qc.invalidateQueries({ queryKey: ["activity_registrations"] });
+    return;
+  }
+
+  // Count completed regs to determine occurrence_number
+  const { data: allCompleted } = await (supabase
+    .from("activity_registrations" as any)
+    .select("id")
+    .eq("catalog_id", catalog.id)
+    .eq("status", "completed") as any);
+  const occurrenceNumber = ((allCompleted as any[])?.length ?? 0) + 1;
+
+  const { data: reg, error } = await (supabase
+    .from("activity_registrations" as any)
+    .insert({
+      catalog_id: catalog.id,
+      status: "completed",
+      completed_date: meetingDateStr,
+      completed_week: completedWeek,
+      occurrence_number: occurrenceNumber,
+      linked_meeting_id: meetingId,
+      linked_sub_session_id: ssId,
+    } as any)
+    .select()
+    .single() as any);
+  if (error) { console.error("Auto-link error:", error); return; }
+
+  if (reg && participants.length > 0) {
+    await (supabase
+      .from("activity_registration_participants" as any)
+      .insert(participants.map((memberId) => ({ registration_id: (reg as any).id, member_id: memberId })) as any) as any);
+    qc.invalidateQueries({ queryKey: ["activity_registration_participants"] });
+  }
+  qc.invalidateQueries({ queryKey: ["activity_registrations"] });
+}
 
 interface MeetingCardProps {
   meeting: any;
@@ -195,6 +272,12 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
       );
     }
 
+    // Auto-link to activity plan
+    const meetingDateStr = meeting.meeting_date || meetingDate.toISOString().split("T")[0];
+    await autoLinkSubSessionToActivity(
+      (ss as any).id, type, meeting.id, meetingDateStr, meeting.participants || [], qc
+    );
+
     qc.invalidateQueries({ queryKey: ["meeting_sub_sessions", meeting.id] });
     toast.success("Delmøte lagt til");
   };
@@ -241,6 +324,11 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
 
   const updateActionPoint = async (apId: string, updates: any) => {
     await supabase.from("meeting_action_points").update(updates).eq("id", apId);
+    qc.invalidateQueries({ queryKey: ["meeting_action_points", meeting.id] });
+  };
+
+  const deleteActionPoint = async (apId: string) => {
+    await supabase.from("meeting_action_points").delete().eq("id", apId);
     qc.invalidateQueries({ queryKey: ["meeting_action_points", meeting.id] });
   };
 
@@ -595,7 +683,7 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
                 <p className="text-xs font-medium text-muted-foreground">Action points</p>
                 {actionPoints?.map((ap) => (
                   editMode ? (
-                    <ActionPointRow key={ap.id} ap={ap} members={members || []} onUpdate={updateActionPoint} />
+                    <ActionPointRow key={ap.id} ap={ap} members={members || []} onUpdate={updateActionPoint} onDelete={deleteActionPoint} />
                   ) : (
                     <div key={ap.id} className="flex items-center gap-2 text-xs">
                       <Checkbox checked={ap.is_completed} onCheckedChange={(v) => updateActionPoint(ap.id, { is_completed: !!v })} />
@@ -703,7 +791,7 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
   );
 }
 
-function ActionPointRow({ ap, members, onUpdate }: { ap: any; members: any[]; onUpdate: (id: string, u: any) => void }) {
+function ActionPointRow({ ap, members, onUpdate, onDelete }: { ap: any; members: any[]; onUpdate: (id: string, u: any) => void; onDelete: (id: string) => void }) {
   const [title, setTitle] = useState(ap.title);
 
   useEffect(() => { setTitle(ap.title); }, [ap.title]);
@@ -742,6 +830,13 @@ function ActionPointRow({ ap, members, onUpdate }: { ap: any; members: any[]; on
         onChange={(e) => onUpdate(ap.id, { deadline: e.target.value || null })}
         className="h-7 text-xs w-32"
       />
+      <button
+        className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+        onClick={() => onDelete(ap.id)}
+        title="Slett action point"
+      >
+        <Trash2 className="h-3 w-3" />
+      </button>
     </div>
   );
 }

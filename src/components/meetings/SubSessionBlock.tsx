@@ -1,14 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSubSessionItems } from "@/hooks/useMeetingCalendar";
-import { useActivityCatalog, useActivityRegistrations } from "@/hooks/useActivityCatalog";
+import { useActivityCatalog, useActivityRegistrations, useUpdateRegistration } from "@/hooks/useActivityCatalog";
 import { useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
-import { Trash2, Plus, CheckCircle2, Link2 } from "lucide-react";
+import { Trash2, Plus, CheckCircle2, FileText } from "lucide-react";
 
 const typeLabels: Record<string, string> = {
   sprint_planning: "Sprint Planning",
@@ -39,6 +38,8 @@ const activityMeetingTypeMap: Record<string, string> = {
   retrospective: "retrospective",
   daily_standup: "daily_standup",
   veiledermøte: "veiledermøte",
+  mobb_programmering: "mobb_programmering",
+  workshop: "workshop",
 };
 
 interface SubSessionBlockProps {
@@ -50,13 +51,20 @@ interface SubSessionBlockProps {
   onDelete: () => void;
 }
 
-export function SubSessionBlock({ subSession, meetingStatus, meetingId, meetingDate, meetingParticipants, onDelete }: SubSessionBlockProps) {
+export function SubSessionBlock({ subSession, meetingStatus: _meetingStatus, meetingId: _meetingId, meetingDate: _meetingDate, meetingParticipants: _meetingParticipants, onDelete }: SubSessionBlockProps) {
   const qc = useQueryClient();
   const { data: items } = useSubSessionItems(subSession.id);
   const { data: catalog } = useActivityCatalog();
   const { data: registrations } = useActivityRegistrations();
+  const updateReg = useUpdateRegistration();
   const [notes, setNotes] = useState(subSession.notes || "");
   const [newItem, setNewItem] = useState("");
+  const [prosesslogg, setProsesslogg] = useState({
+    timing_rationale: "",
+    description: "",
+    experiences: "",
+    reflections: "",
+  });
 
   useEffect(() => { setNotes(subSession.notes || ""); }, [subSession.notes]);
 
@@ -83,59 +91,56 @@ export function SubSessionBlock({ subSession, meetingStatus, meetingId, meetingD
 
   const borderColor = typeBorderColors[subSession.type] || "border-l-gray-400";
 
-  // Activity linking logic
+  // Activity linking
   const meetingType = activityMeetingTypeMap[subSession.type];
   const matchingCatalog = meetingType ? catalog?.find((c) => c.meeting_type === meetingType) : null;
   const existingRegistration = matchingCatalog
     ? registrations?.find((r) => r.linked_sub_session_id === subSession.id)
     : null;
-  const allLinkedRegs = matchingCatalog
-    ? registrations?.filter((r) => r.catalog_id === matchingCatalog.id && r.status === "completed") ?? []
-    : [];
 
-  const linkToActivityPlan = async () => {
-    if (!matchingCatalog) return;
-
-    // Calculate week number from meeting date
-    let completedWeek: number | null = null;
-    if (meetingDate) {
-      const d = new Date(meetingDate + "T00:00:00");
-      const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-      const dayNum = date.getUTCDay() || 7;
-      date.setUTCDate(date.getUTCDate() + 4 - dayNum);
-      const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-      completedWeek = Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  // Sync prosesslogg state from registration (on first load / registration change)
+  useEffect(() => {
+    if (existingRegistration) {
+      setProsesslogg({
+        timing_rationale: existingRegistration.timing_rationale || "",
+        description: existingRegistration.description || "",
+        experiences: existingRegistration.experiences || "",
+        reflections: existingRegistration.reflections || "",
+      });
     }
+  }, [existingRegistration?.id]);
 
-    const occurrenceNumber = allLinkedRegs.length + 1;
-
-    const { data: reg, error } = await (supabase.from("activity_registrations" as any).insert({
-      catalog_id: matchingCatalog.id,
-      status: "completed",
-      completed_date: meetingDate || null,
-      completed_week: completedWeek,
-      occurrence_number: occurrenceNumber,
-      linked_meeting_id: meetingId,
-      linked_sub_session_id: subSession.id,
-      description: notes || null,
-    } as any).select().single() as any);
-
-    if (error) { toast.error(error.message); return; }
-
-    // Add meeting participants as activity participants
-    if (reg && meetingParticipants && meetingParticipants.length > 0) {
-      await (supabase.from("activity_registration_participants" as any).insert(
-        meetingParticipants.map((memberId) => ({
-          registration_id: (reg as any).id,
-          member_id: memberId,
-        }))
-      ) as any);
-    }
-
-    qc.invalidateQueries({ queryKey: ["activity_registrations"] });
-    qc.invalidateQueries({ queryKey: ["activity_registration_participants"] });
-    toast.success(`✓ ${typeLabels[subSession.type]} koblet til aktivitetsplanen`);
-  };
+  // Debounced auto-save prosesslogg fields → activity_registration
+  useEffect(() => {
+    if (!existingRegistration) return;
+    const reg = existingRegistration;
+    const t = setTimeout(() => {
+      const changed =
+        prosesslogg.timing_rationale !== (reg.timing_rationale || "") ||
+        prosesslogg.description !== (reg.description || "") ||
+        prosesslogg.experiences !== (reg.experiences || "") ||
+        prosesslogg.reflections !== (reg.reflections || "");
+      if (changed) {
+        updateReg.mutate({
+          id: reg.id,
+          timing_rationale: prosesslogg.timing_rationale || null,
+          description: prosesslogg.description || null,
+          experiences: prosesslogg.experiences || null,
+          reflections: prosesslogg.reflections || null,
+        } as any);
+      }
+    }, 600);
+    return () => clearTimeout(t);
+  }, [
+    prosesslogg.timing_rationale,
+    prosesslogg.description,
+    prosesslogg.experiences,
+    prosesslogg.reflections,
+    existingRegistration?.timing_rationale,
+    existingRegistration?.description,
+    existingRegistration?.experiences,
+    existingRegistration?.reflections,
+  ]);
 
   return (
     <div className={`border-l-[3px] ${borderColor} bg-muted/30 rounded-r-md p-3 space-y-2`}>
@@ -183,29 +188,71 @@ export function SubSessionBlock({ subSession, meetingStatus, meetingId, meetingD
         className="text-xs"
       />
 
-      {/* Activity plan link */}
+      {/* Activity registration status + prosesslogg */}
       {matchingCatalog && (
-        <div className="pt-1">
+        <div className="pt-2 border-t border-border/50 space-y-2">
           {existingRegistration ? (
-            <div className="flex items-center gap-1.5 text-xs text-primary">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              <span>Registrert i aktivitetsplanen (uke {existingRegistration.completed_week})</span>
-            </div>
+            <>
+              <div className="flex items-center gap-1.5 text-xs text-primary">
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                <span>Registrert i aktivitetsplanen (uke {existingRegistration.completed_week})</span>
+              </div>
+
+              {/* Prosesslogg fields */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5">
+                  <FileText className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-[11px] font-medium text-muted-foreground">Prosesslogg</span>
+                  <span className="text-[10px] text-muted-foreground/50">· lagres automatisk</span>
+                </div>
+
+                <Textarea
+                  value={prosesslogg.timing_rationale}
+                  onChange={(e) => setProsesslogg(p => ({ ...p, timing_rationale: e.target.value }))}
+                  placeholder="Hvorfor dette tidspunktet?"
+                  rows={2}
+                  className="text-xs"
+                />
+                <div>
+                  <Textarea
+                    value={prosesslogg.description}
+                    onChange={(e) => setProsesslogg(p => ({ ...p, description: e.target.value }))}
+                    placeholder="Gjennomføring..."
+                    rows={2}
+                    className="text-xs"
+                  />
+                  {!prosesslogg.description && notes && (
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span className="text-[10px] text-muted-foreground">Møtenotater finnes.</span>
+                      <button
+                        className="text-[10px] text-primary underline"
+                        onClick={() => setProsesslogg(p => ({ ...p, description: notes }))}
+                      >
+                        Bruk som gjennomføring
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <Textarea
+                  value={prosesslogg.experiences}
+                  onChange={(e) => setProsesslogg(p => ({ ...p, experiences: e.target.value }))}
+                  placeholder="Erfaringer..."
+                  rows={2}
+                  className="text-xs"
+                />
+                <Textarea
+                  value={prosesslogg.reflections}
+                  onChange={(e) => setProsesslogg(p => ({ ...p, reflections: e.target.value }))}
+                  placeholder="Refleksjoner..."
+                  rows={2}
+                  className="text-xs"
+                />
+              </div>
+            </>
           ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-xs"
-              onClick={linkToActivityPlan}
-            >
-              <Link2 className="h-3 w-3 mr-1" />
-              Koble til aktivitetsplan
-              {matchingCatalog.max_occurrences > 1 && (
-                <span className="ml-1 text-muted-foreground">
-                  ({allLinkedRegs.length}/{matchingCatalog.max_occurrences})
-                </span>
-              )}
-            </Button>
+            <p className="text-[11px] text-muted-foreground">
+              Kobler til aktivitetsplanen automatisk ved neste møte.
+            </p>
           )}
         </div>
       )}
