@@ -320,6 +320,13 @@ export default function MeetingCalendarPage() {
         </div>
       )}
 
+        </TabsContent>
+
+        <TabsContent value="minutes" className="mt-4">
+          <MeetingMinutesView />
+        </TabsContent>
+      </Tabs>
+
       {/* Add meeting dialog */}
       <Dialog open={showAddMeeting} onOpenChange={setShowAddMeeting}>
         <DialogContent>
