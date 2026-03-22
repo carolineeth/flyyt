@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { Plus, ExternalLink, Upload, FileText, Download } from "lucide-react";
+import { Plus, ExternalLink, Upload, FileText, Download, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import type { Resource } from "@/lib/types";
 
 const defaultCategories = ["Kode", "Design", "Dokumentasjon", "Prosjektstyring", "Fildeling", "APIer", "Kurs"];
@@ -31,6 +33,13 @@ export default function ResourcesPage() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Edit state
+  const [editingResource, setEditingResource] = useState<Resource | null>(null);
+  const [editForm, setEditForm] = useState({ title: "", url: "", category: "", description: "" });
+
+  // Delete state
+  const [deletingResource, setDeletingResource] = useState<Resource | null>(null);
+
   const createMutation = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("resources").insert({
@@ -48,6 +57,42 @@ export default function ResourcesPage() {
       toast.success("Ressurs lagt til");
     },
   });
+
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      if (!editingResource) return;
+      const { error } = await supabase.from("resources").update({
+        title: editForm.title,
+        url: editForm.url,
+        category: editForm.category,
+        description: editForm.description || null,
+      }).eq("id", editingResource.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resources"] });
+      setEditingResource(null);
+      toast.success("Ressurs oppdatert");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      if (!deletingResource) return;
+      const { error } = await supabase.from("resources").delete().eq("id", deletingResource.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["resources"] });
+      setDeletingResource(null);
+      toast.success("Ressurs fjernet");
+    },
+  });
+
+  const openEdit = (r: Resource) => {
+    setEditForm({ title: r.title, url: r.url, category: r.category, description: r.description ?? "" });
+    setEditingResource(r);
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -123,24 +168,38 @@ export default function ResourcesPage() {
                 {items.map((r) => {
                   const isFile = isFileUrl(r.url);
                   return (
-                    <a
+                    <div
                       key={r.id}
-                      href={r.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
                       className="flex items-start gap-2 p-2 -mx-2 rounded-md hover:bg-accent/50 transition-colors group"
                     >
-                      {isFile ? (
-                        <FileText className="h-3.5 w-3.5 mt-0.5 text-muted-foreground group-hover:text-primary shrink-0" />
-                      ) : (
-                        <ExternalLink className="h-3.5 w-3.5 mt-0.5 text-muted-foreground group-hover:text-primary shrink-0" />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium group-hover:text-primary transition-colors">{r.title}</p>
-                        {r.description && <p className="text-xs text-muted-foreground">{r.description}</p>}
-                      </div>
-                      {isFile && <Download className="h-3.5 w-3.5 mt-0.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />}
-                    </a>
+                      <a href={r.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2 flex-1 min-w-0">
+                        {isFile ? (
+                          <FileText className="h-3.5 w-3.5 mt-0.5 text-muted-foreground group-hover:text-primary shrink-0" />
+                        ) : (
+                          <ExternalLink className="h-3.5 w-3.5 mt-0.5 text-muted-foreground group-hover:text-primary shrink-0" />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium group-hover:text-primary transition-colors">{r.title}</p>
+                          {r.description && <p className="text-xs text-muted-foreground">{r.description}</p>}
+                        </div>
+                        {isFile && <Download className="h-3.5 w-3.5 mt-0.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />}
+                      </a>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <MoreVertical className="h-3.5 w-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEdit(r)}>
+                            <Pencil className="h-3.5 w-3.5 mr-2" /> Rediger
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setDeletingResource(r)} className="text-destructive focus:text-destructive">
+                            <Trash2 className="h-3.5 w-3.5 mr-2" /> Fjern
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   );
                 })}
               </CardContent>
@@ -149,6 +208,7 @@ export default function ResourcesPage() {
         </div>
       )}
 
+      {/* Create dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent>
           <DialogHeader><DialogTitle>Ny ressurs</DialogTitle></DialogHeader>
@@ -172,6 +232,49 @@ export default function ResourcesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit dialog */}
+      <Dialog open={!!editingResource} onOpenChange={(open) => !open && setEditingResource(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Rediger ressurs</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div><Label>Tittel</Label><Input value={editForm.title} onChange={(e) => setEditForm((p) => ({ ...p, title: e.target.value }))} /></div>
+            <div><Label>URL</Label><Input value={editForm.url} onChange={(e) => setEditForm((p) => ({ ...p, url: e.target.value }))} /></div>
+            <div>
+              <Label>Kategori</Label>
+              <Select value={editForm.category} onValueChange={(v) => setEditForm((p) => ({ ...p, category: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {defaultCategories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label>Beskrivelse</Label><Textarea value={editForm.description} onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))} rows={2} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditingResource(null)}>Avbryt</Button>
+            <Button onClick={() => updateMutation.mutate()} disabled={!editForm.title || !editForm.url}>Lagre</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deletingResource} onOpenChange={(open) => !open && setDeletingResource(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Fjern ressurs</AlertDialogTitle>
+            <AlertDialogDescription>
+              Er du sikker på at du vil fjerne «{deletingResource?.title}»? Dette kan ikke angres.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteMutation.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Fjern
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
