@@ -144,8 +144,8 @@ export default function ProcessLogExportPage() {
   }, [displayedRegistrations, catalogMap, regParticipants, members]);
 
   const activityMarkdown = useMemo(() => {
-    if (!allRegistrations.length) return "";
-    return allRegistrations.map((r) => {
+    if (!displayedRegistrations.length) return "";
+    return displayedRegistrations.map((r) => {
       const cat = catalogMap[r.catalog_id];
       const names = getRegParticipantNames(r.id);
       const statusLabel = r.status === "completed" ? "✅ Fullført" : r.status === "in_progress" ? "🔄 Pågår" : r.status === "planned" ? "📋 Planlagt" : r.status;
@@ -175,7 +175,7 @@ export default function ProcessLogExportPage() {
       ].filter(Boolean);
       return lines.join("\n");
     }).join("\n");
-  }, [allRegistrations, catalogMap, regParticipants, members]);
+  }, [displayedRegistrations, catalogMap, regParticipants, members]);
 
   const activityLatex = useMemo(() => {
     if (!allRegistrations.length) return "";
