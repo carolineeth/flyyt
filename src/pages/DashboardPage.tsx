@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { ArrowRight, AlertTriangle, Lightbulb, Flame } from "lucide-react";
 import { Link } from "react-router-dom";
-import { format, getISOWeek, startOfWeek, endOfWeek, differenceInDays, parseISO } from "date-fns";
+import { format, getISOWeek, startOfWeek, endOfWeek, endOfMonth, differenceInDays, parseISO } from "date-fns";
 import { nb } from "date-fns/locale";
 import type { Sprint, BacklogItem, SprintItem } from "@/lib/types";
 
