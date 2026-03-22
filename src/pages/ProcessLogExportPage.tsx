@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Copy, FileText, Code } from "lucide-react";
-import type { Sprint, SprintItem, BacklogItem, Decision } from "@/lib/types";
+import type { Sprint, SprintItem, BacklogItem } from "@/lib/types";
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString("nb-NO", { day: "numeric", month: "long", year: "numeric" });
