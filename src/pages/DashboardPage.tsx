@@ -221,17 +221,7 @@ export default function DashboardPage() {
     ? "1 item levert denne sprinten"
     : `${doneCount} items levert denne sprinten`;
 
-  const [fristOpen, setFristOpen] = useState(false);
 
-  // Earliest mandatory deadline for summary
-  const earliestDeadline = useMemo(() => {
-    if (mandatoryRemaining.length === 0) return null;
-    const withDeadline = mandatoryRemaining
-      .filter((c) => c.period_deadline)
-      .map((c) => ({ ...c, dl: parseISO(c.period_deadline!) }))
-      .sort((a, b) => a.dl.getTime() - b.dl.getTime());
-    return withDeadline[0] ?? null;
-  }, [mandatoryRemaining]);
 
   return (
     <div className="space-y-5 scroll-reveal">
