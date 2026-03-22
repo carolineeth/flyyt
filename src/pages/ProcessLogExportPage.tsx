@@ -7,10 +7,12 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { Copy, FileText, Code } from "lucide-react";
+import { Copy, FileText, Code, ChevronDown } from "lucide-react";
 import type { Sprint, SprintItem, BacklogItem } from "@/lib/types";
 
 function formatDate(d: string) {
@@ -62,7 +64,7 @@ export default function ProcessLogExportPage() {
 
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [selectedActivityId, setSelectedActivityId] = useState<string>("all");
+  const [selectedActivityIds, setSelectedActivityIds] = useState<Set<string>>(new Set());
   const [selectedSprintId, setSelectedSprintId] = useState<string>("all");
 
   const inRange = (dateStr: string | null | undefined) => {
@@ -98,9 +100,9 @@ export default function ProcessLogExportPage() {
   }, [registrations, dateFrom, dateTo]);
 
   const displayedRegistrations = useMemo(() => {
-    if (selectedActivityId === "all") return allRegistrations;
-    return allRegistrations.filter((r) => r.id === selectedActivityId);
-  }, [allRegistrations, selectedActivityId]);
+    if (selectedActivityIds.size === 0) return allRegistrations;
+    return allRegistrations.filter((r) => selectedActivityIds.has(r.id));
+  }, [allRegistrations, selectedActivityIds]);
 
   const activityPlain = useMemo(() => {
     if (!displayedRegistrations.length) return "";
@@ -378,22 +380,43 @@ export default function ProcessLogExportPage() {
 
         <TabsContent value="activities" className="space-y-3 mt-4">
           <div className="flex gap-2 flex-wrap items-center">
-            <Select value={selectedActivityId} onValueChange={setSelectedActivityId}>
-              <SelectTrigger className="w-[260px] h-8 text-sm">
-                <SelectValue placeholder="Velg aktivitet" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Alle aktiviteter ({allRegistrations.length})</SelectItem>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 text-sm w-[280px] justify-between">
+                  {selectedActivityIds.size === 0
+                    ? `Alle aktiviteter (${allRegistrations.length})`
+                    : `${selectedActivityIds.size} valgt`}
+                  <ChevronDown className="h-3.5 w-3.5 ml-1 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[320px] p-2 max-h-[300px] overflow-y-auto" align="start">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start text-xs mb-1"
+                  onClick={() => setSelectedActivityIds(new Set())}
+                >
+                  Vis alle
+                </Button>
                 {allRegistrations.map((r) => {
                   const cat = catalogMap[r.catalog_id];
+                  const checked = selectedActivityIds.has(r.id);
                   return (
-                    <SelectItem key={r.id} value={r.id}>
-                      {cat?.name ?? "Ukjent"} #{r.occurrence_number}
-                    </SelectItem>
+                    <label key={r.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer text-sm">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(v) => {
+                          const next = new Set(selectedActivityIds);
+                          if (v) next.add(r.id); else next.delete(r.id);
+                          setSelectedActivityIds(next);
+                        }}
+                      />
+                      <span className="truncate">{cat?.name ?? "Ukjent"} #{r.occurrence_number}</span>
+                    </label>
                   );
                 })}
-              </SelectContent>
-            </Select>
+              </PopoverContent>
+            </Popover>
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={() => copy(activityPlain, "Ren tekst")}>
                 <Copy className="h-3.5 w-3.5 mr-1" /> Ren tekst
