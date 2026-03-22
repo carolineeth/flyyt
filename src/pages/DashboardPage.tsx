@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useMilestones } from "@/hooks/useMilestones";
+import { useQuery } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActivityCatalog, useActivityRegistrations } from "@/hooks/useActivityCatalog";
@@ -10,7 +10,7 @@ import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { ArrowRight, ChevronDown, CalendarDays } from "lucide-react";
 import { Link } from "react-router-dom";
-import { format, getISOWeek, startOfWeek, endOfWeek, endOfMonth, differenceInDays, parseISO, isToday, isTomorrow } from "date-fns";
+import { format, getISOWeek, startOfWeek, endOfWeek, differenceInDays, parseISO, isToday, isTomorrow, isBefore, startOfDay } from "date-fns";
 import { nb } from "date-fns/locale";
 import type { Sprint, BacklogItem, SprintItem } from "@/lib/types";
 
@@ -98,7 +98,6 @@ export default function DashboardPage() {
   const { data: upcomingMeetings } = useUpcomingMeetings();
   const { data: recurringMeetings } = useRecurringMeetings();
   const { data: allUpdates } = useAllDailyUpdates();
-  const { data: milestonesData } = useMilestones();
 
   const meetingIds = useMemo(() => upcomingMeetings?.map((m) => m.id) ?? [], [upcomingMeetings]);
   const { data: agendaItems } = useMeetingAgendaItems(meetingIds);
@@ -109,26 +108,30 @@ export default function DashboardPage() {
   const we = endOfWeek(now, { weekStartsOn: 1 });
   const weekLabel = `Uke ${weekNum} — ${format(ws, "d.", { locale: nb })}–${format(we, "d. MMMM yyyy", { locale: nb })}`;
 
-  // Next milestone
-  const nextMilestone = useMemo(() => {
-    if (!milestonesData) return null;
-    const upcoming = milestonesData.filter((m) => !m.is_completed && parseISO(m.date) > now).sort((a, b) => a.date.localeCompare(b.date));
-    return upcoming[0] ?? null;
-  }, [milestonesData, now]);
+  // Hardcoded important deadlines
+  const viktigeFrister = useMemo(() => {
+    const items = [
+      { title: "Frist aktiviteter – Del 1", date: "2026-04-05" },
+      { title: "Frist aktiviteter – Del 2", date: "2026-05-10" },
+      { title: "Innlevering av prosjektarbeid", date: "2026-05-15" },
+      { title: "Skriftlig eksamen", date: "2026-05-29" },
+      { title: "Muntlige presentasjoner", date: "2026-06-01", dateEnd: "2026-06-12" },
+    ];
+    const today = startOfDay(now);
+    return items
+      .map((f) => {
+        const d = parseISO(f.date);
+        const days = differenceInDays(d, today);
+        const passed = isBefore(d, today);
+        return { ...f, parsedDate: d, days, passed };
+      })
+      .sort((a, b) => (a.passed === b.passed ? a.days - b.days : a.passed ? 1 : -1));
+  }, [now]);
 
-  const nextMilestoneDate = nextMilestone ? parseISO(nextMilestone.date) : null;
-  const isUrgentMilestone = nextMilestoneDate ? (isToday(nextMilestoneDate) || isTomorrow(nextMilestoneDate)) : false;
-
-  // Milestones this month
-  const milestonesThisMonth = useMemo(() => {
-    if (!milestonesData) return 0;
-    const monthEnd = endOfMonth(now);
-    return milestonesData.filter((m) => !m.is_completed && parseISO(m.date) >= now && parseISO(m.date) <= monthEnd).length;
-  }, [milestonesData, now]);
-
-  // Activity stats
-  const regs = registrations ?? [];
-  const cat = catalog ?? [];
+  // Next upcoming deadline for header badge
+  const nextDeadline = viktigeFrister.find((f) => !f.passed);
+  const nextDeadlineDate = nextDeadline?.parsedDate ?? null;
+  const isUrgentDeadline = nextDeadlineDate ? (isToday(nextDeadlineDate) || isTomorrow(nextDeadlineDate)) : false;
   const completedRegs = regs.filter((r) => r.status === "completed");
   const totalEarned = completedRegs.reduce((sum, r) => {
     const c = cat.find((c) => c.id === r.catalog_id);
@@ -238,13 +241,13 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold text-foreground leading-tight">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{weekLabel}</p>
         </div>
-        {nextMilestone && nextMilestoneDate && (
+        {nextDeadline && nextDeadlineDate && (
           <div className={`text-xs font-medium px-3 py-1.5 rounded-lg ${
-            isUrgentMilestone
+            isUrgentDeadline
               ? "bg-red-50 text-red-700 border border-red-200"
               : "bg-muted text-muted-foreground"
           }`}>
-            Neste: {nextMilestone.title} — {format(nextMilestoneDate, "EEE d. MMMM", { locale: nb })}
+            Neste: {nextDeadline.title} — {format(nextDeadlineDate, "EEE d. MMMM", { locale: nb })}
           </div>
         )}
       </div>
@@ -395,40 +398,31 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 6. Collapsible deadlines section */}
-      {deadlineItems.length > 0 && (
-        <Collapsible open={fristOpen} onOpenChange={setFristOpen}>
-          <div className="rounded-xl bg-muted/50 px-4 py-3">
-            <CollapsibleTrigger className="flex items-center justify-between w-full text-left">
-              <div className="flex items-center gap-2">
-                <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-[11px] text-muted-foreground uppercase tracking-wider">Kommende frister</span>
+      {/* 6. Viktige frister */}
+      <div className="space-y-0">
+        <p className="text-[11px] text-muted-foreground uppercase tracking-wider px-1 mb-2">Viktige frister</p>
+        {viktigeFrister.filter((f) => !f.passed).map((f, i, arr) => {
+          const badgeColor = f.days <= 1 ? "bg-red-100 text-red-700" : f.days < 7 ? "bg-red-100 text-red-700" : f.days < 14 ? "bg-amber-100 text-amber-700" : "bg-muted text-muted-foreground";
+          const dateLabel = f.dateEnd
+            ? `${format(f.parsedDate, "d.", { locale: nb })}–${format(parseISO(f.dateEnd), "d. MMMM", { locale: nb })}`
+            : format(f.parsedDate, "d. MMMM", { locale: nb });
+          return (
+            <div key={f.title} className={`flex items-center justify-between py-2.5 px-1 ${i < arr.length - 1 ? "border-b border-border/50" : ""}`}>
+              <span className="text-[13px] text-foreground">{f.title}</span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[13px] text-muted-foreground">{dateLabel}</span>
+                <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded ${badgeColor}`}>
+                  {f.days === 0 ? "i dag" : f.days === 1 ? "i morgen" : `${f.days} dager`}
+                </span>
               </div>
-              <div className="flex items-center gap-2">
-                {!fristOpen && (
-                  <span className="text-xs text-muted-foreground">
-                    {mandatoryRemaining.length} obligatoriske gjenstår
-                    {earliestDeadline && ` — frist ${format(earliestDeadline.dl, "d. MMMM", { locale: nb })}`}
-                  </span>
-                )}
-                <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${fristOpen ? "rotate-180" : ""}`} />
-              </div>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="mt-2 space-y-1">
-                {deadlineItems.map((item, i) => (
-                  <p key={i} className="text-xs text-muted-foreground pl-5">{item.text}</p>
-                ))}
-              </div>
-            </CollapsibleContent>
-          </div>
-        </Collapsible>
-      )}
+            </div>
+          );
+        })}
+      </div>
 
-      {/* 7. Quick links (4 items) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* 7. Quick links (3 items) */}
+      <div className="grid grid-cols-3 gap-3">
         {[
-          { label: "Milepæler", to: "/milepaeler", sub: `${milestonesThisMonth} denne mnd` },
           { label: "Aktiviteter", to: "/aktiviteter", sub: `${totalEarned}p opptjent` },
           { label: "Sprinter", to: "/sprinter", sub: `${sprintStats?.inProgress ?? 0} in progress` },
           { label: "Møtekalender", to: "/moter", sub: enrichedMeetings[0] ? format(parseISO(enrichedMeetings[0].meeting_date!), "d. MMM", { locale: nb }) : "Vis møter" },
