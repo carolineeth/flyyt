@@ -9,11 +9,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Copy, FileText } from "lucide-react";
+import { Copy, FileText, Code } from "lucide-react";
 import type { Sprint, SprintItem, BacklogItem, Decision } from "@/lib/types";
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString("nb-NO", { day: "numeric", month: "long", year: "numeric" });
+}
+
+function tex(s: string): string {
+  return s
+    .replace(/\\/g, "\\textbackslash{}")
+    .replace(/[&%$#_{}]/g, (m) => "\\" + m)
+    .replace(/~/g, "\\textasciitilde{}")
+    .replace(/\^/g, "\\textasciicircum{}")
+    .replace(/–/g, "--")
+    .replace(/—/g, "---");
 }
 
 export default function ProcessLogExportPage() {
@@ -159,6 +169,36 @@ export default function ProcessLogExportPage() {
     }).join("\n");
   }, [allRegistrations, catalogMap, regParticipants, members]);
 
+  const activityLatex = useMemo(() => {
+    if (!allRegistrations.length) return "";
+    const items = allRegistrations.map((r) => {
+      const cat = catalogMap[r.catalog_id];
+      const names = getRegParticipantNames(r.id);
+      const statusLabel = r.status === "completed" ? "Fullført" : r.status === "in_progress" ? "Pågår" : r.status === "planned" ? "Planlagt" : r.status;
+      return [
+        `\\subsection{${tex(cat?.name ?? "Ukjent")} (\\#${r.occurrence_number}) -- ${tex(statusLabel)}}`,
+        "",
+        `\\textbf{Uke:} ${r.completed_week ?? r.planned_week ?? "?"} \\hfill \\textbf{Dato:} ${r.completed_date ? tex(formatDate(r.completed_date)) : "Ikke fullført ennå"}\\\\`,
+        `\\textbf{Poeng:} ${cat?.points ?? 0} \\hfill \\textbf{Deltakere:} ${names.length > 0 ? tex(names.join(", ")) : "Ikke angitt"}`,
+        "",
+        `\\paragraph{Hvorfor dette tidspunktet:} ${tex(r.timing_rationale || "(Ikke utfylt)")}`,
+        "",
+        `\\paragraph{Beskrivelse/Gjennomføring:} ${tex(r.description || "(Ikke utfylt)")}`,
+        "",
+        `\\paragraph{Erfaringer:} ${tex(r.experiences || "(Ikke utfylt)")}`,
+        "",
+        `\\paragraph{Refleksjoner:} ${tex(r.reflections || "(Ikke utfylt)")}`,
+        "",
+        r.attachment_links?.length
+          ? `\\paragraph{Vedlegg:} ${r.attachment_links.map((l) => `\\url{${l}}`).join(", ")}`
+          : `\\paragraph{Vedlegg:} Ingen`,
+        r.short_status ? `\\paragraph{Kort status:} ${tex(r.short_status)}` : "",
+        "",
+      ].filter(Boolean).join("\n");
+    });
+    return `\\section{Aktiviteter}\n\n${items.join("\n")}`;
+  }, [allRegistrations, catalogMap, regParticipants, members]);
+
   // --- Sprint export ---
   const filteredSprints = useMemo(() => {
     return (sprints ?? []).filter((s) => inRange(s.start_date) || inRange(s.end_date));
@@ -201,6 +241,38 @@ export default function ProcessLogExportPage() {
     return `${rows.join("\n")}\n${details}`;
   }, [filteredSprints, sprintItems]);
 
+  const sprintLatex = useMemo(() => {
+    const tableRows = filteredSprints.map((s) => {
+      const items = (sprintItems ?? []).filter((si) => si.sprint_id === s.id);
+      const done = items.filter((si) => si.column_name === "done");
+      const sp = done.reduce((sum, si) => sum + (si.backlog_item?.estimate ?? 0), 0);
+      return `      ${tex(s.name)} & ${tex(formatDate(s.start_date))}--${tex(formatDate(s.end_date))} & ${tex(s.goal ?? "-")} & ${done.length} & ${sp} \\\\`;
+    });
+
+    const table = [
+      "\\begin{table}[H]",
+      "\\centering",
+      "\\begin{tabular}{|l|l|p{5cm}|c|c|}",
+      "\\hline",
+      "\\textbf{Sprint} & \\textbf{Periode} & \\textbf{Mål} & \\textbf{Fullført} & \\textbf{SP} \\\\",
+      "\\hline",
+      ...tableRows,
+      "\\hline",
+      "\\end{tabular}",
+      "\\caption{Sprintoversikt}",
+      "\\end{table}",
+    ].join("\n");
+
+    const details = filteredSprints.map((s) => {
+      const items = (sprintItems ?? []).filter((si) => si.sprint_id === s.id && si.column_name === "done");
+      if (!items.length) return "";
+      const listing = items.map((si) => `  \\item \\textbf{${tex(si.backlog_item?.title ?? "")}} -- ${tex(si.backlog_item?.description ?? "Ingen beskrivelse")}`).join("\n");
+      return `\\subsection{${tex(s.name)}}\n\\begin{itemize}\n${listing}\n\\end{itemize}`;
+    }).filter(Boolean).join("\n\n");
+
+    return `\\section{Sprinter}\n\n${table}\n\n${details}`;
+  }, [filteredSprints, sprintItems]);
+
   // --- Decision export ---
   const filteredDecisions = useMemo(() => {
     return (decisions ?? []).filter((d) => inRange(d.date));
@@ -216,6 +288,19 @@ export default function ProcessLogExportPage() {
     return filteredDecisions.map((d) => {
       return `${formatDate(d.date)}: ${d.title}\n  Kontekst: ${d.context ?? "-"} | Valg: ${d.choice ?? "-"} | Begrunnelse: ${d.rationale ?? "-"}`;
     }).join("\n\n");
+  }, [filteredDecisions]);
+
+  const decisionLatex = useMemo(() => {
+    const items = filteredDecisions.map((d) => {
+      return [
+        `\\subsection{${tex(d.title)} (${tex(formatDate(d.date))})}`,
+        `\\textbf{Kontekst:} ${tex(d.context ?? "-")}\\\\`,
+        `\\textbf{Valg:} ${tex(d.choice ?? "-")}\\\\`,
+        `\\textbf{Begrunnelse:} ${tex(d.rationale ?? "-")}`,
+        "",
+      ].join("\n");
+    });
+    return `\\section{Beslutninger}\n\n${items.join("\n")}`;
   }, [filteredDecisions]);
 
   // --- Standup export ---
@@ -259,6 +344,24 @@ export default function ProcessLogExportPage() {
       }).join("\n\n");
   }, [filteredStandups, members]);
 
+  const standupLatex = useMemo(() => {
+    const byDate: Record<string, typeof filteredStandups> = {};
+    filteredStandups.forEach((u) => {
+      if (!byDate[u.entry_date]) byDate[u.entry_date] = [];
+      byDate[u.entry_date].push(u);
+    });
+    const sections = Object.entries(byDate)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, updates]) => {
+        const entries = updates.map((u) => {
+          const member = (members ?? []).find((m) => m.id === u.member_id);
+          return `  \\item \\textbf{${tex(member?.name ?? "Ukjent")}}: ${tex(u.content || "(tomt)")} \\textit{(${tex(u.category || "annet")})}`;
+        }).join("\n");
+        return `\\subsection{${tex(formatDate(date))}}\n\\begin{itemize}\n${entries}\n\\end{itemize}`;
+      });
+    return `\\section{Standup-oppdateringer}\n\n${sections.join("\n\n")}`;
+  }, [filteredStandups, members]);
+
   const copy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} kopiert til utklippstavlen`);
@@ -297,12 +400,15 @@ export default function ProcessLogExportPage() {
         </TabsList>
 
         <TabsContent value="activities" className="space-y-3 mt-4">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button size="sm" variant="outline" onClick={() => copy(activityPlain, "Ren tekst")}>
-              <Copy className="h-3.5 w-3.5 mr-1" /> Kopier ren tekst
+              <Copy className="h-3.5 w-3.5 mr-1" /> Ren tekst
             </Button>
             <Button size="sm" variant="outline" onClick={() => copy(activityMarkdown, "Markdown")}>
-              <FileText className="h-3.5 w-3.5 mr-1" /> Kopier som Markdown
+              <FileText className="h-3.5 w-3.5 mr-1" /> Markdown
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => copy(activityLatex, "LaTeX")}>
+              <Code className="h-3.5 w-3.5 mr-1" /> LaTeX
             </Button>
           </div>
           {allRegistrations.length === 0 ? (
@@ -317,12 +423,15 @@ export default function ProcessLogExportPage() {
         </TabsContent>
 
         <TabsContent value="sprints" className="space-y-3 mt-4">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button size="sm" variant="outline" onClick={() => copy(sprintPlain, "Ren tekst")}>
-              <Copy className="h-3.5 w-3.5 mr-1" /> Kopier ren tekst
+              <Copy className="h-3.5 w-3.5 mr-1" /> Ren tekst
             </Button>
             <Button size="sm" variant="outline" onClick={() => copy(sprintMarkdown, "Markdown")}>
-              <FileText className="h-3.5 w-3.5 mr-1" /> Kopier som Markdown
+              <FileText className="h-3.5 w-3.5 mr-1" /> Markdown
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => copy(sprintLatex, "LaTeX")}>
+              <Code className="h-3.5 w-3.5 mr-1" /> LaTeX
             </Button>
           </div>
           {filteredSprints.length === 0 ? (
@@ -337,12 +446,15 @@ export default function ProcessLogExportPage() {
         </TabsContent>
 
         <TabsContent value="standups" className="space-y-3 mt-4">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button size="sm" variant="outline" onClick={() => copy(standupPlain, "Ren tekst")}>
-              <Copy className="h-3.5 w-3.5 mr-1" /> Kopier ren tekst
+              <Copy className="h-3.5 w-3.5 mr-1" /> Ren tekst
             </Button>
             <Button size="sm" variant="outline" onClick={() => copy(standupMarkdown, "Markdown")}>
-              <FileText className="h-3.5 w-3.5 mr-1" /> Kopier som Markdown
+              <FileText className="h-3.5 w-3.5 mr-1" /> Markdown
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => copy(standupLatex, "LaTeX")}>
+              <Code className="h-3.5 w-3.5 mr-1" /> LaTeX
             </Button>
           </div>
           {filteredStandups.length === 0 ? (
@@ -357,12 +469,15 @@ export default function ProcessLogExportPage() {
         </TabsContent>
 
         <TabsContent value="decisions" className="space-y-3 mt-4">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button size="sm" variant="outline" onClick={() => copy(decisionPlain, "Ren tekst")}>
-              <Copy className="h-3.5 w-3.5 mr-1" /> Kopier ren tekst
+              <Copy className="h-3.5 w-3.5 mr-1" /> Ren tekst
             </Button>
             <Button size="sm" variant="outline" onClick={() => copy(decisionMarkdown, "Markdown")}>
-              <FileText className="h-3.5 w-3.5 mr-1" /> Kopier som Markdown
+              <FileText className="h-3.5 w-3.5 mr-1" /> Markdown
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => copy(decisionLatex, "LaTeX")}>
+              <Code className="h-3.5 w-3.5 mr-1" /> LaTeX
             </Button>
           </div>
           {filteredDecisions.length === 0 ? (
