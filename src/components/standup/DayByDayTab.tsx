@@ -19,6 +19,7 @@ interface Props {
 export function DayByDayTab({ weekdays, entries, members, currentMemberId, isCurrentWeek }: Props) {
   const today = startOfDay(new Date());
   const [editingDay, setEditingDay] = useState<string | null>(null);
+  const [todayCollapsed, setTodayCollapsed] = useState(false);
 
   // Sorted newest first
   const sortedDays = useMemo(() => [...weekdays].sort((a, b) => b.getTime() - a.getTime()), [weekdays]);
@@ -26,7 +27,7 @@ export function DayByDayTab({ weekdays, entries, members, currentMemberId, isCur
   return (
     <div className="space-y-6">
       {/* Input for today - only show in current week */}
-      {isCurrentWeek && currentMemberId && (() => {
+      {isCurrentWeek && currentMemberId && !todayCollapsed && (() => {
         const todayStr = format(today, "yyyy-MM-dd");
         const todayEntry = entries.find((e) => e.entry_date === todayStr && e.member_id === currentMemberId) ?? null;
         return (
@@ -35,9 +36,24 @@ export function DayByDayTab({ weekdays, entries, members, currentMemberId, isCur
             existingEntry={todayEntry}
             date={today}
             dayLabel={`I dag — ${format(today, "EEEE d. MMMM", { locale: nb })}`}
+            onSaved={() => setTodayCollapsed(true)}
           />
         );
       })()}
+
+      {isCurrentWeek && currentMemberId && todayCollapsed && (
+        <div className="flex justify-end">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-3 text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => setTodayCollapsed(false)}
+          >
+            <PenLine className="h-3 w-3 mr-1" />
+            Rediger dagens oppdatering
+          </Button>
+        </div>
+      )}
 
       {sortedDays.length === 0 && (
         <div className="text-center py-12">
@@ -83,6 +99,7 @@ export function DayByDayTab({ weekdays, entries, members, currentMemberId, isCur
                   existingEntry={myEntry}
                   date={day}
                   dayLabel={`${dayHeading} — etterregistrering`}
+                  onSaved={() => setEditingDay(null)}
                 />
               </div>
             )}
