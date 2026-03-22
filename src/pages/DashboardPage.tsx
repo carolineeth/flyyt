@@ -363,6 +363,18 @@ export default function DashboardPage() {
                     <div className="bg-green-500" style={{ width: `${(dn / totalSp) * 100}%` }} />
                   </div>
                 )}
+                {/* Sparkline: standup entries last 4 weeks */}
+                {hasAnyUpdates && (
+                  <div className="flex items-center gap-1.5">
+                    <svg width={sparkW} height={sparkH} className="shrink-0">
+                      <polyline points={points.join(" ")} fill="none" stroke="hsl(var(--primary))" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      {weeklyCounts.map((c, i) => (
+                        <circle key={i} cx={(i / (weeklyCounts.length - 1)) * sparkW} cy={sparkH - (c / maxCount) * sparkH} r="2" fill="hsl(var(--primary))" />
+                      ))}
+                    </svg>
+                    <span className="text-[10px] text-muted-foreground">{weeklyCounts[weeklyCounts.length - 1]} denne uken</span>
+                  </div>
+                )}
                 {/* Only show standup if they have one */}
                 {latestUpdate && (
                   <p className="text-[11px] text-muted-foreground truncate">
@@ -372,7 +384,8 @@ export default function DashboardPage() {
                 )}
               </CardContent>
             </Card>
-          ))}
+          );
+          })}
         </div>
       )}
 
