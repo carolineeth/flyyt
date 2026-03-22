@@ -51,14 +51,6 @@ export default function ProcessLogExportPage() {
       return data as any;
     },
   });
-  const { data: decisions } = useQuery<Decision[]>({
-    queryKey: ["decisions"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("decisions").select("*").order("date");
-      if (error) throw error;
-      return data;
-    },
-  });
   const { data: standupUpdates } = useQuery({
     queryKey: ["all_daily_updates_export"],
     queryFn: async () => {
@@ -286,35 +278,8 @@ export default function ProcessLogExportPage() {
     return `\\section{Sprinter}\n\n${table}\n\n${details}`;
   }, [displayedSprints, sprintItems]);
 
-  // --- Decision export ---
-  const filteredDecisions = useMemo(() => {
-    return (decisions ?? []).filter((d) => inRange(d.date));
-  }, [decisions, dateFrom, dateTo]);
 
-  const decisionMarkdown = useMemo(() => {
-    return filteredDecisions.map((d) => {
-      return `- **${formatDate(d.date)}: ${d.title}**\n  Kontekst: ${d.context ?? "-"} | Valg: ${d.choice ?? "-"} | Begrunnelse: ${d.rationale ?? "-"}`;
-    }).join("\n\n");
-  }, [filteredDecisions]);
 
-  const decisionPlain = useMemo(() => {
-    return filteredDecisions.map((d) => {
-      return `${formatDate(d.date)}: ${d.title}\n  Kontekst: ${d.context ?? "-"} | Valg: ${d.choice ?? "-"} | Begrunnelse: ${d.rationale ?? "-"}`;
-    }).join("\n\n");
-  }, [filteredDecisions]);
-
-  const decisionLatex = useMemo(() => {
-    const items = filteredDecisions.map((d) => {
-      return [
-        `\\subsection{${tex(d.title)} (${tex(formatDate(d.date))})}`,
-        `\\textbf{Kontekst:} ${tex(d.context ?? "-")}\\\\`,
-        `\\textbf{Valg:} ${tex(d.choice ?? "-")}\\\\`,
-        `\\textbf{Begrunnelse:} ${tex(d.rationale ?? "-")}`,
-        "",
-      ].join("\n");
-    });
-    return `\\section{Beslutninger}\n\n${items.join("\n")}`;
-  }, [filteredDecisions]);
 
   // --- Standup export ---
   const filteredStandups = useMemo(() => {
@@ -409,7 +374,6 @@ export default function ProcessLogExportPage() {
           <TabsTrigger value="activities">Aktiviteter ({allRegistrations.length})</TabsTrigger>
           <TabsTrigger value="sprints">Sprinter ({filteredSprints.length})</TabsTrigger>
           <TabsTrigger value="standups">Standup ({filteredStandups.length})</TabsTrigger>
-          <TabsTrigger value="decisions">Beslutninger ({filteredDecisions.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="activities" className="space-y-3 mt-4">
@@ -512,28 +476,6 @@ export default function ProcessLogExportPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="decisions" className="space-y-3 mt-4">
-          <div className="flex gap-2 flex-wrap">
-            <Button size="sm" variant="outline" onClick={() => copy(decisionPlain, "Ren tekst")}>
-              <Copy className="h-3.5 w-3.5 mr-1" /> Ren tekst
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => copy(decisionMarkdown, "Markdown")}>
-              <FileText className="h-3.5 w-3.5 mr-1" /> Markdown
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => copy(decisionLatex, "LaTeX")}>
-              <Code className="h-3.5 w-3.5 mr-1" /> LaTeX
-            </Button>
-          </div>
-          {filteredDecisions.length === 0 ? (
-            <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">Ingen beslutninger i valgt periode</CardContent></Card>
-          ) : (
-            <Card>
-              <CardContent className="p-4">
-                <pre className="whitespace-pre-wrap text-sm font-mono bg-background leading-relaxed">{decisionPlain}</pre>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
       </Tabs>
     </div>
   );
