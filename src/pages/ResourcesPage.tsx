@@ -33,6 +33,10 @@ export default function ResourcesPage() {
   const [newCategory, setNewCategory] = useState("");
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
+  const [uploadCategory, setUploadCategory] = useState("Fildeling");
+  const [showUploadNewCategory, setShowUploadNewCategory] = useState(false);
+  const [uploadNewCategory, setUploadNewCategory] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Edit state
