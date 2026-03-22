@@ -14,9 +14,9 @@ import {
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useCurrentMember, useTodayHasUpdate } from "@/hooks/useDailyUpdates";
+import { logoutUser } from "@/lib/auth";
 import {
   Sidebar,
   SidebarContent,
@@ -53,13 +53,12 @@ export function AppSidebar() {
   const showDot = isWorkday && hasUpdate === false;
 
   const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut({ scope: 'local' });
-    } catch {
-      // Clear storage manually as fallback
-      localStorage.removeItem('sb-gsaylhrzzobwuwsgytic-auth-token');
+    const { error } = await logoutUser();
+    if (error) {
+      toast.error("Kunne ikke logge ut fullstendig, men lokal økt ble tømt");
+    } else {
+      toast.success("Logget ut");
     }
-    toast.success("Logget ut");
     window.location.href = "/";
   };
 

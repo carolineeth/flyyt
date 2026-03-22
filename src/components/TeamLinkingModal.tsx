@@ -4,7 +4,9 @@ import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { useQueryClient } from "@tanstack/react-query";
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { toast } from "sonner";
-import { Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { LogOut, Users } from "lucide-react";
+import { logoutUser } from "@/lib/auth";
 
 interface Props {
   authUserId: string;
@@ -61,6 +63,16 @@ export function TeamLinkingModal({ authUserId, authEmail, onLinked }: Props) {
     void handleLink(matchingMembers[0].id);
   }, [handleLink, isLoading, linking, matchingMembers]);
 
+  const handleLogout = async () => {
+    const { error } = await logoutUser();
+    if (error) {
+      toast.error("Kunne ikke logge ut fullstendig, men lokal økt ble tømt");
+    } else {
+      toast.success("Logget ut");
+    }
+    window.location.href = "/";
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className="bg-card border border-border rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 space-y-6">
@@ -103,11 +115,24 @@ export function TeamLinkingModal({ authUserId, authEmail, onLinked }: Props) {
             ))}
             {membersToShow.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-4">
-                Alle teammedlemmer er allerede koblet. Kontakt admin.
+                Alle teammedlemmer er allerede koblet. Logg ut og prøv en annen konto.
               </p>
             )}
           </div>
         )}
+
+        <div className="pt-1">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={handleLogout}
+            disabled={linking}
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Logg ut og bytt konto
+          </Button>
+        </div>
       </div>
     </div>
   );
