@@ -271,7 +271,7 @@ export default function ResourcesPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Avbryt</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deleteMutation.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={() => deletingResource && deleteMutation.mutate(deletingResource.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Fjern
             </AlertDialogAction>
           </AlertDialogFooter>
