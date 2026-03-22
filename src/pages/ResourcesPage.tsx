@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Link2, Plus, ExternalLink } from "lucide-react";
+import { Plus, ExternalLink, Upload, FileText, Download } from "lucide-react";
 import type { Resource } from "@/lib/types";
 
 const defaultCategories = ["Kode", "Design", "Dokumentasjon", "Prosjektstyring", "Fildeling", "APIer", "Kurs"];
@@ -28,6 +28,8 @@ export default function ResourcesPage() {
 
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ title: "", url: "", category: "Kode", description: "" });
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -47,6 +49,44 @@ export default function ResourcesPage() {
     },
   });
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        const safeName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+        const path = `resources/${safeName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("attachments")
+          .upload(path, file, { upsert: false });
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(path);
+
+        const { error: insertError } = await supabase.from("resources").insert({
+          title: file.name,
+          url: urlData.publicUrl,
+          category: "Fildeling",
+          description: `Opplastet fil (${(file.size / 1024).toFixed(0)} KB)`,
+        });
+        if (insertError) throw insertError;
+      }
+      qc.invalidateQueries({ queryKey: ["resources"] });
+      toast.success(`${files.length === 1 ? "Fil" : `${files.length} filer`} lastet opp`);
+    } catch (err: any) {
+      toast.error("Opplasting feilet: " + (err.message ?? "Ukjent feil"));
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const isFileUrl = (url: string) =>
+    url.includes("/storage/v1/object/public/attachments/resources/");
+
   // Group by category
   const grouped = resources?.reduce((acc, r) => {
     if (!acc[r.category]) acc[r.category] = [];
@@ -58,8 +98,18 @@ export default function ResourcesPage() {
     <div className="space-y-6 scroll-reveal">
       <PageHeader
         title="Ressurs-hub"
-        description="Samlet lenkesamling for alle prosjektressurser"
-        action={<Button size="sm" onClick={() => setShowCreate(true)}><Plus className="h-4 w-4 mr-1" /> Legg til</Button>}
+        description="Samlet lenkesamling og filer for alle prosjektressurser"
+        action={
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+              <Upload className="h-4 w-4 mr-1" /> {uploading ? "Laster opp…" : "Last opp fil"}
+            </Button>
+            <Button size="sm" onClick={() => setShowCreate(true)}>
+              <Plus className="h-4 w-4 mr-1" /> Legg til lenke
+            </Button>
+            <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileUpload} />
+          </div>
+        }
       />
 
       {isLoading ? <p className="text-sm text-muted-foreground">Laster...</p> : (
@@ -70,21 +120,29 @@ export default function ResourcesPage() {
                 <CardTitle className="text-sm font-medium">{category}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-1.5">
-                {items.map((r) => (
-                  <a
-                    key={r.id}
-                    href={r.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-start gap-2 p-2 -mx-2 rounded-md hover:bg-accent/50 transition-colors group"
-                  >
-                    <ExternalLink className="h-3.5 w-3.5 mt-0.5 text-muted-foreground group-hover:text-primary shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium group-hover:text-primary transition-colors">{r.title}</p>
-                      {r.description && <p className="text-xs text-muted-foreground">{r.description}</p>}
-                    </div>
-                  </a>
-                ))}
+                {items.map((r) => {
+                  const isFile = isFileUrl(r.url);
+                  return (
+                    <a
+                      key={r.id}
+                      href={r.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-start gap-2 p-2 -mx-2 rounded-md hover:bg-accent/50 transition-colors group"
+                    >
+                      {isFile ? (
+                        <FileText className="h-3.5 w-3.5 mt-0.5 text-muted-foreground group-hover:text-primary shrink-0" />
+                      ) : (
+                        <ExternalLink className="h-3.5 w-3.5 mt-0.5 text-muted-foreground group-hover:text-primary shrink-0" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium group-hover:text-primary transition-colors">{r.title}</p>
+                        {r.description && <p className="text-xs text-muted-foreground">{r.description}</p>}
+                      </div>
+                      {isFile && <Download className="h-3.5 w-3.5 mt-0.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />}
+                    </a>
+                  );
+                })}
               </CardContent>
             </Card>
           ))}
