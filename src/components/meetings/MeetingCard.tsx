@@ -25,17 +25,16 @@ const subSessionTemplates: Record<string, string[]> = {
   sprint_planning: ["Gjennomgå product backlog", "Velg items for sprint", "Estimering", "Definer sprint goal"],
   sprint_review: ["Demo av fullførte items", "Feedback", "Items som ikke ble fullført"],
   retrospective: ["Hva fungerte bra?", "Hva kan forbedres?", "Action points for neste sprint"],
+  daily_standup: ["Hva gjorde du i går?", "Hva skal du gjøre i dag?", "Hindringer"],
   veiledermøte: ["Spørsmål til veileder", "Feedback fra veileder", "Action points"],
-  mobb_programmering: ["Hva skal vi jobbe med?", "Tidsskjema (hvem driver når)", "Lenke til commit/kildekode", "Refleksjoner"],
 };
 
 const subSessionTypeLabels: Record<string, string> = {
   sprint_planning: "Sprint Planning",
   sprint_review: "Sprint Review",
   retrospective: "Retrospektiv",
+  daily_standup: "Daily Standup",
   veiledermøte: "Veiledermøte",
-  mobb_programmering: "Mobb-programmering",
-  workshop: "Workshop",
   annet: "Annet",
 };
 

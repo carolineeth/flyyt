@@ -36,6 +36,7 @@ const typeBorderColors: Record<string, string> = {
 const activityMeetingTypeMap: Record<string, string> = {
   sprint_planning: "sprint_planning",
   sprint_review: "sprint_review",
+  retrospective: "retrospective",
   daily_standup: "daily_standup",
   veiledermøte: "veiledermøte",
 };
