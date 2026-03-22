@@ -17,6 +17,7 @@ import StandupPage from "@/pages/StandupPage";
 import MeetingCalendarPage from "@/pages/MeetingCalendarPage";
 import ResourcesPage from "@/pages/ResourcesPage";
 import ProcessLogExportPage from "@/pages/ProcessLogExportPage";
+import InsightsPage from "@/pages/InsightsPage";
 import ReportPage from "@/pages/ReportPage";
 import ChangePasswordPage from "@/pages/ChangePasswordPage";
 import MilestonesPage from "@/pages/MilestonesPage";
@@ -89,6 +90,7 @@ const App = () => (
                 <Route path="/moter" element={<MeetingCalendarPage />} />
                 <Route path="/ressurser" element={<ResourcesPage />} />
                 <Route path="/prosesslogg" element={<ProcessLogExportPage />} />
+                <Route path="/innsikt" element={<InsightsPage />} />
                 <Route path="/rapport" element={<ReportPage />} />
                 <Route path="/bytt-passord" element={<ChangePasswordPage />} />
                 <Route path="*" element={<NotFound />} />
