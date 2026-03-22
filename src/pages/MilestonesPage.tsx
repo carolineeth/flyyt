@@ -386,14 +386,13 @@ function Timeline({ milestones, sprints, onSelect }: { milestones: Milestone[]; 
 
 // ============ Milestone List ============
 
-function MilestoneList({ milestones, highlightId }: { milestones: Milestone[]; highlightId: string | null }) {
+function MilestoneList({ milestones, highlightId, onEdit, onDelete }: { milestones: Milestone[]; highlightId: string | null; onEdit: (m: Milestone) => void; onDelete: (m: Milestone) => void }) {
   const toggle = useToggleMilestone();
   const now = new Date();
   const upcoming = milestones.filter((m) => !m.is_completed).sort((a, b) => a.date.localeCompare(b.date));
   const completed = milestones.filter((m) => m.is_completed).sort((a, b) => b.date.localeCompare(a.date));
   const [completedOpen, setCompletedOpen] = useState(false);
 
-  // Group upcoming by month
   const months = useMemo(() => {
     const groups: Record<string, Milestone[]> = {};
     upcoming.forEach((m) => {
@@ -413,10 +412,10 @@ function MilestoneList({ milestones, highlightId }: { milestones: Milestone[]; h
         key={m.id}
         id={`ms-${m.id}`}
         className={cn(
-          "flex items-center gap-3 py-3 px-3 rounded-lg transition-all",
+          "flex items-center gap-3 py-3 px-3 rounded-lg transition-all group/row",
           highlightId === m.id && "ring-2 ring-primary/30 bg-accent/40",
           isUrgent && !dimmed && "bg-red-50/50",
-          dimmed && "opacity-50"
+          dimmed && "opacity-50 hover:opacity-80"
         )}
         style={{ borderLeft: `3px solid ${CATEGORY_COLORS[m.category]}` }}
       >
@@ -464,7 +463,36 @@ function MilestoneList({ milestones, highlightId }: { milestones: Milestone[]; h
               {days === 0 ? "I dag" : days === 1 ? "I morgen" : `${days} dager`}
             </span>
           )}
-          {dimmed && <Check className="h-4 w-4 text-green-500" />}
+          {dimmed && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity"
+              onClick={() => toggle.mutate({ id: m.id, is_completed: false })}
+            >
+              <Undo2 className="h-3 w-3" /> Angre
+            </Button>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onEdit(m)}>
+                <Pencil className="h-3.5 w-3.5 mr-2" /> Rediger
+              </DropdownMenuItem>
+              {dimmed && (
+                <DropdownMenuItem onClick={() => toggle.mutate({ id: m.id, is_completed: false })}>
+                  <Undo2 className="h-3.5 w-3.5 mr-2" /> Marker som ufullført
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem className="text-destructive" onClick={() => onDelete(m)}>
+                <Trash2 className="h-3.5 w-3.5 mr-2" /> Slett
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     );
@@ -502,8 +530,6 @@ function MilestoneList({ milestones, highlightId }: { milestones: Milestone[]; h
     </div>
   );
 }
-
-// ============ Add Modal ============
 
 function AddMilestoneModal({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const create = useCreateMilestone();
