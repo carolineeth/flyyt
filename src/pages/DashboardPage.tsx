@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActivityCatalog, useActivityRegistrations } from "@/hooks/useActivityCatalog";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
@@ -132,6 +131,8 @@ export default function DashboardPage() {
   const nextDeadline = viktigeFrister.find((f) => !f.passed);
   const nextDeadlineDate = nextDeadline?.parsedDate ?? null;
   const isUrgentDeadline = nextDeadlineDate ? (isToday(nextDeadlineDate) || isTomorrow(nextDeadlineDate)) : false;
+  const regs = registrations ?? [];
+  const cat = catalog ?? [];
   const completedRegs = regs.filter((r) => r.status === "completed");
   const totalEarned = completedRegs.reduce((sum, r) => {
     const c = cat.find((c) => c.id === r.catalog_id);
