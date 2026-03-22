@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useMilestones } from "@/hooks/useMilestones";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,9 +7,10 @@ import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { useAllDailyUpdates } from "@/hooks/useDailyUpdates";
 import { Card, CardContent } from "@/components/ui/card";
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
-import { ArrowRight, AlertTriangle, Lightbulb, Flame } from "lucide-react";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { ArrowRight, ChevronDown, CalendarDays } from "lucide-react";
 import { Link } from "react-router-dom";
-import { format, getISOWeek, startOfWeek, endOfWeek, endOfMonth, differenceInDays, parseISO } from "date-fns";
+import { format, getISOWeek, startOfWeek, endOfWeek, endOfMonth, differenceInDays, parseISO, isToday, isTomorrow } from "date-fns";
 import { nb } from "date-fns/locale";
 import type { Sprint, BacklogItem, SprintItem } from "@/lib/types";
 
@@ -38,17 +39,6 @@ function useSprintItemsForSprint(sprintId: string | undefined) {
         .order("column_order");
       if (error) throw error;
       return data as any;
-    },
-  });
-}
-
-function useBacklogCount() {
-  return useQuery({
-    queryKey: ["backlog_count"],
-    queryFn: async () => {
-      const { count, error } = await supabase.from("backlog_items").select("id", { count: "exact", head: true });
-      if (error) throw error;
-      return count ?? 0;
     },
   });
 }
@@ -105,7 +95,6 @@ export default function DashboardPage() {
   const { data: members } = useTeamMembers();
   const { data: activeSprint } = useActiveSprint();
   const { data: sprintItems } = useSprintItemsForSprint(activeSprint?.id);
-  const { data: backlogCount } = useBacklogCount();
   const { data: upcomingMeetings } = useUpcomingMeetings();
   const { data: recurringMeetings } = useRecurringMeetings();
   const { data: allUpdates } = useAllDailyUpdates();
@@ -120,16 +109,17 @@ export default function DashboardPage() {
   const we = endOfWeek(now, { weekStartsOn: 1 });
   const weekLabel = `Uke ${weekNum} — ${format(ws, "d.", { locale: nb })}–${format(we, "d. MMMM yyyy", { locale: nb })}`;
 
-  // Next milestone from milestones table
+  // Next milestone
   const nextMilestone = useMemo(() => {
     if (!milestonesData) return null;
     const upcoming = milestonesData.filter((m) => !m.is_completed && parseISO(m.date) > now).sort((a, b) => a.date.localeCompare(b.date));
     return upcoming[0] ?? null;
   }, [milestonesData, now]);
 
-  const daysToMilestone = nextMilestone ? differenceInDays(parseISO(nextMilestone.date), now) : null;
+  const nextMilestoneDate = nextMilestone ? parseISO(nextMilestone.date) : null;
+  const isUrgentMilestone = nextMilestoneDate ? (isToday(nextMilestoneDate) || isTomorrow(nextMilestoneDate)) : false;
 
-  // Milestones this month count
+  // Milestones this month
   const milestonesThisMonth = useMemo(() => {
     if (!milestonesData) return 0;
     const monthEnd = endOfMonth(now);
@@ -145,11 +135,7 @@ export default function DashboardPage() {
     return sum + (c?.points ?? 0);
   }, 0);
   const maxPossible = 30;
-  const plannedPoints = regs.filter((r) => r.status !== "completed" && r.status !== "not_started").reduce((sum, r) => {
-    const c = cat.find((c) => c.id === r.catalog_id);
-    return sum + (c?.points ?? 0);
-  }, 0);
-  const mandatoryRemaining = cat.filter((c) => c.is_mandatory && !regs.some((r) => r.catalog_id === c.id && r.status === "completed")).length;
+  const mandatoryRemaining = cat.filter((c) => c.is_mandatory && !regs.some((r) => r.catalog_id === c.id && r.status === "completed"));
 
   // Sprint stats
   const sprintStats = useMemo(() => {
@@ -166,35 +152,28 @@ export default function DashboardPage() {
     return { todo: todo.length, inProgress: inProgress.length, review: review.length, done: done.length, total: sprintItems.length, totalSp, doneSp, todoSp, ipSp, reviewSp };
   }, [sprintItems]);
 
-  // Action items
-  const actionItems = useMemo(() => {
-    const items: { text: string; type: "urgent" | "warning" | "tip" }[] = [];
-    // Mandatory activities not done with upcoming deadline
+  // Action items (for collapsed section)
+  const deadlineItems = useMemo(() => {
+    const items: { text: string; deadline: Date | null }[] = [];
     const mandatoryNotDone = cat.filter((c) => c.is_mandatory && !regs.some((r) => r.catalog_id === c.id && r.status === "completed"));
     mandatoryNotDone.forEach((c) => {
       const deadline = c.period_deadline ? parseISO(c.period_deadline) : null;
       if (deadline) {
         const days = differenceInDays(deadline, now);
-        if (days <= 30 && days >= 0) {
-          items.push({ text: `${c.name} er obligatorisk — frist ${format(deadline, "d. MMMM", { locale: nb })} (${days} dager)`, type: days <= 7 ? "urgent" : "warning" });
+        if (days >= 0) {
+          items.push({ text: `${c.name} — frist ${format(deadline, "d. MMMM", { locale: nb })}`, deadline });
         }
       }
     });
-    // Review items
     if (sprintStats && sprintStats.review > 0) {
-      items.push({ text: `${sprintStats.review} items i Review — vurdér å godkjenne`, type: "warning" });
+      items.push({ text: `${sprintStats.review} items i Review — vurdér å godkjenne`, deadline: null });
     }
-    // Tip about activity planning
-    if (completedRegs.length === 0 && regs.length === 0) {
-      items.push({ text: "Ingen aktiviteter planlagt ennå — maks 3 valgfrie gir poeng per uke", type: "tip" });
-    }
-    return items.slice(0, 3);
-  }, [cat, regs, completedRegs, sprintStats, now]);
+    return items;
+  }, [cat, regs, sprintStats, now]);
 
   // Team member sprint data
   const teamData = useMemo(() => {
     if (!members || !sprintItems) return [];
-    const todayStr = format(now, "yyyy-MM-dd");
     return members.map((m) => {
       const myItems = sprintItems.filter((si) => si.backlog_item?.assignee_id === m.id);
       const active = myItems.filter((si) => si.column_name !== "done");
@@ -203,12 +182,11 @@ export default function DashboardPage() {
       const rv = myItems.filter((si) => si.column_name === "review").reduce((s, i) => s + (i.backlog_item?.estimate ?? 0), 0);
       const dn = myItems.filter((si) => si.column_name === "done").reduce((s, i) => s + (i.backlog_item?.estimate ?? 0), 0);
       const totalSp = todo + ip + rv + dn;
-      // Latest standup
       const memberUpdates = allUpdates?.filter((u) => u.member_id === m.id);
       const latest = memberUpdates?.length ? memberUpdates[memberUpdates.length - 1] : null;
-      return { member: m, activeCount: active.length, todo, ip, rv, dn, totalSp, latestUpdate: latest };
+      return { member: m, activeCount: active.length, totalItems: myItems.length, todo, ip, rv, dn, totalSp, latestUpdate: latest };
     });
-  }, [members, sprintItems, allUpdates, now]);
+  }, [members, sprintItems, allUpdates]);
 
   // Upcoming meetings enriched
   const enrichedMeetings = useMemo(() => {
@@ -222,55 +200,61 @@ export default function DashboardPage() {
     });
   }, [upcomingMeetings, members, recurringMeetings, agendaItems]);
 
-  const inProgressCount = sprintStats?.inProgress ?? 0;
+  // Positive summary line
+  const activeItemsCount = (sprintStats?.inProgress ?? 0) + (sprintStats?.review ?? 0);
+  const summaryParts: string[] = [];
+  if (activeSprint) {
+    summaryParts.push(`${activeSprint.name} er i gang`);
+    if (activeItemsCount > 0) summaryParts.push(`${activeItemsCount} items aktive`);
+    if (totalEarned > 0) summaryParts.push(`${totalEarned} av ${maxPossible} aktivitetspoeng opptjent`);
+  }
+  const summaryLine = summaryParts.length > 0 ? summaryParts.join(" — ") + "." : null;
+
+  // Sprint positive framing
+  const doneCount = sprintStats?.done ?? 0;
+  const sprintPositiveLabel = doneCount === 0
+    ? `${activeItemsCount} items i arbeid`
+    : doneCount === 1
+    ? "1 item levert denne sprinten"
+    : `${doneCount} items levert denne sprinten`;
+
+  const [fristOpen, setFristOpen] = useState(false);
+
+  // Earliest mandatory deadline for summary
+  const earliestDeadline = useMemo(() => {
+    if (mandatoryRemaining.length === 0) return null;
+    const withDeadline = mandatoryRemaining
+      .filter((c) => c.period_deadline)
+      .map((c) => ({ ...c, dl: parseISO(c.period_deadline!) }))
+      .sort((a, b) => a.dl.getTime() - b.dl.getTime());
+    return withDeadline[0] ?? null;
+  }, [mandatoryRemaining]);
 
   return (
     <div className="space-y-5 scroll-reveal">
-      {/* 1. Header */}
+      {/* 1. Header + milestone badge */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold text-foreground leading-tight">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{weekLabel}</p>
         </div>
-        {nextMilestone && daysToMilestone !== null && (
+        {nextMilestone && nextMilestoneDate && (
           <div className={`text-xs font-medium px-3 py-1.5 rounded-lg ${
-            daysToMilestone <= 3
+            isUrgentMilestone
               ? "bg-red-50 text-red-700 border border-red-200"
-              : daysToMilestone <= 7
-              ? "bg-amber-50 text-amber-700 border border-amber-200"
               : "bg-muted text-muted-foreground"
           }`}>
-            {daysToMilestone} dager til {nextMilestone.title}
+            Neste: {nextMilestone.title} — {format(nextMilestoneDate, "EEE d. MMMM", { locale: nb })}
           </div>
         )}
       </div>
 
-      {/* 2. Action items */}
-      {actionItems.length > 0 && (
-        <div className="space-y-2">
-          {actionItems.map((item, i) => {
-            const styles = {
-              urgent: "bg-red-50 border-red-200 text-red-700",
-              warning: "bg-amber-50 border-amber-200 text-amber-700",
-              tip: "bg-teal-50 border-teal-200 text-teal-700",
-            };
-            const icons = {
-              urgent: Flame,
-              warning: AlertTriangle,
-              tip: Lightbulb,
-            };
-            const Icon = icons[item.type];
-            return (
-              <div key={i} className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-medium ${styles[item.type]}`}>
-                <Icon className="h-3.5 w-3.5 shrink-0" />
-                {item.text}
-              </div>
-            );
-          })}
-        </div>
+      {/* 2. Positive summary */}
+      {summaryLine && (
+        <p className="text-sm text-muted-foreground">{summaryLine}</p>
       )}
 
-      {/* 3. Two-column: Sprint + Activities */}
+      {/* 3. Sprint + Activities (most prominent) */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Sprint (3/5) */}
         <Card className="lg:col-span-3 rounded-xl border-[0.5px]">
@@ -297,7 +281,7 @@ export default function DashboardPage() {
                         </div>
                       ))}
                     </div>
-                    {/* Stacked progress (SP-based) */}
+                    {/* Stacked progress bar */}
                     <div className="h-2 rounded-full bg-muted overflow-hidden flex">
                       {sprintStats.totalSp > 0 && (
                         <>
@@ -309,16 +293,7 @@ export default function DashboardPage() {
                       )}
                     </div>
                     <div className="flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground">
-                        <span className="text-gray-500">To Do: {sprintStats.todoSp}</span>
-                        <span className="mx-1">|</span>
-                        <span className="text-blue-600">In Progress: {sprintStats.ipSp}</span>
-                        {sprintStats.reviewSp > 0 && <><span className="mx-1">|</span><span className="text-amber-600">Review: {sprintStats.reviewSp}</span></>}
-                        <span className="mx-1">|</span>
-                        <span className="text-green-600">Done: {sprintStats.doneSp}</span>
-                        <span className="mx-1">—</span>
-                        <span className="font-medium text-foreground">{sprintStats.totalSp} SP</span>
-                      </p>
+                      <p className="text-xs text-muted-foreground">{sprintPositiveLabel}</p>
                       <Link to="/sprinter" className="text-xs text-primary font-medium hover:underline flex items-center gap-1 shrink-0">Sprint Board <ArrowRight className="h-3 w-3" /></Link>
                     </div>
                   </>
@@ -345,8 +320,9 @@ export default function DashboardPage() {
               <div className="h-full rounded-full bg-teal-500 transition-all" style={{ width: `${Math.min((totalEarned / maxPossible) * 100, 100)}%` }} />
             </div>
             <div className="flex gap-4">
-              <p className="text-xs"><span className="text-blue-600 font-medium">{plannedPoints}p</span> <span className="text-muted-foreground">planlagt</span></p>
-              <p className="text-xs"><span className="text-red-500 font-medium">{mandatoryRemaining}</span> <span className="text-muted-foreground">obligatoriske gjenstår</span></p>
+              {mandatoryRemaining.length > 0 && (
+                <p className="text-xs text-muted-foreground">{mandatoryRemaining.length} obligatoriske gjenstår</p>
+              )}
             </div>
             <Link to="/aktiviteter" className="text-xs text-primary font-medium hover:underline flex items-center gap-1">Åpne Aktiviteter <ArrowRight className="h-3 w-3" /></Link>
           </CardContent>
@@ -356,17 +332,21 @@ export default function DashboardPage() {
       {/* 4. Team overview */}
       {teamData.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {teamData.map(({ member, activeCount, todo, ip, rv, dn, totalSp, latestUpdate }) => (
+          {teamData.map(({ member, activeCount, totalItems, todo, ip, rv, dn, totalSp, latestUpdate }) => (
             <Card key={member.id} className="rounded-xl border-[0.5px]">
               <CardContent className="pt-4 pb-3 space-y-2">
                 <div className="flex items-center gap-2">
                   <MemberAvatar member={member} size="md" />
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{member.name.split(" ")[0]}</p>
-                    <p className="text-[11px] text-muted-foreground">{activeCount} oppgaver i sprint</p>
+                    {totalItems > 0 ? (
+                      <p className="text-[11px] text-muted-foreground">{activeCount} oppgaver i sprint</p>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground">Ingen tildelte oppgaver</p>
+                    )}
                   </div>
                 </div>
-                {/* Mini stacked bar */}
+                {/* Mini stacked bar — only if has SP */}
                 {totalSp > 0 && (
                   <div className="h-1 rounded-full bg-muted overflow-hidden flex">
                     <div className="bg-gray-400" style={{ width: `${(todo / totalSp) * 100}%` }} />
@@ -375,14 +355,12 @@ export default function DashboardPage() {
                     <div className="bg-green-500" style={{ width: `${(dn / totalSp) * 100}%` }} />
                   </div>
                 )}
-                {/* Latest standup */}
-                {latestUpdate ? (
+                {/* Only show standup if they have one */}
+                {latestUpdate && (
                   <p className="text-[11px] text-muted-foreground truncate">
                     <span className="text-foreground/60">{format(parseISO(latestUpdate.entry_date), "d. MMM", { locale: nb })}:</span>{" "}
                     {latestUpdate.content?.slice(0, 50)}{(latestUpdate.content?.length ?? 0) > 50 ? "…" : ""}
                   </p>
-                ) : (
-                  <p className="text-[11px] text-muted-foreground italic">Ingen oppdatering ennå</p>
                 )}
               </CardContent>
             </Card>
@@ -417,14 +395,43 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 6. Quick links */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      {/* 6. Collapsible deadlines section */}
+      {deadlineItems.length > 0 && (
+        <Collapsible open={fristOpen} onOpenChange={setFristOpen}>
+          <div className="rounded-xl bg-muted/50 px-4 py-3">
+            <CollapsibleTrigger className="flex items-center justify-between w-full text-left">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-[11px] text-muted-foreground uppercase tracking-wider">Kommende frister</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {!fristOpen && (
+                  <span className="text-xs text-muted-foreground">
+                    {mandatoryRemaining.length} obligatoriske gjenstår
+                    {earliestDeadline && ` — frist ${format(earliestDeadline.dl, "d. MMMM", { locale: nb })}`}
+                  </span>
+                )}
+                <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${fristOpen ? "rotate-180" : ""}`} />
+              </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="mt-2 space-y-1">
+                {deadlineItems.map((item, i) => (
+                  <p key={i} className="text-xs text-muted-foreground pl-5">{item.text}</p>
+                ))}
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+      )}
+
+      {/* 7. Quick links (4 items) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: "Milepæler", to: "/milepaeler", sub: `${milestonesThisMonth} denne mnd` },
           { label: "Aktiviteter", to: "/aktiviteter", sub: `${totalEarned}p opptjent` },
-          { label: "Sprinter", to: "/sprinter", sub: `${inProgressCount} in progress` },
+          { label: "Sprinter", to: "/sprinter", sub: `${sprintStats?.inProgress ?? 0} in progress` },
           { label: "Møtekalender", to: "/moter", sub: enrichedMeetings[0] ? format(parseISO(enrichedMeetings[0].meeting_date!), "d. MMM", { locale: nb }) : "Vis møter" },
-          { label: "Oppgaver", to: "/oppgaver", sub: `${backlogCount ?? 0} items` },
         ].map((link) => (
           <Link key={link.to} to={link.to}>
             <Card className="rounded-xl border-[0.5px] hover:shadow-md transition-shadow cursor-pointer group">
