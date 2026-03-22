@@ -169,6 +169,36 @@ export default function ProcessLogExportPage() {
     }).join("\n");
   }, [allRegistrations, catalogMap, regParticipants, members]);
 
+  const activityLatex = useMemo(() => {
+    if (!allRegistrations.length) return "";
+    const items = allRegistrations.map((r) => {
+      const cat = catalogMap[r.catalog_id];
+      const names = getRegParticipantNames(r.id);
+      const statusLabel = r.status === "completed" ? "Fullført" : r.status === "in_progress" ? "Pågår" : r.status === "planned" ? "Planlagt" : r.status;
+      return [
+        `\\subsection{${tex(cat?.name ?? "Ukjent")} (\\#${r.occurrence_number}) -- ${tex(statusLabel)}}`,
+        "",
+        `\\textbf{Uke:} ${r.completed_week ?? r.planned_week ?? "?"} \\hfill \\textbf{Dato:} ${r.completed_date ? tex(formatDate(r.completed_date)) : "Ikke fullført ennå"}\\\\`,
+        `\\textbf{Poeng:} ${cat?.points ?? 0} \\hfill \\textbf{Deltakere:} ${names.length > 0 ? tex(names.join(", ")) : "Ikke angitt"}`,
+        "",
+        `\\paragraph{Hvorfor dette tidspunktet:} ${tex(r.timing_rationale || "(Ikke utfylt)")}`,
+        "",
+        `\\paragraph{Beskrivelse/Gjennomføring:} ${tex(r.description || "(Ikke utfylt)")}`,
+        "",
+        `\\paragraph{Erfaringer:} ${tex(r.experiences || "(Ikke utfylt)")}`,
+        "",
+        `\\paragraph{Refleksjoner:} ${tex(r.reflections || "(Ikke utfylt)")}`,
+        "",
+        r.attachment_links?.length
+          ? `\\paragraph{Vedlegg:} ${r.attachment_links.map((l) => `\\url{${l}}`).join(", ")}`
+          : `\\paragraph{Vedlegg:} Ingen`,
+        r.short_status ? `\\paragraph{Kort status:} ${tex(r.short_status)}` : "",
+        "",
+      ].filter(Boolean).join("\n");
+    });
+    return `\\section{Aktiviteter}\n\n${items.join("\n")}`;
+  }, [allRegistrations, catalogMap, regParticipants, members]);
+
   // --- Sprint export ---
   const filteredSprints = useMemo(() => {
     return (sprints ?? []).filter((s) => inRange(s.start_date) || inRange(s.end_date));
