@@ -795,6 +795,66 @@ export type Database = {
           },
         ]
       }
+      milestones: {
+        Row: {
+          category: string
+          completed_at: string | null
+          created_at: string
+          date: string
+          description: string | null
+          id: string
+          is_completed: boolean
+          is_fixed: boolean
+          linked_activity_id: string | null
+          linked_sprint_id: string | null
+          priority: string
+          title: string
+        }
+        Insert: {
+          category?: string
+          completed_at?: string | null
+          created_at?: string
+          date: string
+          description?: string | null
+          id?: string
+          is_completed?: boolean
+          is_fixed?: boolean
+          linked_activity_id?: string | null
+          linked_sprint_id?: string | null
+          priority?: string
+          title: string
+        }
+        Update: {
+          category?: string
+          completed_at?: string | null
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: string
+          is_completed?: boolean
+          is_fixed?: boolean
+          linked_activity_id?: string | null
+          linked_sprint_id?: string | null
+          priority?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "milestones_linked_activity_id_fkey"
+            columns: ["linked_activity_id"]
+            isOneToOne: false
+            referencedRelation: "activity_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "milestones_linked_sprint_id_fkey"
+            columns: ["linked_sprint_id"]
+            isOneToOne: false
+            referencedRelation: "sprints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recurring_meetings: {
         Row: {
           day_of_week: number
