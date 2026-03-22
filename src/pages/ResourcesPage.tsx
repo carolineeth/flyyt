@@ -138,12 +138,24 @@ export default function ResourcesPage() {
   const isFileUrl = (url: string) =>
     url.includes("/storage/v1/object/public/attachments/resources/");
 
+  // Merge default + existing categories
+  const allCategories = Array.from(new Set([...defaultCategories, ...(resources?.map((r) => r.category) ?? [])])).sort();
+
   // Group by category
   const grouped = resources?.reduce((acc, r) => {
     if (!acc[r.category]) acc[r.category] = [];
     acc[r.category].push(r);
     return acc;
   }, {} as Record<string, Resource[]>) ?? {};
+
+  const handleCategorySelect = (v: string, setter: typeof setForm, setShowNew: typeof setShowNewCategory) => {
+    if (v === "__new__") {
+      setShowNew(true);
+    } else {
+      setShowNew(false);
+      setter((p) => ({ ...p, category: v }));
+    }
+  };
 
   return (
     <div className="space-y-6 scroll-reveal">
