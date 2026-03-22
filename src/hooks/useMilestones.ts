@@ -56,3 +56,31 @@ export function useCreateMilestone() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["milestones"] }),
   });
 }
+
+export function useUpdateMilestone() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: { id: string } & Partial<Omit<Milestone, "id" | "created_at">>) => {
+      const { error } = await supabase
+        .from("milestones" as any)
+        .update(updates as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["milestones"] }),
+  });
+}
+
+export function useDeleteMilestone() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("milestones" as any)
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["milestones"] }),
+  });
+}
