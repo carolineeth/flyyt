@@ -146,7 +146,6 @@ export function DayByDayTab({ weekdays, entries, members, currentMemberId, isCur
 
             {isExpanded && (
               <div className="animate-fade-in">
-              <>
                 {showInput && (
                   <div className="mb-3">
                     <StandupInput
