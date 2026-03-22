@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
-import { format, getISOWeek, startOfWeek, endOfWeek, differenceInDays, parseISO, isToday, isTomorrow, isBefore, startOfDay } from "date-fns";
+import { format, getISOWeek, startOfWeek, endOfWeek, differenceInDays, parseISO, isToday, isTomorrow, isBefore, startOfDay, subWeeks, isWithinInterval } from "date-fns";
 import { nb } from "date-fns/locale";
 import type { Sprint, BacklogItem, SprintItem } from "@/lib/types";
 
@@ -156,7 +156,18 @@ export default function DashboardPage() {
   }, [sprintItems]);
 
 
-  // Team member sprint data
+  // Build 4-week buckets for sparklines
+  const weekBuckets = useMemo(() => {
+    const buckets: { start: Date; end: Date }[] = [];
+    for (let i = 3; i >= 0; i--) {
+      const s = startOfWeek(subWeeks(now, i), { weekStartsOn: 1 });
+      const e = endOfWeek(subWeeks(now, i), { weekStartsOn: 1 });
+      buckets.push({ start: s, end: e });
+    }
+    return buckets;
+  }, [now]);
+
+  // Team member sprint data + sparkline
   const teamData = useMemo(() => {
     if (!members || !sprintItems) return [];
     return members.map((m) => {
@@ -167,11 +178,20 @@ export default function DashboardPage() {
       const rv = myItems.filter((si) => si.column_name === "review").reduce((s, i) => s + (i.backlog_item?.estimate ?? 0), 0);
       const dn = myItems.filter((si) => si.column_name === "done").reduce((s, i) => s + (i.backlog_item?.estimate ?? 0), 0);
       const totalSp = todo + ip + rv + dn;
-      const memberUpdates = allUpdates?.filter((u) => u.member_id === m.id);
-      const latest = memberUpdates?.length ? memberUpdates[memberUpdates.length - 1] : null;
-      return { member: m, activeCount: active.length, totalItems: myItems.length, todo, ip, rv, dn, totalSp, latestUpdate: latest };
+      const memberUpdates = allUpdates?.filter((u) => u.member_id === m.id) ?? [];
+      const latest = memberUpdates.length ? memberUpdates[memberUpdates.length - 1] : null;
+
+      // Sparkline: count updates per week bucket
+      const weeklyCounts = weekBuckets.map((b) =>
+        memberUpdates.filter((u) => {
+          const d = parseISO(u.entry_date);
+          return isWithinInterval(d, { start: b.start, end: b.end });
+        }).length
+      );
+
+      return { member: m, activeCount: active.length, totalItems: myItems.length, todo, ip, rv, dn, totalSp, latestUpdate: latest, weeklyCounts };
     });
-  }, [members, sprintItems, allUpdates]);
+  }, [members, sprintItems, allUpdates, weekBuckets]);
 
   // Upcoming meetings enriched
   const enrichedMeetings = useMemo(() => {
