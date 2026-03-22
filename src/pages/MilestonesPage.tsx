@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { useMilestones, useToggleMilestone, useCreateMilestone, type Milestone } from "@/hooks/useMilestones";
+import { useMilestones, useToggleMilestone, useCreateMilestone, useUpdateMilestone, useDeleteMilestone, type Milestone } from "@/hooks/useMilestones";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,9 +13,11 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
-import { Flag, Plus, Lock, ChevronDown, ChevronRight, CalendarIcon, Check, Clock, AlertTriangle, Target } from "lucide-react";
+import { Flag, Plus, Lock, ChevronDown, ChevronRight, CalendarIcon, Check, Clock, AlertTriangle, Target, MoreHorizontal, Pencil, Trash2, Undo2 } from "lucide-react";
 import { format, differenceInDays, parseISO, endOfMonth, addWeeks, startOfWeek, getISOWeek } from "date-fns";
 import { nb } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -384,14 +386,13 @@ function Timeline({ milestones, sprints, onSelect }: { milestones: Milestone[]; 
 
 // ============ Milestone List ============
 
-function MilestoneList({ milestones, highlightId }: { milestones: Milestone[]; highlightId: string | null }) {
+function MilestoneList({ milestones, highlightId, onEdit, onDelete }: { milestones: Milestone[]; highlightId: string | null; onEdit: (m: Milestone) => void; onDelete: (m: Milestone) => void }) {
   const toggle = useToggleMilestone();
   const now = new Date();
   const upcoming = milestones.filter((m) => !m.is_completed).sort((a, b) => a.date.localeCompare(b.date));
   const completed = milestones.filter((m) => m.is_completed).sort((a, b) => b.date.localeCompare(a.date));
   const [completedOpen, setCompletedOpen] = useState(false);
 
-  // Group upcoming by month
   const months = useMemo(() => {
     const groups: Record<string, Milestone[]> = {};
     upcoming.forEach((m) => {
@@ -411,10 +412,10 @@ function MilestoneList({ milestones, highlightId }: { milestones: Milestone[]; h
         key={m.id}
         id={`ms-${m.id}`}
         className={cn(
-          "flex items-center gap-3 py-3 px-3 rounded-lg transition-all",
+          "flex items-center gap-3 py-3 px-3 rounded-lg transition-all group/row",
           highlightId === m.id && "ring-2 ring-primary/30 bg-accent/40",
           isUrgent && !dimmed && "bg-red-50/50",
-          dimmed && "opacity-50"
+          dimmed && "opacity-50 hover:opacity-80"
         )}
         style={{ borderLeft: `3px solid ${CATEGORY_COLORS[m.category]}` }}
       >
@@ -462,7 +463,36 @@ function MilestoneList({ milestones, highlightId }: { milestones: Milestone[]; h
               {days === 0 ? "I dag" : days === 1 ? "I morgen" : `${days} dager`}
             </span>
           )}
-          {dimmed && <Check className="h-4 w-4 text-green-500" />}
+          {dimmed && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity"
+              onClick={() => toggle.mutate({ id: m.id, is_completed: false })}
+            >
+              <Undo2 className="h-3 w-3" /> Angre
+            </Button>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onEdit(m)}>
+                <Pencil className="h-3.5 w-3.5 mr-2" /> Rediger
+              </DropdownMenuItem>
+              {dimmed && (
+                <DropdownMenuItem onClick={() => toggle.mutate({ id: m.id, is_completed: false })}>
+                  <Undo2 className="h-3.5 w-3.5 mr-2" /> Marker som ufullført
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem className="text-destructive" onClick={() => onDelete(m)}>
+                <Trash2 className="h-3.5 w-3.5 mr-2" /> Slett
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     );
@@ -500,8 +530,6 @@ function MilestoneList({ milestones, highlightId }: { milestones: Milestone[]; h
     </div>
   );
 }
-
-// ============ Add Modal ============
 
 function AddMilestoneModal({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const create = useCreateMilestone();
@@ -601,19 +629,139 @@ function AddMilestoneModal({ open, onOpenChange }: { open: boolean; onOpenChange
   );
 }
 
+// ============ Edit Modal ============
+
+function EditMilestoneModal({ milestone, onClose }: { milestone: Milestone | null; onClose: () => void }) {
+  const update = useUpdateMilestone();
+  const [title, setTitle] = useState("");
+  const [date, setDate] = useState<Date | undefined>();
+  const [category, setCategory] = useState("intern");
+  const [description, setDescription] = useState("");
+  const [priority, setPriority] = useState("normal");
+  const [isFixed, setIsFixed] = useState(false);
+
+  // Sync form when milestone changes
+  useMemo(() => {
+    if (milestone) {
+      setTitle(milestone.title);
+      setDate(parseISO(milestone.date));
+      setCategory(milestone.category);
+      setDescription(milestone.description || "");
+      setPriority(milestone.priority);
+      setIsFixed(milestone.is_fixed);
+    }
+  }, [milestone]);
+
+  const handleSubmit = async () => {
+    if (!milestone || !title || !date) return;
+    await update.mutateAsync({
+      id: milestone.id,
+      title,
+      date: format(date, "yyyy-MM-dd"),
+      category,
+      description: description || null,
+      priority,
+      is_fixed: isFixed,
+    });
+    toast.success("Milepæl oppdatert");
+    onClose();
+  };
+
+  return (
+    <Dialog open={!!milestone} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Rediger milepæl</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label className="text-xs">Tittel *</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-xs">Dato *</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("w-full justify-start text-left", !date && "text-muted-foreground")}>
+                  <CalendarIcon className="h-4 w-4 mr-2" />
+                  {date ? format(date, "d. MMMM yyyy", { locale: nb }) : "Velg dato"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={date} onSelect={setDate} className="p-3 pointer-events-auto" />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Kategori</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[k] }} />
+                        {v}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Prioritet</Label>
+              <Select value={priority} onValueChange={setPriority}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="critical">🔴 Kritisk</SelectItem>
+                  <SelectItem value="high">🟡 Høy</SelectItem>
+                  <SelectItem value="normal">Normal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs">Beskrivelse</Label>
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch checked={isFixed} onCheckedChange={setIsFixed} />
+            <Label className="text-xs">Fast frist (kan ikke flyttes)</Label>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Avbryt</Button>
+          <Button onClick={handleSubmit} disabled={!title || !date || update.isPending}>Lagre</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ============ Main Page ============
 
 export default function MilestonesPage() {
   const { data: milestones } = useMilestones();
   const { data: sprints } = useSprints();
+  const deleteMutation = useDeleteMilestone();
   const [addOpen, setAddOpen] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
+  const [deletingMilestone, setDeletingMilestone] = useState<Milestone | null>(null);
 
   const handleSelect = (id: string) => {
     setHighlightId(id);
     const el = document.getElementById(`ms-${id}`);
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
     setTimeout(() => setHighlightId(null), 3000);
+  };
+
+  const handleDelete = async () => {
+    if (!deletingMilestone) return;
+    await deleteMutation.mutateAsync(deletingMilestone.id);
+    toast.success("Milepæl slettet");
+    setDeletingMilestone(null);
   };
 
   const ms = milestones ?? [];
@@ -635,8 +783,26 @@ export default function MilestonesPage() {
 
       <MetricCards milestones={ms} />
       <Timeline milestones={ms} sprints={sp} onSelect={handleSelect} />
-      <MilestoneList milestones={ms} highlightId={highlightId} />
+      <MilestoneList milestones={ms} highlightId={highlightId} onEdit={setEditingMilestone} onDelete={setDeletingMilestone} />
       <AddMilestoneModal open={addOpen} onOpenChange={setAddOpen} />
+      <EditMilestoneModal milestone={editingMilestone} onClose={() => setEditingMilestone(null)} />
+
+      <AlertDialog open={!!deletingMilestone} onOpenChange={(o) => !o && setDeletingMilestone(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Slett milepæl</AlertDialogTitle>
+            <AlertDialogDescription>
+              Er du sikker på at du vil slette «{deletingMilestone?.title}»? Dette kan ikke angres.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Slett
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
