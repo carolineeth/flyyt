@@ -18,12 +18,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { MeetingCard } from "@/components/meetings/MeetingCard";
 import { MonthlyCalendar } from "@/components/meetings/MonthlyCalendar";
+import { MeetingMinutesView } from "@/components/meetings/MeetingMinutesView";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Calendar, Plus, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, Plus, RefreshCw, FileText } from "lucide-react";
 
 function getCurrentWeekYear() {
   const now = new Date();
