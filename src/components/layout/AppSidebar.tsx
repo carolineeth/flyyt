@@ -1,5 +1,6 @@
 import {
   LayoutDashboard,
+  Flag,
   Target,
   Layers,
   CheckSquare,
@@ -30,6 +31,7 @@ import {
 
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Milepæler", url: "/milepaeler", icon: Flag },
   { title: "Standup", url: "/standup", icon: MessageCircle, hasNotification: true },
   { title: "Aktiviteter", url: "/aktiviteter", icon: Target },
   { title: "Sprinter", url: "/sprinter", icon: Layers },

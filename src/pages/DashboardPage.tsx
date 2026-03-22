@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useMilestones } from "@/hooks/useMilestones";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActivityCatalog, useActivityRegistrations } from "@/hooks/useActivityCatalog";
@@ -8,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { ArrowRight, AlertTriangle, Lightbulb, Flame } from "lucide-react";
 import { Link } from "react-router-dom";
-import { format, getISOWeek, startOfWeek, endOfWeek, differenceInDays, parseISO } from "date-fns";
+import { format, getISOWeek, startOfWeek, endOfWeek, endOfMonth, differenceInDays, parseISO } from "date-fns";
 import { nb } from "date-fns/locale";
 import type { Sprint, BacklogItem, SprintItem } from "@/lib/types";
 
@@ -108,6 +109,7 @@ export default function DashboardPage() {
   const { data: upcomingMeetings } = useUpcomingMeetings();
   const { data: recurringMeetings } = useRecurringMeetings();
   const { data: allUpdates } = useAllDailyUpdates();
+  const { data: milestonesData } = useMilestones();
 
   const meetingIds = useMemo(() => upcomingMeetings?.map((m) => m.id) ?? [], [upcomingMeetings]);
   const { data: agendaItems } = useMeetingAgendaItems(meetingIds);
@@ -118,20 +120,21 @@ export default function DashboardPage() {
   const we = endOfWeek(now, { weekStartsOn: 1 });
   const weekLabel = `Uke ${weekNum} — ${format(ws, "d.", { locale: nb })}–${format(we, "d. MMMM yyyy", { locale: nb })}`;
 
-  // Deadlines
-  const deadlines = useMemo(() => {
-    const list: { name: string; date: Date }[] = [
-      { name: "Første halvdel aktiviteter", date: new Date(2026, 3, 5) },
-      { name: "Prosjektinnlevering", date: new Date(2026, 4, 15) },
-    ];
-    if (activeSprint?.end_date) {
-      list.push({ name: `${activeSprint.name} slutt`, date: parseISO(activeSprint.end_date) });
-    }
-    return list.filter((d) => d.date > now).sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [activeSprint, now]);
+  // Next milestone from milestones table
+  const nextMilestone = useMemo(() => {
+    if (!milestonesData) return null;
+    const upcoming = milestonesData.filter((m) => !m.is_completed && parseISO(m.date) > now).sort((a, b) => a.date.localeCompare(b.date));
+    return upcoming[0] ?? null;
+  }, [milestonesData, now]);
 
-  const nextDeadline = deadlines[0];
-  const daysToDeadline = nextDeadline ? differenceInDays(nextDeadline.date, now) : null;
+  const daysToMilestone = nextMilestone ? differenceInDays(parseISO(nextMilestone.date), now) : null;
+
+  // Milestones this month count
+  const milestonesThisMonth = useMemo(() => {
+    if (!milestonesData) return 0;
+    const monthEnd = endOfMonth(now);
+    return milestonesData.filter((m) => !m.is_completed && parseISO(m.date) >= now && parseISO(m.date) <= monthEnd).length;
+  }, [milestonesData, now]);
 
   // Activity stats
   const regs = registrations ?? [];
@@ -229,13 +232,15 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold text-foreground leading-tight">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{weekLabel}</p>
         </div>
-        {nextDeadline && daysToDeadline !== null && (
+        {nextMilestone && daysToMilestone !== null && (
           <div className={`text-xs font-medium px-3 py-1.5 rounded-lg ${
-            daysToDeadline <= 7
+            daysToMilestone <= 3
+              ? "bg-red-50 text-red-700 border border-red-200"
+              : daysToMilestone <= 7
               ? "bg-amber-50 text-amber-700 border border-amber-200"
               : "bg-muted text-muted-foreground"
           }`}>
-            {daysToDeadline} dager til {nextDeadline.name}
+            {daysToMilestone} dager til {nextMilestone.title}
           </div>
         )}
       </div>
@@ -413,8 +418,9 @@ export default function DashboardPage() {
       )}
 
       {/* 6. Quick links */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {[
+          { label: "Milepæler", to: "/milepaeler", sub: `${milestonesThisMonth} denne mnd` },
           { label: "Aktiviteter", to: "/aktiviteter", sub: `${totalEarned}p opptjent` },
           { label: "Sprinter", to: "/sprinter", sub: `${inProgressCount} in progress` },
           { label: "Møtekalender", to: "/moter", sub: enrichedMeetings[0] ? format(parseISO(enrichedMeetings[0].meeting_date!), "d. MMM", { locale: nb }) : "Vis møter" },
