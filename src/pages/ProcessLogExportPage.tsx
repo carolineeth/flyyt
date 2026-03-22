@@ -469,12 +469,15 @@ export default function ProcessLogExportPage() {
         </TabsContent>
 
         <TabsContent value="decisions" className="space-y-3 mt-4">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button size="sm" variant="outline" onClick={() => copy(decisionPlain, "Ren tekst")}>
-              <Copy className="h-3.5 w-3.5 mr-1" /> Kopier ren tekst
+              <Copy className="h-3.5 w-3.5 mr-1" /> Ren tekst
             </Button>
             <Button size="sm" variant="outline" onClick={() => copy(decisionMarkdown, "Markdown")}>
-              <FileText className="h-3.5 w-3.5 mr-1" /> Kopier som Markdown
+              <FileText className="h-3.5 w-3.5 mr-1" /> Markdown
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => copy(decisionLatex, "LaTeX")}>
+              <Code className="h-3.5 w-3.5 mr-1" /> LaTeX
             </Button>
           </div>
           {filteredDecisions.length === 0 ? (
