@@ -327,7 +327,20 @@ export default function DashboardPage() {
       {/* 4. Team overview */}
       {teamData.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {teamData.map(({ member, activeCount, totalItems, todo, ip, rv, dn, totalSp, latestUpdate }) => (
+          {teamData.map(({ member, activeCount, totalItems, todo, ip, rv, dn, totalSp, latestUpdate, weeklyCounts }) => {
+            // Build sparkline SVG path
+            const maxCount = Math.max(...weeklyCounts, 1);
+            const sparkW = 48;
+            const sparkH = 16;
+            const points = weeklyCounts.map((c, i) => {
+              const x = (i / (weeklyCounts.length - 1)) * sparkW;
+              const y = sparkH - (c / maxCount) * sparkH;
+              return `${x},${y}`;
+            });
+            const sparkPath = `M${points.join(" L")}`;
+            const hasAnyUpdates = weeklyCounts.some((c) => c > 0);
+
+            return (
             <Card key={member.id} className="rounded-xl border-[0.5px]">
               <CardContent className="pt-4 pb-3 space-y-2">
                 <div className="flex items-center gap-2">
