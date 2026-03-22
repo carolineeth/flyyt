@@ -1,8 +1,7 @@
 import { useMemo, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, CheckCircle2, GripVertical, Info } from "lucide-react";
+import { GripVertical } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useUpdateRegistration, type CatalogItem, type Registration } from "@/hooks/useActivityCatalog";
 import { Tooltip as UITooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -172,18 +171,27 @@ export function PointsPlanner({ catalog, registrations, onClickRegistration }: P
 
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; };
 
+  const warningTexts = warnings.filter((w) => w.type === "warning");
+  const successTexts = warnings.filter((w) => w.type === "success");
+
   return (
     <div className="space-y-4">
-      {warnings.map((w, i) => (
-        <Alert key={i} variant={w.type === "warning" ? "destructive" : "default"} className={w.type === "success" ? "border-primary/30 bg-primary/5" : ""}>
-          <div className="flex items-center gap-2">
-            {w.type === "warning" ? <AlertTriangle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4 text-primary" />}
-            <AlertDescription className="text-sm">{w.text}</AlertDescription>
-          </div>
-        </Alert>
-      ))}
+      {/* Compact status line */}
+      {(warningTexts.length > 0 || successTexts.length > 0) && (
+        <p className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+          {warningTexts.map((w, i) => (
+            <span key={`w${i}`} className="text-amber-500 cursor-pointer hover:underline" onClick={() => document.getElementById("points-planner-card")?.scrollIntoView({ behavior: "smooth" })}>
+              {w.text}
+            </span>
+          ))}
+          {warningTexts.length > 0 && successTexts.length > 0 && <span className="text-muted-foreground/40">·</span>}
+          {successTexts.map((w, i) => (
+            <span key={`s${i}`} className="text-teal-500">{w.text}</span>
+          ))}
+        </p>
+      )}
 
-      <Card>
+      <Card id="points-planner-card">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">Poengplanlegger — dra aktiviteter inn i ukene</CardTitle>
         </CardHeader>

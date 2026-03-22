@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle2, Clock, Circle, AlertTriangle } from "lucide-react";
+import { CheckCircle2, Clock, Circle } from "lucide-react";
 import type { CatalogItem, Registration } from "@/hooks/useActivityCatalog";
 import { RegistrationModal } from "./RegistrationModal";
 
@@ -26,7 +26,6 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
   const secondHalf = catalog.filter((c) => c.period === "second_half");
   const custom = catalog.filter((c) => c.name === "Egendefinert aktivitet");
 
-  // Agile meetings (standup, planning, review)
   const agileMeetings = meetingBased.filter((c) => ["daily_standup", "sprint_planning", "sprint_review"].includes(c.meeting_type || ""));
   const advisorMeeting = meetingBased.find((c) => c.meeting_type === "veiledermøte");
 
@@ -56,13 +55,13 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
 
   const openModal = (item: CatalogItem) => {
     setSelectedCatalog(item);
-    setSelectedRegistration(undefined); // will use getExistingRegistration
+    setSelectedRegistration(undefined);
     setModalOpen(true);
   };
 
   const openModalNew = (item: CatalogItem) => {
     setSelectedCatalog(item);
-    setSelectedRegistration(null); // force new registration
+    setSelectedRegistration(null);
     setModalOpen(true);
   };
 
@@ -114,69 +113,74 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
         </Section>
       )}
 
-      {/* Meeting-based activities */}
-      <Section title="Møtebaserte aktiviteter" subtitle="Kobles automatisk fra møtekalenderen">
-        {/* Advisor meetings */}
-        {advisorMeeting && (
-          <Card className="overflow-hidden">
-            <CardContent className="py-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{advisorMeeting.name}</span>
-                  <Badge variant="secondary" className="text-[10px]">1p per uke, maks 4</Badge>
+      {/* Meetings: Veileder */}
+      <div>
+        <div className="mb-2">
+          <h3 className="text-base font-medium">Møter med veileder</h3>
+          <p className="text-xs text-muted-foreground">Kobles automatisk fra møtekalenderen</p>
+        </div>
+        <div className="space-y-1">
+          {advisorMeeting && (
+            <Card className="overflow-hidden">
+              <CardContent className="py-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">{advisorMeeting.name}</span>
+                    <Badge variant="secondary" className="text-[10px]">1p per uke, maks 4</Badge>
+                  </div>
+                  {getRegistrationsFor(advisorMeeting.id).length < 4 && (
+                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openModalNew(advisorMeeting)}>
+                      + Registrer ny
+                    </Button>
+                  )}
                 </div>
-                {getRegistrationsFor(advisorMeeting.id).length < 4 && (
-                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openModalNew(advisorMeeting)}>
-                    + Registrer ny
-                  </Button>
-                )}
-              </div>
-              {/* Existing registrations */}
-              {getRegistrationsFor(advisorMeeting.id).map((reg, i) => (
-                <div
-                  key={reg.id}
-                  className="flex items-center gap-2 text-xs px-2 py-1.5 rounded hover:bg-accent/30 cursor-pointer transition-colors"
-                  onClick={() => openModalWithRegistration(advisorMeeting, reg)}
-                >
-                  <StatusIcon catId={advisorMeeting.id} />
-                  <span className="flex-1">Møte #{i + 1}{reg.completed_date ? ` — ${reg.completed_date}` : ""}</span>
-                  <Badge variant={reg.status === "completed" ? "default" : "outline"} className="text-[10px]">
-                    {reg.status === "completed" ? "Fullført" : reg.status === "in_progress" ? "Pågår" : "Ikke startet"}
-                  </Badge>
+                {getRegistrationsFor(advisorMeeting.id).map((reg, i) => (
+                  <div
+                    key={reg.id}
+                    className="flex items-center gap-2 text-xs px-2 py-1.5 rounded hover:bg-accent/30 cursor-pointer transition-colors"
+                    onClick={() => openModalWithRegistration(advisorMeeting, reg)}
+                  >
+                    <StatusIcon catId={advisorMeeting.id} />
+                    <span className="flex-1">Møte #{i + 1}{reg.completed_date ? ` — ${reg.completed_date}` : ""}</span>
+                    <Badge variant={reg.status === "completed" ? "default" : "outline"} className="text-[10px]">
+                      {reg.status === "completed" ? "Fullført" : reg.status === "in_progress" ? "Pågår" : "Ikke startet"}
+                    </Badge>
+                  </div>
+                ))}
+                <div className="flex gap-1.5">
+                  {Array.from({ length: 4 }).map((_, i) => {
+                    const completed = getRegistrationsFor(advisorMeeting.id).filter((r) => r.status === "completed").length;
+                    return (
+                      <div
+                        key={i}
+                        className={`w-5 h-5 rounded-full border-2 ${
+                          i < completed ? "bg-primary border-primary" : "border-muted-foreground/30"
+                        }`}
+                      />
+                    );
+                  })}
                 </div>
-              ))}
-              <div className="flex gap-1.5">
-                {Array.from({ length: 4 }).map((_, i) => {
-                  const completed = getRegistrationsFor(advisorMeeting.id).filter((r) => r.status === "completed").length;
-                  return (
-                    <div
-                      key={i}
-                      className={`w-5 h-5 rounded-full border-2 ${
-                        i < completed ? "bg-primary border-primary" : "border-muted-foreground/30"
-                      }`}
-                    />
-                  );
-                })}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {getRegistrationsFor(advisorMeeting.id).filter((r) => r.status === "completed").length} av 4 gjennomført
-              </p>
-            </CardContent>
-          </Card>
-        )}
+                <p className="text-xs text-muted-foreground">
+                  {getRegistrationsFor(advisorMeeting.id).filter((r) => r.status === "completed").length} av 4 gjennomført
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
 
-        {/* Agile meetings */}
-        {agileWeekWarning.length > 0 && (
-          <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/5 rounded-md px-3 py-2">
-            <AlertTriangle className="h-4 w-4 shrink-0" />
-            <span>Smidige møter kan ikke gjennomføres i samme uke: {agileWeekWarning.join(", ")}</span>
-          </div>
-        )}
-        <p className="text-xs text-muted-foreground">1p per type per uke · Maks 3p totalt · Ulike typer ikke i samme uke</p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {/* Separator */}
+      <Separator className="opacity-50" />
+
+      {/* Meetings: Smidige */}
+      <div>
+        <div className="mb-2">
+          <h3 className="text-base font-medium">Smidige møter</h3>
+          <p className="text-xs text-muted-foreground">1p per type per uke · Maks 3p totalt · Ulike typer ikke i samme uke</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {agileMeetings.map((item) => {
             const regs = getRegistrationsFor(item.id);
-            const completedCount = regs.filter((r) => r.status === "completed").length;
             const totalAgileCompleted = agileMeetings.reduce((sum, m) =>
               sum + getRegistrationsFor(m.id).filter((r) => r.status === "completed").length, 0
             );
@@ -215,8 +219,44 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
               </Card>
             );
           })}
+          {/* Custom activity as 4th card */}
+          {custom.map((item) => {
+            const regs = getRegistrationsFor(item.id);
+            return (
+              <Card key={item.id} className="overflow-hidden">
+                <CardContent className="py-3 space-y-2">
+                  <div className="text-center">
+                    <p className="text-sm font-medium">Egendefinert</p>
+                    <Badge variant="secondary" className="text-[10px]">{item.points}p</Badge>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground text-center leading-tight">Gjennomfør en smidig aktivitet som ikke er nevnt i kursdokumentet</p>
+                  {regs.map((reg, i) => (
+                    <div
+                      key={reg.id}
+                      className="flex items-center gap-2 text-xs px-2 py-1.5 rounded hover:bg-accent/30 cursor-pointer transition-colors"
+                      onClick={() => openModalWithRegistration(item, reg)}
+                    >
+                      <StatusIcon catId={item.id} />
+                      <span className="flex-1">#{i + 1}{reg.completed_date ? ` — ${reg.completed_date}` : ""}</span>
+                      <Badge variant={reg.status === "completed" ? "default" : "outline"} className="text-[10px]">
+                        {reg.status === "completed" ? "Fullført" : "Planlagt"}
+                      </Badge>
+                    </div>
+                  ))}
+                  {regs.length === 0 && (
+                    <div className="flex justify-center">
+                      <StatusIcon catId={item.id} />
+                    </div>
+                  )}
+                  <Button variant="outline" size="sm" className="w-full h-7 text-xs" onClick={() => openModal(item)}>
+                    {regs.length > 0 ? "Se detaljer" : "+ Registrer"}
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
-      </Section>
+      </div>
 
       {/* Second half */}
       <Section title="Andre halvdel" subtitle="Tilgjengelig etter 5. april" variant="dimmed">
@@ -234,19 +274,6 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
           </div>
         )}
       </Section>
-
-      {/* Custom */}
-      {custom.length > 0 && (
-        <Section title="Egendefinert aktivitet">
-          {custom.map((item) => (
-            <CatalogRow key={item.id} item={item} onClick={() => openModal(item)}>
-              <StatusIcon catId={item.id} />
-              <span className="text-sm flex-1">{item.name}</span>
-              <Badge variant="secondary" className="text-[10px]">{item.points}p</Badge>
-            </CatalogRow>
-          ))}
-        </Section>
-      )}
 
       {/* Registration modal */}
       {selectedCatalog && (
