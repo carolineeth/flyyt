@@ -402,7 +402,6 @@ export default function InsightsPage() {
       <PageHeader
         title="Prosjektinnsikt"
         description="Statistikk og analyse for prosessdokumentasjon og rapport"
-        icon={<BarChart3 className="h-6 w-6 text-primary" />}
       />
 
       {/* TOP METRICS */}
