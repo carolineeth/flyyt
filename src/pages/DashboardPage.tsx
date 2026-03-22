@@ -155,24 +155,6 @@ export default function DashboardPage() {
     return { todo: todo.length, inProgress: inProgress.length, review: review.length, done: done.length, total: sprintItems.length, totalSp, doneSp, todoSp, ipSp, reviewSp };
   }, [sprintItems]);
 
-  // Action items (for collapsed section)
-  const deadlineItems = useMemo(() => {
-    const items: { text: string; deadline: Date | null }[] = [];
-    const mandatoryNotDone = cat.filter((c) => c.is_mandatory && !regs.some((r) => r.catalog_id === c.id && r.status === "completed"));
-    mandatoryNotDone.forEach((c) => {
-      const deadline = c.period_deadline ? parseISO(c.period_deadline) : null;
-      if (deadline) {
-        const days = differenceInDays(deadline, now);
-        if (days >= 0) {
-          items.push({ text: `${c.name} — frist ${format(deadline, "d. MMMM", { locale: nb })}`, deadline });
-        }
-      }
-    });
-    if (sprintStats && sprintStats.review > 0) {
-      items.push({ text: `${sprintStats.review} items i Review — vurdér å godkjenne`, deadline: null });
-    }
-    return items;
-  }, [cat, regs, sprintStats, now]);
 
   // Team member sprint data
   const teamData = useMemo(() => {
