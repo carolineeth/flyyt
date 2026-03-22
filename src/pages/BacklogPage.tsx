@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { ListTodo, Plus, GripVertical } from "lucide-react";
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import type { BacklogItem, Sprint } from "@/lib/types";
+import { logBacklogChange } from "@/lib/backlogChangelog";
 
 const typeLabels: Record<string, string> = {
   user_story: "Brukerhistorie",
