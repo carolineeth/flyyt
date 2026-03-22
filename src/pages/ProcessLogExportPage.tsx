@@ -2,15 +2,14 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
-import { useActivities, useActivityParticipants } from "@/hooks/useActivities";
+import { useActivityCatalog, useActivityRegistrations, useRegistrationParticipants } from "@/hooks/useActivityCatalog";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { ClipboardCheck, Copy, FileText } from "lucide-react";
+import { Copy, FileText } from "lucide-react";
 import type { Sprint, SprintItem, BacklogItem, Decision } from "@/lib/types";
 
 function formatDate(d: string) {
@@ -18,8 +17,9 @@ function formatDate(d: string) {
 }
 
 export default function ProcessLogExportPage() {
-  const { data: activities } = useActivities();
-  const { data: participants } = useActivityParticipants();
+  const { data: catalog } = useActivityCatalog();
+  const { data: registrations } = useActivityRegistrations();
+  const { data: regParticipants } = useRegistrationParticipants();
   const { data: members } = useTeamMembers();
   const { data: sprints } = useQuery<Sprint[]>({
     queryKey: ["sprints"],
@@ -48,11 +48,19 @@ export default function ProcessLogExportPage() {
       return data;
     },
   });
+  const { data: standupUpdates } = useQuery({
+    queryKey: ["all_daily_updates_export"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("daily_updates").select("*").order("entry_date");
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
-  const inRange = (dateStr: string) => {
+  const inRange = (dateStr: string | null | undefined) => {
     if (!dateStr) return true;
     const d = new Date(dateStr);
     if (dateFrom && d < new Date(dateFrom)) return false;
@@ -60,73 +68,96 @@ export default function ProcessLogExportPage() {
     return true;
   };
 
-  // --- Activity export ---
-  const completedActivities = useMemo(() => {
-    return (activities ?? [])
-      .filter((a) => a.status === "completed" && (a.completed_date ? inRange(a.completed_date) : true))
-      .sort((a, b) => (a.completed_week ?? 0) - (b.completed_week ?? 0));
-  }, [activities, dateFrom, dateTo]);
+  const catalogMap = useMemo(() => {
+    const map: Record<string, typeof catalog extends (infer T)[] | undefined ? T : never> = {};
+    (catalog ?? []).forEach((c) => { map[c.id] = c; });
+    return map;
+  }, [catalog]);
 
-  const getParticipantNames = (activityId: string) => {
-    const pIds = (participants ?? []).filter((p) => p.activity_id === activityId).map((p) => p.member_id);
+  const getRegParticipantNames = (regId: string) => {
+    const pIds = (regParticipants ?? []).filter((p) => p.registration_id === regId).map((p) => p.member_id);
     return (members ?? []).filter((m) => pIds.includes(m.id)).map((m) => m.name);
   };
 
-  const activityMarkdown = useMemo(() => {
-    return completedActivities.map((a) => {
-      const names = getParticipantNames(a.id);
-      const lines = [
-        `**${a.name}** (Uke ${a.completed_week ?? "?"}, ${a.completed_date ? formatDate(a.completed_date) : "ukjent dato"})`,
-        `Poeng: ${a.points} | Deltakere: ${names.length > 0 ? names.join(", ") : "Ikke angitt"}`,
-        "",
-        "**Hvorfor dette tidspunktet:**",
-        (a as any).timing_rationale || "_Ikke utfylt_",
-        "",
-        "**Gjennomføring:**",
-        a.notes || "_Ikke utfylt_",
-        "",
-        "**Erfaringer:**",
-        (a as any).experiences || "_Ikke utfylt_",
-        "",
-        "**Refleksjoner:**",
-        (a as any).reflections || "_Ikke utfylt_",
-        "",
-        `**Vedlegg:** ${a.attachment_links?.length ? a.attachment_links.join(", ") : "Ingen"}`,
-        "",
-        "---",
-        "",
-      ];
-      return lines.join("\n");
-    }).join("\n");
-  }, [completedActivities, participants, members]);
+  // --- Activity registrations export ---
+  const completedRegistrations = useMemo(() => {
+    return (registrations ?? [])
+      .filter((r) => r.status === "completed" && inRange(r.completed_date))
+      .sort((a, b) => (a.completed_week ?? 0) - (b.completed_week ?? 0));
+  }, [registrations, dateFrom, dateTo]);
+
+  const allRegistrations = useMemo(() => {
+    return (registrations ?? [])
+      .filter((r) => inRange(r.completed_date) || inRange(r.created_at))
+      .sort((a, b) => (a.completed_week ?? 0) - (b.completed_week ?? 0));
+  }, [registrations, dateFrom, dateTo]);
 
   const activityPlain = useMemo(() => {
-    return completedActivities.map((a) => {
-      const names = getParticipantNames(a.id);
+    if (!allRegistrations.length) return "";
+    return allRegistrations.map((r) => {
+      const cat = catalogMap[r.catalog_id];
+      const names = getRegParticipantNames(r.id);
+      const statusLabel = r.status === "completed" ? "Fullført" : r.status === "in_progress" ? "Pågår" : r.status === "planned" ? "Planlagt" : r.status;
       const lines = [
-        `${a.name} (Uke ${a.completed_week ?? "?"}, ${a.completed_date ? formatDate(a.completed_date) : "ukjent dato"})`,
-        `Poeng: ${a.points} | Deltakere: ${names.length > 0 ? names.join(", ") : "Ikke angitt"}`,
+        `${cat?.name ?? "Ukjent"} (#${r.occurrence_number}) — ${statusLabel}`,
+        `Uke: ${r.completed_week ?? r.planned_week ?? "?"} | ${r.completed_date ? formatDate(r.completed_date) : "Ikke fullført ennå"}`,
+        `Poeng: ${cat?.points ?? 0} | Deltakere: ${names.length > 0 ? names.join(", ") : "Ikke angitt"}`,
         "",
         "Hvorfor dette tidspunktet:",
-        (a as any).timing_rationale || "(Ikke utfylt)",
+        r.timing_rationale || "(Ikke utfylt)",
         "",
-        "Gjennomføring:",
-        a.notes || "(Ikke utfylt)",
+        "Beskrivelse/Gjennomføring:",
+        r.description || "(Ikke utfylt)",
         "",
         "Erfaringer:",
-        (a as any).experiences || "(Ikke utfylt)",
+        r.experiences || "(Ikke utfylt)",
         "",
         "Refleksjoner:",
-        (a as any).reflections || "(Ikke utfylt)",
+        r.reflections || "(Ikke utfylt)",
         "",
-        `Vedlegg: ${a.attachment_links?.length ? a.attachment_links.join(", ") : "Ingen"}`,
+        `Vedlegg: ${r.attachment_links?.length ? r.attachment_links.join(", ") : "Ingen"}`,
+        r.short_status ? `Kort status: ${r.short_status}` : "",
         "",
         "---",
         "",
-      ];
+      ].filter(Boolean);
       return lines.join("\n");
     }).join("\n");
-  }, [completedActivities, participants, members]);
+  }, [allRegistrations, catalogMap, regParticipants, members]);
+
+  const activityMarkdown = useMemo(() => {
+    if (!allRegistrations.length) return "";
+    return allRegistrations.map((r) => {
+      const cat = catalogMap[r.catalog_id];
+      const names = getRegParticipantNames(r.id);
+      const statusLabel = r.status === "completed" ? "✅ Fullført" : r.status === "in_progress" ? "🔄 Pågår" : r.status === "planned" ? "📋 Planlagt" : r.status;
+      const lines = [
+        `### ${cat?.name ?? "Ukjent"} (#${r.occurrence_number}) — ${statusLabel}`,
+        "",
+        `**Uke:** ${r.completed_week ?? r.planned_week ?? "?"} | **Dato:** ${r.completed_date ? formatDate(r.completed_date) : "Ikke fullført ennå"}`,
+        `**Poeng:** ${cat?.points ?? 0} | **Deltakere:** ${names.length > 0 ? names.join(", ") : "Ikke angitt"}`,
+        "",
+        "**Hvorfor dette tidspunktet:**",
+        r.timing_rationale || "_Ikke utfylt_",
+        "",
+        "**Beskrivelse/Gjennomføring:**",
+        r.description || "_Ikke utfylt_",
+        "",
+        "**Erfaringer:**",
+        r.experiences || "_Ikke utfylt_",
+        "",
+        "**Refleksjoner:**",
+        r.reflections || "_Ikke utfylt_",
+        "",
+        `**Vedlegg:** ${r.attachment_links?.length ? r.attachment_links.join(", ") : "Ingen"}`,
+        r.short_status ? `**Kort status:** ${r.short_status}` : "",
+        "",
+        "---",
+        "",
+      ].filter(Boolean);
+      return lines.join("\n");
+    }).join("\n");
+  }, [allRegistrations, catalogMap, regParticipants, members]);
 
   // --- Sprint export ---
   const filteredSprints = useMemo(() => {
@@ -187,6 +218,47 @@ export default function ProcessLogExportPage() {
     }).join("\n\n");
   }, [filteredDecisions]);
 
+  // --- Standup export ---
+  const filteredStandups = useMemo(() => {
+    return (standupUpdates ?? []).filter((u) => inRange(u.entry_date));
+  }, [standupUpdates, dateFrom, dateTo]);
+
+  const standupPlain = useMemo(() => {
+    const byDate: Record<string, typeof filteredStandups> = {};
+    filteredStandups.forEach((u) => {
+      if (!byDate[u.entry_date]) byDate[u.entry_date] = [];
+      byDate[u.entry_date].push(u);
+    });
+    return Object.entries(byDate)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, updates]) => {
+        const header = formatDate(date);
+        const entries = updates.map((u) => {
+          const member = (members ?? []).find((m) => m.id === u.member_id);
+          return `  ${member?.name ?? "Ukjent"}: ${u.content || "(tomt)"} [${u.category || "annet"}]`;
+        }).join("\n");
+        return `${header}\n${entries}`;
+      }).join("\n\n");
+  }, [filteredStandups, members]);
+
+  const standupMarkdown = useMemo(() => {
+    const byDate: Record<string, typeof filteredStandups> = {};
+    filteredStandups.forEach((u) => {
+      if (!byDate[u.entry_date]) byDate[u.entry_date] = [];
+      byDate[u.entry_date].push(u);
+    });
+    return Object.entries(byDate)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, updates]) => {
+        const header = `### ${formatDate(date)}`;
+        const entries = updates.map((u) => {
+          const member = (members ?? []).find((m) => m.id === u.member_id);
+          return `- **${member?.name ?? "Ukjent"}**: ${u.content || "_tomt_"} \`${u.category || "annet"}\``;
+        }).join("\n");
+        return `${header}\n${entries}`;
+      }).join("\n\n");
+  }, [filteredStandups, members]);
+
   const copy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} kopiert til utklippstavlen`);
@@ -218,8 +290,9 @@ export default function ProcessLogExportPage() {
 
       <Tabs defaultValue="activities">
         <TabsList>
-          <TabsTrigger value="activities">Aktiviteter ({completedActivities.length})</TabsTrigger>
+          <TabsTrigger value="activities">Aktiviteter ({allRegistrations.length})</TabsTrigger>
           <TabsTrigger value="sprints">Sprinter ({filteredSprints.length})</TabsTrigger>
+          <TabsTrigger value="standups">Standup ({filteredStandups.length})</TabsTrigger>
           <TabsTrigger value="decisions">Beslutninger ({filteredDecisions.length})</TabsTrigger>
         </TabsList>
 
@@ -232,8 +305,8 @@ export default function ProcessLogExportPage() {
               <FileText className="h-3.5 w-3.5 mr-1" /> Kopier som Markdown
             </Button>
           </div>
-          {completedActivities.length === 0 ? (
-            <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">Ingen fullførte aktiviteter i valgt periode</CardContent></Card>
+          {allRegistrations.length === 0 ? (
+            <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">Ingen aktivitetsregistreringer i valgt periode</CardContent></Card>
           ) : (
             <Card>
               <CardContent className="p-4">
@@ -258,6 +331,26 @@ export default function ProcessLogExportPage() {
             <Card>
               <CardContent className="p-4">
                 <pre className="whitespace-pre-wrap text-sm font-mono bg-background leading-relaxed">{sprintPlain}</pre>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="standups" className="space-y-3 mt-4">
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => copy(standupPlain, "Ren tekst")}>
+              <Copy className="h-3.5 w-3.5 mr-1" /> Kopier ren tekst
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => copy(standupMarkdown, "Markdown")}>
+              <FileText className="h-3.5 w-3.5 mr-1" /> Kopier som Markdown
+            </Button>
+          </div>
+          {filteredStandups.length === 0 ? (
+            <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">Ingen standup-oppdateringer i valgt periode</CardContent></Card>
+          ) : (
+            <Card>
+              <CardContent className="p-4">
+                <pre className="whitespace-pre-wrap text-sm font-mono bg-background leading-relaxed">{standupPlain}</pre>
               </CardContent>
             </Card>
           )}
