@@ -77,15 +77,17 @@ export default function ResourcesPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async () => {
-      if (!deletingResource) return;
-      const { error } = await supabase.from("resources").delete().eq("id", deletingResource.id);
+    mutationFn: async (resourceId: string) => {
+      const { error } = await supabase.from("resources").delete().eq("id", resourceId);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["resources"] });
       setDeletingResource(null);
       toast.success("Ressurs fjernet");
+    },
+    onError: (err: any) => {
+      toast.error("Kunne ikke fjerne: " + err.message);
     },
   });
 
@@ -269,7 +271,7 @@ export default function ResourcesPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Avbryt</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deleteMutation.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={() => deletingResource && deleteMutation.mutate(deletingResource.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Fjern
             </AlertDialogAction>
           </AlertDialogFooter>
