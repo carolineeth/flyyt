@@ -197,7 +197,7 @@ export function DayByDayTab({ weekdays, entries, members, currentMemberId, isCur
                 {isRecentDay && membersWithEntry.length === 0 && (
                   <p className="text-xs text-muted-foreground italic px-1">Ingen oppdateringer ennå</p>
                 )}
-              </>
+              </div>
             )}
           </div>
         );
