@@ -334,6 +334,55 @@ export default function ResourcesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Upload category dialog */}
+      <Dialog open={!!pendingFiles} onOpenChange={(open) => !open && setPendingFiles(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Last opp {pendingFiles?.length === 1 ? "fil" : `${pendingFiles?.length} filer`}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="text-sm text-muted-foreground">
+              {pendingFiles?.map((f) => f.name).join(", ")}
+            </div>
+            <div>
+              <Label>Kategori</Label>
+              <Select
+                value={showUploadNewCategory ? "__new__" : uploadCategory}
+                onValueChange={(v) => {
+                  if (v === "__new__") {
+                    setShowUploadNewCategory(true);
+                  } else {
+                    setShowUploadNewCategory(false);
+                    setUploadCategory(v);
+                  }
+                }}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {allCategories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  <SelectItem value="__new__">+ Ny kategori…</SelectItem>
+                </SelectContent>
+              </Select>
+              {showUploadNewCategory && (
+                <Input
+                  className="mt-2"
+                  placeholder="Skriv inn ny kategori"
+                  value={uploadNewCategory}
+                  onChange={(e) => setUploadNewCategory(e.target.value)}
+                  autoFocus
+                />
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPendingFiles(null)}>Avbryt</Button>
+            <Button onClick={confirmUpload} disabled={uploading || (showUploadNewCategory && !uploadNewCategory)}>
+              {uploading ? "Laster opp…" : "Last opp"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
