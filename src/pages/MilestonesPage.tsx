@@ -679,18 +679,26 @@ function EditMilestoneModal({ milestone, onClose }: { milestone: Milestone | nul
             <Input value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
           <div>
-            <Label className="text-xs">Dato *</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-full justify-start text-left", !date && "text-muted-foreground")}>
-                  <CalendarIcon className="h-4 w-4 mr-2" />
-                  {date ? format(date, "d. MMMM yyyy", { locale: nb }) : "Velg dato"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={date} onSelect={setDate} className="p-3 pointer-events-auto" />
-              </PopoverContent>
-            </Popover>
+            <Label className="text-xs">Dato *{isFixed && " (låst frist)"}</Label>
+            {isFixed ? (
+              <div className="flex items-center gap-2 h-10 px-3 rounded-md border bg-muted/50 text-sm text-muted-foreground">
+                <Lock className="h-3.5 w-3.5" />
+                {date ? format(date, "d. MMMM yyyy", { locale: nb }) : "—"}
+                <span className="text-[10px] ml-auto">Kan ikke endres</span>
+              </div>
+            ) : (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full justify-start text-left", !date && "text-muted-foreground")}>
+                    <CalendarIcon className="h-4 w-4 mr-2" />
+                    {date ? format(date, "d. MMMM yyyy", { locale: nb }) : "Velg dato"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={date} onSelect={setDate} className="p-3 pointer-events-auto" />
+                </PopoverContent>
+              </Popover>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
