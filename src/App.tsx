@@ -53,7 +53,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
 }
 
 function TeamLinkingGuard({ children }: { children: React.ReactNode }) {
-  const { authUserId, isLinked, isLoading, refetch } = useCurrentTeamMember();
+  const { authUserId, authEmail, isLinked, isLoading, refetch } = useCurrentTeamMember();
 
   if (isLoading) {
     return (
@@ -64,7 +64,7 @@ function TeamLinkingGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (authUserId && !isLinked) {
-    return <TeamLinkingModal authUserId={authUserId} onLinked={() => refetch()} />;
+    return <TeamLinkingModal authUserId={authUserId} authEmail={authEmail} onLinked={() => refetch()} />;
   }
 
   return <>{children}</>;
