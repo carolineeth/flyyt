@@ -184,7 +184,9 @@ export function HuskelisteTab() {
                   )}
                   {member && (
                     <div className="flex items-center gap-1">
-                      <MemberAvatar name={member.name} color={member.avatar_color} size="xs" />
+                      <div className="h-4 w-4 rounded-full flex items-center justify-center text-[8px] text-white font-medium" style={{ backgroundColor: member.avatar_color }}>
+                        {member.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                      </div>
                       <span className="text-[11px] text-muted-foreground">{member.name}</span>
                     </div>
                   )}
