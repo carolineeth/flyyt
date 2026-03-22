@@ -30,12 +30,16 @@ export default function ResourcesPage() {
 
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ title: "", url: "", category: "Kode", description: "" });
+  const [newCategory, setNewCategory] = useState("");
+  const [showNewCategory, setShowNewCategory] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Edit state
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
   const [editForm, setEditForm] = useState({ title: "", url: "", category: "", description: "" });
+  const [editNewCategory, setEditNewCategory] = useState("");
+  const [showEditNewCategory, setShowEditNewCategory] = useState(false);
 
   // Delete state
   const [deletingResource, setDeletingResource] = useState<Resource | null>(null);
