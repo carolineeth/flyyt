@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { format as formatDateFns } from "date-fns";
+import { format } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
