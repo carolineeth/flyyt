@@ -179,7 +179,7 @@ export default function BacklogPage() {
     if (!itemId) return;
     const item = items?.find((i) => i.id === itemId);
     if (item && item.status !== status) {
-      updateStatusMutation.mutate({ id: itemId, status });
+      updateStatusMutation.mutate({ id: itemId, status, oldStatus: item.status });
     }
   }, [items, updateStatusMutation]);
 
