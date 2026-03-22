@@ -37,6 +37,7 @@ export default function ResourcesPage() {
   const [uploadCategory, setUploadCategory] = useState("Fildeling");
   const [showUploadNewCategory, setShowUploadNewCategory] = useState(false);
   const [uploadNewCategory, setUploadNewCategory] = useState("");
+  const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Edit state
