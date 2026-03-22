@@ -9,11 +9,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Copy, FileText } from "lucide-react";
+import { Copy, FileText, Code } from "lucide-react";
 import type { Sprint, SprintItem, BacklogItem, Decision } from "@/lib/types";
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString("nb-NO", { day: "numeric", month: "long", year: "numeric" });
+}
+
+function tex(s: string): string {
+  return s
+    .replace(/\\/g, "\\textbackslash{}")
+    .replace(/[&%$#_{}]/g, (m) => "\\" + m)
+    .replace(/~/g, "\\textasciitilde{}")
+    .replace(/\^/g, "\\textasciicircum{}")
+    .replace(/–/g, "--")
+    .replace(/—/g, "---");
 }
 
 export default function ProcessLogExportPage() {
