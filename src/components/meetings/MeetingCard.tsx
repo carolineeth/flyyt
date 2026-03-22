@@ -107,6 +107,7 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
 
   const saveMeeting = async () => {
     await saveNotes(notes);
+    setEditMode(false);
     toast.success("Møte lagret");
   };
 
