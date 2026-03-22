@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { useMilestones, useToggleMilestone, useCreateMilestone, type Milestone } from "@/hooks/useMilestones";
+import { useMilestones, useToggleMilestone, useCreateMilestone, useUpdateMilestone, useDeleteMilestone, type Milestone } from "@/hooks/useMilestones";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
