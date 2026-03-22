@@ -58,6 +58,8 @@ export default function ResourcesPage() {
       qc.invalidateQueries({ queryKey: ["resources"] });
       setShowCreate(false);
       setForm({ title: "", url: "", category: "Kode", description: "" });
+      setNewCategory("");
+      setShowNewCategory(false);
       toast.success("Ressurs lagt til");
     },
   });
