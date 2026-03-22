@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { ListTodo, Plus, GripVertical } from "lucide-react";
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import type { BacklogItem, Sprint } from "@/lib/types";
+import { logBacklogChange } from "@/lib/backlogChangelog";
 
 const typeLabels: Record<string, string> = {
   user_story: "Brukerhistorie",
@@ -121,6 +122,9 @@ export default function BacklogPage() {
         labels: newItem.labels ? newItem.labels.split(",").map((l) => l.trim()).filter(Boolean) : [],
       }).select().single();
       if (error) throw error;
+      if (data) {
+        await logBacklogChange({ backlogItemId: data.id, changeType: "created", newValue: data.title });
+      }
       // If sprint selected, add to sprint_items
       if (newItem.sprint_id && data) {
         await supabase.from("sprint_items").insert({
@@ -128,6 +132,7 @@ export default function BacklogPage() {
           backlog_item_id: data.id,
           column_name: "todo",
         });
+        await logBacklogChange({ backlogItemId: data.id, changeType: "added_to_sprint", newValue: newItem.sprint_id });
       }
       return data;
     },
@@ -143,9 +148,10 @@ export default function BacklogPage() {
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+    mutationFn: async ({ id, status, oldStatus }: { id: string; status: string; oldStatus?: string }) => {
       const { error } = await supabase.from("backlog_items").update({ status }).eq("id", id);
       if (error) throw error;
+      await logBacklogChange({ backlogItemId: id, changeType: "status_changed", oldValue: oldStatus, newValue: status });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["backlog_items"] }),
   });
@@ -173,7 +179,7 @@ export default function BacklogPage() {
     if (!itemId) return;
     const item = items?.find((i) => i.id === itemId);
     if (item && item.status !== status) {
-      updateStatusMutation.mutate({ id: itemId, status });
+      updateStatusMutation.mutate({ id: itemId, status, oldStatus: item.status });
     }
   }, [items, updateStatusMutation]);
 

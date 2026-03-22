@@ -4,6 +4,7 @@ import {
   Target,
   Layers,
   CheckSquare,
+  BarChart3,
   Calendar,
   Link2,
   LogOut,
@@ -39,6 +40,7 @@ const navItems = [
   { title: "Møter", url: "/moter", icon: Calendar },
   { title: "Ressurser", url: "/ressurser", icon: Link2 },
   { title: "Prosesslogg", url: "/prosesslogg", icon: ClipboardCheck },
+  { title: "Innsikt", url: "/innsikt", icon: BarChart3 },
   { title: "Rapport", url: "/rapport", icon: FileText },
 ];
 
