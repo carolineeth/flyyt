@@ -18,12 +18,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { MeetingCard } from "@/components/meetings/MeetingCard";
 import { MonthlyCalendar } from "@/components/meetings/MonthlyCalendar";
+import { MeetingMinutesView } from "@/components/meetings/MeetingMinutesView";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Calendar, Plus, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, Plus, RefreshCw, FileText } from "lucide-react";
 
 function getCurrentWeekYear() {
   const now = new Date();
@@ -176,10 +178,18 @@ export default function MeetingCalendarPage() {
   return (
     <div className="space-y-6 scroll-reveal">
       <PageHeader
-        title="Møtekalender"
+        title="Møter"
         description="Planlegg, gjennomfør og dokumenter gruppemøter"
-        action={
-          <div className="flex gap-2">
+      />
+
+      <Tabs defaultValue="calendar">
+        <TabsList>
+          <TabsTrigger value="calendar"><Calendar className="h-3.5 w-3.5 mr-1.5" />Kalender</TabsTrigger>
+          <TabsTrigger value="minutes"><FileText className="h-3.5 w-3.5 mr-1.5" />Møtereferater</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="calendar" className="mt-4 space-y-6">
+          <div className="flex justify-end gap-2">
             {isPastWeek && !hasRecurringMeetings && recurringMeetings && rotation && (
               <Button variant="outline" size="sm" onClick={generateForPastWeek} disabled={autoGenerate.isPending}>
                 <RefreshCw className={`h-4 w-4 mr-1 ${autoGenerate.isPending ? "animate-spin" : ""}`} />
@@ -190,8 +200,6 @@ export default function MeetingCalendarPage() {
               <Plus className="h-4 w-4 mr-1" /> Legg til møte
             </Button>
           </div>
-        }
-      />
 
       {/* Week navigation */}
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -311,6 +319,13 @@ export default function MeetingCalendarPage() {
           </div>
         </div>
       )}
+
+        </TabsContent>
+
+        <TabsContent value="minutes" className="mt-4">
+          <MeetingMinutesView />
+        </TabsContent>
+      </Tabs>
 
       {/* Add meeting dialog */}
       <Dialog open={showAddMeeting} onOpenChange={setShowAddMeeting}>
