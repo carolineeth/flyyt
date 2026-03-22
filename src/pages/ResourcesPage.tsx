@@ -273,12 +273,25 @@ export default function ResourcesPage() {
             <div><Label>URL</Label><Input value={editForm.url} onChange={(e) => setEditForm((p) => ({ ...p, url: e.target.value }))} /></div>
             <div>
               <Label>Kategori</Label>
-              <Select value={editForm.category} onValueChange={(v) => setEditForm((p) => ({ ...p, category: v }))}>
+              <Select value={showEditNewCategory ? "__new__" : editForm.category} onValueChange={(v) => handleCategorySelect(v, setEditForm, setShowEditNewCategory)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {defaultCategories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  {allCategories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  <SelectItem value="__new__">+ Ny kategori…</SelectItem>
                 </SelectContent>
               </Select>
+              {showEditNewCategory && (
+                <Input
+                  className="mt-2"
+                  placeholder="Skriv inn ny kategori"
+                  value={editNewCategory}
+                  onChange={(e) => {
+                    setEditNewCategory(e.target.value);
+                    setEditForm((p) => ({ ...p, category: e.target.value }));
+                  }}
+                  autoFocus
+                />
+              )}
             </div>
             <div><Label>Beskrivelse</Label><Textarea value={editForm.description} onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))} rows={2} /></div>
           </div>
