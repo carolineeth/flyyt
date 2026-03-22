@@ -145,7 +145,7 @@ export function DayByDayTab({ weekdays, entries, members, currentMemberId, isCur
             </div>
 
             {isExpanded && (
-              <>
+              <div className="animate-fade-in">
                 {showInput && (
                   <div className="mb-3">
                     <StandupInput
@@ -196,7 +196,7 @@ export function DayByDayTab({ weekdays, entries, members, currentMemberId, isCur
                 {isRecentDay && membersWithEntry.length === 0 && (
                   <p className="text-xs text-muted-foreground italic px-1">Ingen oppdateringer ennå</p>
                 )}
-              </>
+              </div>
             )}
           </div>
         );
