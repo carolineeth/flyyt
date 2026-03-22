@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { useQueryClient } from "@tanstack/react-query";
@@ -8,15 +8,18 @@ import { Users } from "lucide-react";
 
 interface Props {
   authUserId: string;
+  authEmail: string | null;
   onLinked: () => void;
 }
 
-export function TeamLinkingModal({ authUserId, onLinked }: Props) {
+export function TeamLinkingModal({ authUserId, authEmail, onLinked }: Props) {
   const { data: members, isLoading } = useTeamMembers();
   const [linking, setLinking] = useState(false);
+  const autoLinkedRef = useRef(false);
   const qc = useQueryClient();
+  const normalizedAuthEmail = (authEmail ?? "").trim().toLowerCase();
 
-  const handleLink = async (memberId: string) => {
+  const handleLink = useCallback(async (memberId: string) => {
     setLinking(true);
     try {
       const { error } = await supabase
@@ -36,10 +39,27 @@ export function TeamLinkingModal({ authUserId, onLinked }: Props) {
     } finally {
       setLinking(false);
     }
-  };
+  }, [authUserId, onLinked, qc]);
 
-  // Filter out members that are already linked
-  const availableMembers = members?.filter((m) => !(m as any).auth_user_id);
+  const availableMembers = useMemo(
+    () => members?.filter((m) => !m.auth_user_id) ?? [],
+    [members],
+  );
+
+  const matchingMembers = useMemo(() => {
+    if (!normalizedAuthEmail) return [];
+    return availableMembers.filter((m) => m.email.toLowerCase() === normalizedAuthEmail);
+  }, [availableMembers, normalizedAuthEmail]);
+
+  const membersToShow = matchingMembers.length > 0 ? matchingMembers : availableMembers;
+
+  useEffect(() => {
+    if (autoLinkedRef.current || isLoading || linking) return;
+    if (matchingMembers.length !== 1) return;
+
+    autoLinkedRef.current = true;
+    void handleLink(matchingMembers[0].id);
+  }, [handleLink, isLoading, linking, matchingMembers]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -52,13 +72,22 @@ export function TeamLinkingModal({ authUserId, onLinked }: Props) {
           <p className="text-sm text-muted-foreground">
             Koble kontoen din til teamet ved å velge ditt navn nedenfor.
           </p>
+          {authEmail && (
+            <p className="text-xs text-muted-foreground">Innlogget som: {authEmail}</p>
+          )}
         </div>
 
         {isLoading ? (
           <p className="text-sm text-muted-foreground text-center">Laster teammedlemmer...</p>
         ) : (
           <div className="space-y-2">
-            {availableMembers?.map((member) => (
+            {normalizedAuthEmail && matchingMembers.length === 0 && availableMembers.length > 0 && (
+              <p className="text-xs text-muted-foreground text-center pb-2">
+                Ingen direkte e-postmatch funnet. Velg riktig navn manuelt.
+              </p>
+            )}
+
+            {membersToShow.map((member) => (
               <button
                 key={member.id}
                 onClick={() => handleLink(member.id)}
@@ -72,7 +101,7 @@ export function TeamLinkingModal({ authUserId, onLinked }: Props) {
                 </div>
               </button>
             ))}
-            {availableMembers?.length === 0 && (
+            {membersToShow.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-4">
                 Alle teammedlemmer er allerede koblet. Kontakt admin.
               </p>
