@@ -900,6 +900,54 @@ export type Database = {
           },
         ]
       }
+      prosesslogg_notes: {
+        Row: {
+          added_by: string | null
+          category: string
+          content: string
+          created_at: string
+          id: string
+          is_resolved: boolean
+          linked_registration_id: string | null
+          resolved_at: string | null
+        }
+        Insert: {
+          added_by?: string | null
+          category?: string
+          content: string
+          created_at?: string
+          id?: string
+          is_resolved?: boolean
+          linked_registration_id?: string | null
+          resolved_at?: string | null
+        }
+        Update: {
+          added_by?: string | null
+          category?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_resolved?: boolean
+          linked_registration_id?: string | null
+          resolved_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prosesslogg_notes_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "team_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prosesslogg_notes_linked_registration_id_fkey"
+            columns: ["linked_registration_id"]
+            isOneToOne: false
+            referencedRelation: "activity_registrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recurring_meetings: {
         Row: {
           day_of_week: number
