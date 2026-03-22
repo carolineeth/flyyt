@@ -95,6 +95,21 @@ export function useUpdateRegistration() {
   });
 }
 
+export function useDeleteRegistration() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await (supabase.from("activity_registration_participants" as any).delete().eq("registration_id", id) as any);
+      const { error } = await (supabase.from("activity_registrations" as any).delete().eq("id", id) as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["activity_registrations"] });
+      qc.invalidateQueries({ queryKey: ["activity_registration_participants"] });
+    },
+  });
+}
+
 export function useToggleRegistrationParticipant() {
   const qc = useQueryClient();
   return useMutation({

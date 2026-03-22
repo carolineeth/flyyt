@@ -1,11 +1,23 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle2, Clock, Circle } from "lucide-react";
+import { CheckCircle2, Clock, Circle, Trash2 } from "lucide-react";
 import type { CatalogItem, Registration } from "@/hooks/useActivityCatalog";
+import { useDeleteRegistration } from "@/hooks/useActivityCatalog";
 import { RegistrationModal } from "./RegistrationModal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 interface CatalogViewProps {
   catalog: CatalogItem[];
@@ -15,6 +27,8 @@ interface CatalogViewProps {
 export function CatalogView({ catalog, registrations }: CatalogViewProps) {
   const [selectedCatalog, setSelectedCatalog] = useState<CatalogItem | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Registration | null>(null);
+  const deleteRegistration = useDeleteRegistration();
 
   const getRegistrationsFor = (catId: string) => registrations.filter((r) => r.catalog_id === catId);
   const isCompleted = (catId: string) => getRegistrationsFor(catId).some((r) => r.status === "completed");
@@ -29,27 +43,6 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
   const agileMeetings = meetingBased.filter((c) => ["daily_standup", "sprint_planning", "sprint_review"].includes(c.meeting_type || ""));
   const advisorMeeting = meetingBased.find((c) => c.meeting_type === "veiledermøte");
 
-  // Check for same-week agile meetings warning (different types in same week)
-  const agileWeekWarning = useMemo(() => {
-    const agileRegs = agileMeetings.flatMap((c) => getRegistrationsFor(c.id).filter((r) => r.status === "completed" && r.completed_week));
-    const weekMap = new Map<number, Set<string>>();
-    agileRegs.forEach((r) => {
-      const cat = catalog.find((c) => c.id === r.catalog_id);
-      const w = r.completed_week!;
-      if (!weekMap.has(w)) weekMap.set(w, new Set());
-      weekMap.get(w)!.add(cat?.meeting_type || "");
-    });
-    const conflicts: string[] = [];
-    weekMap.forEach((types, w) => {
-      if (types.size > 1) conflicts.push(`Uke ${w}: ${[...types].map(t => {
-        if (t === "daily_standup") return "Daily Standup";
-        if (t === "sprint_planning") return "Sprint Planning";
-        if (t === "sprint_review") return "Sprint Review";
-        return t;
-      }).join(" + ")}`);
-    });
-    return conflicts;
-  }, [agileMeetings, registrations, catalog]);
 
   const [selectedRegistration, setSelectedRegistration] = useState<Registration | null | undefined>(undefined);
 
@@ -145,6 +138,13 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
                     <Badge variant={reg.status === "completed" ? "default" : "outline"} className="text-[10px]">
                       {reg.status === "completed" ? "Fullført" : reg.status === "in_progress" ? "Pågår" : "Ikke startet"}
                     </Badge>
+                    <button
+                      className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                      onClick={(e) => { e.stopPropagation(); setDeleteTarget(reg); }}
+                      title="Slett registrering"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
                   </div>
                 ))}
                 <div className="flex gap-1.5">
@@ -203,6 +203,13 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
                       <Badge variant={reg.status === "completed" ? "default" : "outline"} className="text-[10px]">
                         {reg.status === "completed" ? "Fullført" : reg.status === "in_progress" ? "Pågår" : "Planlagt"}
                       </Badge>
+                      <button
+                        className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                        onClick={(e) => { e.stopPropagation(); setDeleteTarget(reg); }}
+                        title="Slett registrering"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
                     </div>
                   ))}
                   {regs.length === 0 && (
@@ -285,6 +292,36 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
           allRegistrations={registrations}
         />
       )}
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Slett registrering?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget?.completed_date
+                ? `Registrering fra ${deleteTarget.completed_date} vil bli permanent slettet.`
+                : "Denne registreringen vil bli permanent slettet."}
+              {" "}Dette kan ikke angres.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (!deleteTarget) return;
+                deleteRegistration.mutate(deleteTarget.id, {
+                  onSuccess: () => toast.success("Registrering slettet"),
+                  onError: () => toast.error("Kunne ikke slette registreringen"),
+                });
+                setDeleteTarget(null);
+              }}
+            >
+              Slett
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
