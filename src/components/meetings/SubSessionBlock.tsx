@@ -122,8 +122,19 @@ function MiniAPRow({
   const qc = useQueryClient();
   const [title, setTitle] = useState(ap.title || "");
   const dirty = useRef(false);
+  const latestTitleRef = useRef(title);
+  const apIdRef = useRef(ap.id);
+
+  useEffect(() => { latestTitleRef.current = title; }, [title]);
 
   useEffect(() => { setTitle(ap.title || ""); dirty.current = false; }, [ap.id]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => () => {
+    if (dirty.current) {
+      supabase.from("meeting_action_points").update({ title: latestTitleRef.current } as any).eq("id", apIdRef.current);
+    }
+  }, []);
 
   useEffect(() => {
     if (!dirty.current) return;
@@ -447,6 +458,15 @@ export function SubSessionBlock({
     return () => clearTimeout(t);
   }, [notes, subSession.notes, saveNotes]);
 
+  // ── Refs for flush-on-unmount ──
+  const latestNotesRef = useRef(notes);
+  const latestTypeDataRef = useRef<Record<string, any>>({});
+  const latestProsessloggRef = useRef({ timing_rationale: "", description: "", experiences: "", reflections: "" });
+  const latestRegIdRef = useRef<string | null>(null);
+  const subSessionIdRef = useRef(subSession.id);
+
+  useEffect(() => { latestNotesRef.current = notes; }, [notes]);
+
   // ── Type-specific data ──
   const [typeData, setTypeData] = useState<Record<string, any>>(
     (subSession.type_specific_data as Record<string, any>) || {}
@@ -462,6 +482,8 @@ export function SubSessionBlock({
     typeDataDirty.current = true;
     setTypeData((prev) => ({ ...prev, ...updates }));
   }, []);
+
+  useEffect(() => { latestTypeDataRef.current = typeData; }, [typeData]);
 
   useEffect(() => {
     if (!typeDataDirty.current) return;
@@ -499,6 +521,9 @@ export function SubSessionBlock({
     }
   }, [existingRegistration?.id]);
 
+  useEffect(() => { latestProsessloggRef.current = prosesslogg; }, [prosesslogg]);
+  useEffect(() => { latestRegIdRef.current = existingRegistration?.id ?? null; }, [existingRegistration?.id]);
+
   useEffect(() => {
     if (!existingRegistration) return;
     const reg = existingRegistration;
@@ -529,6 +554,29 @@ export function SubSessionBlock({
     existingRegistration?.experiences,
     existingRegistration?.reflections,
   ]);
+
+  // ── Flush on unmount ──
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => () => {
+    const ssId = subSessionIdRef.current;
+    supabase
+      .from("meeting_sub_sessions" as any)
+      .update({ notes: latestNotesRef.current, type_specific_data: latestTypeDataRef.current } as any)
+      .eq("id", ssId);
+    const regId = latestRegIdRef.current;
+    if (regId) {
+      const pl = latestProsessloggRef.current;
+      supabase
+        .from("activity_registrations" as any)
+        .update({
+          timing_rationale: pl.timing_rationale || null,
+          description: pl.description || null,
+          experiences: pl.experiences || null,
+          reflections: pl.reflections || null,
+        } as any)
+        .eq("id", regId);
+    }
+  }, []);
 
   // ── Agenda items ──
   const addItem = async () => {
