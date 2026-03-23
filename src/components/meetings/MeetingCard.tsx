@@ -327,6 +327,31 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
     qc.invalidateQueries({ queryKey: ["meeting_action_points", meeting.id] });
   };
 
+  const toggleMeetingParticipant = async (memberId: string, isPresent: boolean) => {
+    const current: string[] = meeting.participants || [];
+    const updated = isPresent ? current.filter((id: string) => id !== memberId) : [...current, memberId];
+    await supabase.from("meetings").update({ participants: updated } as any).eq("id", meeting.id);
+    qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
+
+    // Sync to linked activity_registration_participants
+    const { data: linkedRegs } = await (supabase
+      .from("activity_registrations" as any)
+      .select("id")
+      .eq("linked_meeting_id", meeting.id) as any);
+    if (linkedRegs && (linkedRegs as any[]).length > 0) {
+      for (const reg of linkedRegs as any[]) {
+        if (!isPresent) {
+          await (supabase.from("activity_registration_participants" as any)
+            .upsert({ registration_id: reg.id, member_id: memberId } as any, { onConflict: "registration_id,member_id" }) as any);
+        } else {
+          await (supabase.from("activity_registration_participants" as any)
+            .delete().eq("registration_id", reg.id).eq("member_id", memberId) as any);
+        }
+      }
+      qc.invalidateQueries({ queryKey: ["activity_registration_participants"] });
+    }
+  };
+
   const deleteActionPoint = async (apId: string) => {
     await supabase.from("meeting_action_points").delete().eq("id", apId);
     qc.invalidateQueries({ queryKey: ["meeting_action_points", meeting.id] });
@@ -530,14 +555,7 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
                       <label key={m.id} className="flex items-center gap-1.5 text-xs cursor-pointer">
                         <Checkbox
                           checked={isPresent}
-                          onCheckedChange={async (checked) => {
-                            const current: string[] = meeting.participants || [];
-                            const updated = checked
-                              ? [...current, m.id]
-                              : current.filter((id: string) => id !== m.id);
-                            await supabase.from("meetings").update({ participants: updated } as any).eq("id", meeting.id);
-                            qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
-                          }}
+                          onCheckedChange={() => toggleMeetingParticipant(m.id, isPresent)}
                         />
                         {m.name.split(" ")[0]}
                       </label>

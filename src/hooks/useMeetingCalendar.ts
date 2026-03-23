@@ -171,6 +171,50 @@ export function useSubSessionItems(subSessionId: string | null) {
   });
 }
 
+export function useSubSessionActionPoints(subSessionId: string | null) {
+  return useQuery({
+    queryKey: ["sub_session_action_points", subSessionId],
+    enabled: !!subSessionId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("meeting_action_points")
+        .select("*")
+        .eq("source_sub_session_id", subSessionId!);
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useAllMeetingSubSessions() {
+  return useQuery({
+    queryKey: ["all_meeting_sub_sessions"],
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("meeting_sub_sessions" as any)
+        .select("id, type, notes, type_specific_data") as any);
+      if (error) throw error;
+      return data as { id: string; type: string; notes: string | null; type_specific_data: Record<string, any> }[];
+    },
+  });
+}
+
+export function useSubSessionById(id: string | null) {
+  return useQuery({
+    queryKey: ["meeting_sub_session", id],
+    enabled: !!id,
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("meeting_sub_sessions" as any)
+        .select("id, type, notes, type_specific_data")
+        .eq("id", id!)
+        .single() as any);
+      if (error) throw error;
+      return data as { id: string; type: string; notes: string | null; type_specific_data: Record<string, any> };
+    },
+  });
+}
+
 export function useAutoGenerateMeetings() {
   const qc = useQueryClient();
 

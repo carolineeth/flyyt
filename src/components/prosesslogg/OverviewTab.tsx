@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActivityCatalog, useActivityRegistrations, type Registration, type CatalogItem } from "@/hooks/useActivityCatalog";
 import { useCompletedMeetings, useMeetingAgendaItemsAll, useMeetingActionPointsAll, type ProsessloggNote } from "@/hooks/useProsesslogg";
+import { useAllMeetingSubSessions } from "@/hooks/useMeetingCalendar";
+import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +17,62 @@ import { MeetingSlideOver } from "./MeetingSlideOver";
 import { toast } from "sonner";
 import { Copy, FileText, ChevronRight } from "lucide-react";
 import type { Sprint } from "@/lib/types";
+
+function formatTypeSpecificExport(
+  type: string,
+  typeData: Record<string, any>,
+  aps: any[],
+  members: any[]
+): string {
+  if (!typeData || Object.keys(typeData).length === 0) return "";
+  const lines: string[] = [];
+  const member = (id: string) => members.find((m) => m.id === id)?.name?.split(" ")[0] ?? "?";
+  const apLines = (label: string, apList: any[]) => {
+    if (!apList.length) return;
+    lines.push(`${label}:`);
+    apList.forEach((ap) => {
+      const status = ap.is_completed ? "✓" : "○";
+      let l = `  ${status} ${ap.title || "(uten tittel)"}`;
+      if (ap.assignee_id) l += ` → ${member(ap.assignee_id)}`;
+      if (ap.deadline) l += ` (frist: ${ap.deadline})`;
+      lines.push(l);
+    });
+  };
+  if (type === "veiledermøte") {
+    if (typeData.questions_for_advisor) lines.push(`Spørsmål til veileder: ${typeData.questions_for_advisor}`);
+    if (typeData.advisor_feedback) lines.push(`Feedback fra veileder: ${typeData.advisor_feedback}`);
+    apLines("Action points", aps);
+  } else if (type === "sprint_planning") {
+    if (typeData.sprint_goal) lines.push(`Sprint goal: ${typeData.sprint_goal}`);
+    if (typeData.capacity) lines.push(`Kapasitet: ${typeData.capacity} SP`);
+    if (typeData.planning_notes) lines.push(`Planlegging: ${typeData.planning_notes}`);
+  } else if (type === "sprint_review") {
+    if (typeData.what_was_demonstrated) lines.push(`Demonstrert: ${typeData.what_was_demonstrated}`);
+    if (typeData.feedback) lines.push(`Feedback: ${typeData.feedback}`);
+  } else if (type === "daily_standup") {
+    const formatLabels: Record<string, string> = { fysisk: "Fysisk", digital: "Digital", asynkron: "Asynkron i Flyt" };
+    if (typeData.format) lines.push(`Format: ${formatLabels[typeData.format] ?? typeData.format}`);
+    if (typeData.duration_minutes) lines.push(`Varighet: ${typeData.duration_minutes} min`);
+  } else if (type === "retrospective") {
+    const retroLabels: Record<string, string> = { sailboat: "Sailboat", start_stop_continue: "Start-Stop-Continue", mad_sad_glad: "Mad-Sad-Glad", annet: "Annet" };
+    if (typeData.retro_format) lines.push(`Format: ${retroLabels[typeData.retro_format] ?? typeData.retro_format}`);
+    if (typeData.tools_used) lines.push(`Verktøy: ${typeData.tools_used}`);
+    if (typeData.what_works) lines.push(`Hva fungerer: ${typeData.what_works}`);
+    if (typeData.improvements) lines.push(`Forbedringspunkter: ${typeData.improvements}`);
+    apLines("Action points fra retro", aps);
+  } else if (type === "mobb_programmering") {
+    if (typeData.what_was_built) lines.push(`Hva ble laget: ${typeData.what_was_built}`);
+    if (typeData.code_link) lines.push(`Kildekode: ${typeData.code_link}`);
+    if (typeData.schedule) lines.push(`Tidsskjema: ${typeData.schedule}`);
+    if (typeData.duration_minutes) lines.push(`Varighet: ${typeData.duration_minutes} min`);
+  } else if (type === "workshop") {
+    if (typeData.workshop_type) lines.push(`Type: ${typeData.workshop_type}`);
+    if (typeData.source) lines.push(`Kilde: ${typeData.source}`);
+    if (typeData.purpose) lines.push(`Formål: ${typeData.purpose}`);
+    if (typeData.agenda) lines.push(`Agenda: ${typeData.agenda}`);
+  }
+  return lines.length > 0 ? "\n" + lines.join("\n") : "";
+}
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString("nb-NO", { day: "numeric", month: "long", year: "numeric" });
@@ -67,6 +125,19 @@ export function OverviewTab({ notes }: Props) {
     },
   });
   const { data: meetings } = useCompletedMeetings();
+  const { data: allSubSessions } = useAllMeetingSubSessions();
+  const { data: members } = useTeamMembers();
+
+  const subSessionMap = useMemo(() => {
+    const map: Record<string, { notes: string | null; type: string; type_specific_data: Record<string, any> }> = {};
+    (allSubSessions ?? []).forEach((ss) => {
+      map[ss.id] = { notes: ss.notes, type: ss.type, type_specific_data: ss.type_specific_data ?? {} };
+    });
+    return map;
+  }, [allSubSessions]);
+
+  const effectiveDescription = (r: Registration) =>
+    r.description || (r.linked_sub_session_id ? (subSessionMap[r.linked_sub_session_id]?.notes ?? null) : null);
   const { data: allAgendaItems } = useMeetingAgendaItemsAll();
   const { data: allActionPoints } = useMeetingActionPointsAll();
   const { data: decisions } = useQuery({
@@ -110,13 +181,13 @@ export function OverviewTab({ notes }: Props) {
     return (registrations ?? [])
       .filter((r) => r.status === "completed" && inRange(r.completed_date))
       .sort((a, b) => {
-        const aComplete = [a.timing_rationale, a.description, a.experiences, a.reflections].filter(Boolean).length;
-        const bComplete = [b.timing_rationale, b.description, b.experiences, b.reflections].filter(Boolean).length;
+        const aComplete = [a.timing_rationale, effectiveDescription(a), a.experiences, a.reflections].filter(Boolean).length;
+        const bComplete = [b.timing_rationale, effectiveDescription(b), b.experiences, b.reflections].filter(Boolean).length;
         if (aComplete < 4 && bComplete === 4) return -1;
         if (bComplete < 4 && aComplete === 4) return 1;
         return (b.completed_week ?? 0) - (a.completed_week ?? 0);
       });
-  }, [registrations, dateFrom, dateTo]);
+  }, [registrations, dateFrom, dateTo, subSessionMap]);
 
   const filteredSprints = useMemo(() => {
     return (sprints ?? []).filter((s) => inRange(s.start_date) || inRange(s.end_date));
@@ -129,7 +200,7 @@ export function OverviewTab({ notes }: Props) {
   // Completeness counting
   const totalElements = completedRegs.length + filteredSprints.length + filteredMeetings.length + (decisions ?? []).length;
   const completeElements = useMemo(() => {
-    const actComplete = completedRegs.filter((r) => [r.timing_rationale, r.description, r.experiences, r.reflections].every(Boolean)).length;
+    const actComplete = completedRegs.filter((r) => [r.timing_rationale, effectiveDescription(r), r.experiences, r.reflections].every(Boolean)).length;
     const sprintComplete = filteredSprints.filter((s) => s.sprint_review_notes && s.reflection).length;
     const meetingComplete = filteredMeetings.filter((m) => m.notes).length;
     return actComplete + sprintComplete + meetingComplete + (decisions ?? []).length;
@@ -152,16 +223,24 @@ export function OverviewTab({ notes }: Props) {
   const exportActivities = () => {
     const text = completedRegs.map((r) => {
       const cat = catalogMap[r.catalog_id];
+      const ss = r.linked_sub_session_id ? subSessionMap[r.linked_sub_session_id] : null;
+      const ssAPs = ss
+        ? (allActionPoints ?? []).filter((ap: any) => ap.source_sub_session_id === r.linked_sub_session_id)
+        : [];
+      const typeExtra = ss
+        ? formatTypeSpecificExport(ss.type, ss.type_specific_data, ssAPs, members ?? [])
+        : "";
       return [
         `${cat?.name ?? "?"} (#${r.occurrence_number})`,
         `Uke: ${r.completed_week ?? "?"}${r.completed_date ? ` — ${formatDate(r.completed_date)}` : ""}`,
         `Poeng: ${cat?.points ?? 0}`,
         "", "Tidspunkt:", r.timing_rationale || "(Ikke utfylt)",
-        "", "Gjennomføring:", r.description || "(Ikke utfylt)",
+        "", "Gjennomføring:", effectiveDescription(r) || "(Ikke utfylt)",
+        typeExtra,
         "", "Erfaringer:", r.experiences || "(Ikke utfylt)",
         "", "Refleksjoner:", r.reflections || "(Ikke utfylt)",
         "", "---", "",
-      ].join("\n");
+      ].filter((l) => l !== undefined).join("\n");
     }).join("\n");
     navigator.clipboard.writeText(text);
     toast.success("Aktiviteter kopiert");
@@ -253,7 +332,7 @@ export function OverviewTab({ notes }: Props) {
                 <div className="space-y-0">
                   {regs.map((r) => {
                     const cat = catalogMap[r.catalog_id];
-                    const fields = [r.timing_rationale, r.description, r.experiences, r.reflections];
+                    const fields = [r.timing_rationale, effectiveDescription(r), r.experiences, r.reflections];
                     const filled = fields.filter(Boolean).length;
                     return (
                       <button

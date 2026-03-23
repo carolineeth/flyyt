@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle2, Clock, Circle, Trash2 } from "lucide-react";
+import { CheckCircle2, Clock, Circle, Trash2, Link2 } from "lucide-react";
 import type { CatalogItem, Registration } from "@/hooks/useActivityCatalog";
 import { useDeleteRegistration } from "@/hooks/useActivityCatalog";
 import { RegistrationModal } from "./RegistrationModal";
@@ -135,6 +135,17 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
                   >
                     <StatusIcon catId={advisorMeeting.id} />
                     <span className="flex-1">Møte #{i + 1}{reg.completed_date ? ` — ${reg.completed_date}` : ""}</span>
+                    {reg.linked_meeting_id && (
+                      <a
+                        href="/moter"
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-0.5 text-[10px] text-primary/70 hover:text-primary shrink-0"
+                        title="Koblet til møtekalenderen"
+                      >
+                        <Link2 className="h-2.5 w-2.5" />
+                        Møte
+                      </a>
+                    )}
                     <Badge variant={reg.status === "completed" ? "default" : "outline"} className="text-[10px]">
                       {reg.status === "completed" ? "Fullført" : reg.status === "in_progress" ? "Pågår" : "Ikke startet"}
                     </Badge>
@@ -200,6 +211,17 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
                     >
                       <StatusIcon catId={item.id} />
                       <span className="flex-1">#{i + 1}{reg.completed_date ? ` — ${reg.completed_date}` : ""}</span>
+                      {reg.linked_meeting_id && (
+                        <a
+                          href="/moter"
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-0.5 text-[10px] text-primary/70 hover:text-primary shrink-0"
+                          title="Koblet til møtekalenderen"
+                        >
+                          <Link2 className="h-2.5 w-2.5" />
+                          Møte
+                        </a>
+                      )}
                       <Badge variant={reg.status === "completed" ? "default" : "outline"} className="text-[10px]">
                         {reg.status === "completed" ? "Fullført" : reg.status === "in_progress" ? "Pågår" : "Planlagt"}
                       </Badge>
@@ -342,7 +364,7 @@ function Section({ title, subtitle, variant, children }: { title: string; subtit
   );
 }
 
-function CatalogRow({ item, onClick, children }: { item: CatalogItem; onClick: () => void; children: React.ReactNode }) {
+function CatalogRow({ item: _item, onClick, children }: { item: CatalogItem; onClick: () => void; children: React.ReactNode }) {
   return (
     <div
       className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-accent/30 cursor-pointer transition-colors"

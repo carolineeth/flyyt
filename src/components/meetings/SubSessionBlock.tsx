@@ -1,13 +1,19 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useSubSessionItems } from "@/hooks/useMeetingCalendar";
+import { useSubSessionItems, useSubSessionActionPoints } from "@/hooks/useMeetingCalendar";
 import { useActivityCatalog, useActivityRegistrations, useUpdateRegistration } from "@/hooks/useActivityCatalog";
+import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trash2, Plus, CheckCircle2, FileText } from "lucide-react";
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const typeLabels: Record<string, string> = {
   sprint_planning: "Sprint Planning",
@@ -31,7 +37,6 @@ const typeBorderColors: Record<string, string> = {
   annet: "border-l-gray-400",
 };
 
-// Map sub-session types to activity_catalog meeting_type
 const activityMeetingTypeMap: Record<string, string> = {
   sprint_planning: "sprint_planning",
   sprint_review: "sprint_review",
@@ -42,6 +47,367 @@ const activityMeetingTypeMap: Record<string, string> = {
   workshop: "workshop",
 };
 
+const prosessloggPlaceholders: Record<string, string> = {
+  veiledermøte:
+    "Beskriv hva dere diskuterte med veileder og hvilken feedback dere fikk. Inkluder action points.",
+  sprint_planning:
+    "Beskriv hvordan dere gjennomførte sprint planning. Hvilke items ble valgt inn og hvorfor? Hvordan estimerte dere?",
+  sprint_review:
+    "Beskriv hva som ble demonstrert, hvem dere demonstrerte for, og hvilken feedback dere fikk.",
+  daily_standup:
+    "Beskriv hvordan dere gjennomførte daily standup. Var den fysisk eller digital? Hva snakket dere om?",
+  retrospective:
+    "Beskriv hvordan dere gjennomførte retrospektivet. Hvilket format og verktøy brukte dere?",
+  mobb_programmering:
+    "Beskriv hva dere lagde under mobb-programmeringen. Legg ved lenke til commit og bilde av seansen.",
+  workshop:
+    "Beskriv formålet med workshopen, hva slags workshop dere gjennomførte, og agendaen.",
+};
+
+// ─── Sub-session action points (for veiledermøte / retrospektiv) ──────────────
+
+function MiniActionPoints({
+  meetingId,
+  subSessionId,
+  members,
+}: {
+  meetingId: string;
+  subSessionId: string;
+  members: any[];
+}) {
+  const qc = useQueryClient();
+  const { data: aps } = useSubSessionActionPoints(subSessionId);
+
+  const addAP = async () => {
+    await supabase.from("meeting_action_points").insert({
+      meeting_id: meetingId,
+      source_sub_session_id: subSessionId,
+      title: "",
+      is_completed: false,
+    } as any);
+    qc.invalidateQueries({ queryKey: ["sub_session_action_points", subSessionId] });
+    qc.invalidateQueries({ queryKey: ["meeting_action_points", meetingId] });
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs">Action points</Label>
+      {(aps ?? []).map((ap: any) => (
+        <MiniAPRow
+          key={ap.id}
+          ap={ap}
+          members={members}
+          meetingId={meetingId}
+          subSessionId={subSessionId}
+        />
+      ))}
+      <Button variant="outline" size="sm" className="h-7 text-xs" onClick={addAP}>
+        <Plus className="h-3 w-3 mr-1" /> Legg til action point
+      </Button>
+    </div>
+  );
+}
+
+function MiniAPRow({
+  ap,
+  members,
+  meetingId,
+  subSessionId,
+}: {
+  ap: any;
+  members: any[];
+  meetingId: string;
+  subSessionId: string;
+}) {
+  const qc = useQueryClient();
+  const [title, setTitle] = useState(ap.title || "");
+  const dirty = useRef(false);
+
+  useEffect(() => { setTitle(ap.title || ""); dirty.current = false; }, [ap.id]);
+
+  useEffect(() => {
+    if (!dirty.current) return;
+    const t = setTimeout(async () => {
+      await supabase.from("meeting_action_points").update({ title } as any).eq("id", ap.id);
+      qc.invalidateQueries({ queryKey: ["sub_session_action_points", subSessionId] });
+      qc.invalidateQueries({ queryKey: ["meeting_action_points", meetingId] });
+    }, 500);
+    return () => clearTimeout(t);
+  }, [title]);
+
+  const update = async (updates: any) => {
+    await supabase.from("meeting_action_points").update(updates).eq("id", ap.id);
+    qc.invalidateQueries({ queryKey: ["sub_session_action_points", subSessionId] });
+    qc.invalidateQueries({ queryKey: ["meeting_action_points", meetingId] });
+  };
+
+  const remove = async () => {
+    await supabase.from("meeting_action_points").delete().eq("id", ap.id);
+    qc.invalidateQueries({ queryKey: ["sub_session_action_points", subSessionId] });
+    qc.invalidateQueries({ queryKey: ["meeting_action_points", meetingId] });
+  };
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <Checkbox
+        checked={ap.is_completed}
+        onCheckedChange={(v) => update({ is_completed: !!v })}
+      />
+      <Input
+        value={title}
+        onChange={(e) => { dirty.current = true; setTitle(e.target.value); }}
+        placeholder="Beskrivelse..."
+        className="h-7 text-xs flex-1"
+      />
+      <Select
+        value={ap.assignee_id || "none"}
+        onValueChange={(v) => update({ assignee_id: v === "none" ? null : v })}
+      >
+        <SelectTrigger className="h-7 text-xs w-24">
+          <SelectValue placeholder="Ansvarlig" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">Ingen</SelectItem>
+          {members.map((m) => (
+            <SelectItem key={m.id} value={m.id}>{m.name.split(" ")[0]}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Input
+        type="date"
+        value={ap.deadline || ""}
+        onChange={(e) => update({ deadline: e.target.value || null })}
+        className="h-7 text-xs w-28"
+      />
+      <button
+        className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+        onClick={remove}
+        title="Slett"
+      >
+        <Trash2 className="h-3 w-3" />
+      </button>
+    </div>
+  );
+}
+
+// ─── Type-specific field sections ─────────────────────────────────────────────
+
+function TypeSpecificFields({
+  type,
+  typeData,
+  onChange,
+  meetingId,
+  subSessionId,
+  members,
+}: {
+  type: string;
+  typeData: Record<string, any>;
+  onChange: (updates: Record<string, any>) => void;
+  meetingId: string;
+  subSessionId: string;
+  members: any[];
+}) {
+  const f = (key: string) => typeData[key] ?? "";
+  const set = (key: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    onChange({ [key]: e.target.value });
+
+  if (type === "veiledermøte") {
+    return (
+      <div className="space-y-2 p-3 bg-teal-50/40 dark:bg-teal-950/20 rounded-md border border-teal-200/50 dark:border-teal-800/50">
+        <p className="text-[11px] font-semibold text-teal-700 dark:text-teal-400 uppercase tracking-wide">Veiledermøte</p>
+        <div>
+          <Label className="text-xs">Spørsmål til veileder</Label>
+          <Textarea value={f("questions_for_advisor")} onChange={set("questions_for_advisor")} rows={2} className="text-xs mt-0.5" placeholder="Hva ville dere diskutere?" />
+        </div>
+        <div>
+          <Label className="text-xs">Feedback fra veileder</Label>
+          <Textarea value={f("advisor_feedback")} onChange={set("advisor_feedback")} rows={2} className="text-xs mt-0.5" placeholder="Hva sa veileder?" />
+        </div>
+        <MiniActionPoints meetingId={meetingId} subSessionId={subSessionId} members={members} />
+      </div>
+    );
+  }
+
+  if (type === "sprint_planning") {
+    return (
+      <div className="space-y-2 p-3 bg-blue-50/40 dark:bg-blue-950/20 rounded-md border border-blue-200/50 dark:border-blue-800/50">
+        <p className="text-[11px] font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wide">Sprint Planning</p>
+        <div>
+          <Label className="text-xs">Sprint goal</Label>
+          <Textarea value={f("sprint_goal")} onChange={set("sprint_goal")} rows={2} className="text-xs mt-0.5" placeholder="Hva er målet for denne sprinten?" />
+        </div>
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <Label className="text-xs">Total kapasitet (SP)</Label>
+            <Input
+              type="number"
+              value={f("capacity")}
+              onChange={(e) => onChange({ capacity: e.target.value ? Number(e.target.value) : "" })}
+              className="h-7 text-xs mt-0.5"
+              placeholder="0"
+              min={0}
+            />
+          </div>
+        </div>
+        <div>
+          <Label className="text-xs">Notater fra planlegging</Label>
+          <Textarea value={f("planning_notes")} onChange={set("planning_notes")} rows={2} className="text-xs mt-0.5" placeholder="Hvilke items ble valgt og hvorfor?" />
+        </div>
+      </div>
+    );
+  }
+
+  if (type === "sprint_review") {
+    return (
+      <div className="space-y-2 p-3 bg-blue-50/40 dark:bg-blue-950/20 rounded-md border border-blue-200/50 dark:border-blue-800/50">
+        <p className="text-[11px] font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wide">Sprint Review</p>
+        <div>
+          <Label className="text-xs">Hva ble demonstrert?</Label>
+          <Textarea value={f("what_was_demonstrated")} onChange={set("what_was_demonstrated")} rows={2} className="text-xs mt-0.5" placeholder="Beskriv hva dere demonstrerte" />
+        </div>
+        <div>
+          <Label className="text-xs">Feedback</Label>
+          <Textarea value={f("feedback")} onChange={set("feedback")} rows={2} className="text-xs mt-0.5" placeholder="Feedback fra veileder / produkteier / teamet" />
+        </div>
+      </div>
+    );
+  }
+
+  if (type === "daily_standup") {
+    return (
+      <div className="space-y-2 p-3 bg-green-50/40 dark:bg-green-950/20 rounded-md border border-green-200/50 dark:border-green-800/50">
+        <p className="text-[11px] font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide">Daily Standup</p>
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <Label className="text-xs">Format</Label>
+            <Select value={f("format") || "none"} onValueChange={(v) => onChange({ format: v === "none" ? "" : v })}>
+              <SelectTrigger className="h-7 text-xs mt-0.5">
+                <SelectValue placeholder="Velg format" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Ikke valgt</SelectItem>
+                <SelectItem value="fysisk">Fysisk standup</SelectItem>
+                <SelectItem value="digital">Digital</SelectItem>
+                <SelectItem value="asynkron">Asynkron i Flyt</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-28">
+            <Label className="text-xs">Varighet (min)</Label>
+            <Input
+              type="number"
+              value={f("duration_minutes")}
+              onChange={(e) => onChange({ duration_minutes: e.target.value ? Number(e.target.value) : "" })}
+              className="h-7 text-xs mt-0.5"
+              placeholder="15"
+              min={0}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (type === "retrospective") {
+    return (
+      <div className="space-y-2 p-3 bg-rose-50/40 dark:bg-rose-950/20 rounded-md border border-rose-200/50 dark:border-rose-800/50">
+        <p className="text-[11px] font-semibold text-rose-700 dark:text-rose-400 uppercase tracking-wide">Retrospektiv</p>
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <Label className="text-xs">Retro-format</Label>
+            <Select value={f("retro_format") || "none"} onValueChange={(v) => onChange({ retro_format: v === "none" ? "" : v })}>
+              <SelectTrigger className="h-7 text-xs mt-0.5">
+                <SelectValue placeholder="Velg format" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Ikke valgt</SelectItem>
+                <SelectItem value="sailboat">Sailboat</SelectItem>
+                <SelectItem value="start_stop_continue">Start-Stop-Continue</SelectItem>
+                <SelectItem value="mad_sad_glad">Mad-Sad-Glad</SelectItem>
+                <SelectItem value="annet">Annet</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex-1">
+            <Label className="text-xs">Verktøy brukt</Label>
+            <Input value={f("tools_used")} onChange={set("tools_used")} className="h-7 text-xs mt-0.5" placeholder="Miro, post-its, Flyt..." />
+          </div>
+        </div>
+        <div>
+          <Label className="text-xs">Hva fungerer og skal fortsettes?</Label>
+          <Textarea value={f("what_works")} onChange={set("what_works")} rows={2} className="text-xs mt-0.5" placeholder="Hva vil dere fortsette med?" />
+        </div>
+        <div>
+          <Label className="text-xs">Forbedringspunkter</Label>
+          <Textarea value={f("improvements")} onChange={set("improvements")} rows={2} className="text-xs mt-0.5" placeholder="Hva skal dere endre til neste gang?" />
+        </div>
+        <MiniActionPoints meetingId={meetingId} subSessionId={subSessionId} members={members} />
+      </div>
+    );
+  }
+
+  if (type === "mobb_programmering") {
+    return (
+      <div className="space-y-2 p-3 bg-rose-50/40 dark:bg-rose-950/20 rounded-md border border-rose-200/50 dark:border-rose-800/50">
+        <p className="text-[11px] font-semibold text-rose-700 dark:text-rose-400 uppercase tracking-wide">Mobb-programmering</p>
+        <div>
+          <Label className="text-xs">Hva ble laget?</Label>
+          <Textarea value={f("what_was_built")} onChange={set("what_was_built")} rows={2} className="text-xs mt-0.5" placeholder="Beskriv hva dere lagde" />
+        </div>
+        <div>
+          <Label className="text-xs">Lenke til kildekode / commit</Label>
+          <Input value={f("code_link")} onChange={set("code_link")} className="h-7 text-xs mt-0.5" placeholder="https://github.com/..." />
+        </div>
+        <div>
+          <Label className="text-xs">Tidsskjema (hvem drev når)</Label>
+          <Textarea value={f("schedule")} onChange={set("schedule")} rows={2} className="text-xs mt-0.5" placeholder="Eks: Lars 30 min → Kari 30 min → ..." />
+        </div>
+        <div>
+          <Label className="text-xs">Total varighet (min, min. 60)</Label>
+          <Input
+            type="number"
+            value={f("duration_minutes")}
+            onChange={(e) => onChange({ duration_minutes: e.target.value ? Number(e.target.value) : "" })}
+            className="h-7 text-xs mt-0.5"
+            placeholder="60"
+            min={60}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (type === "workshop") {
+    return (
+      <div className="space-y-2 p-3 bg-rose-50/40 dark:bg-rose-950/20 rounded-md border border-rose-200/50 dark:border-rose-800/50">
+        <p className="text-[11px] font-semibold text-rose-700 dark:text-rose-400 uppercase tracking-wide">Workshop</p>
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <Label className="text-xs">Type workshop</Label>
+            <Input value={f("workshop_type")} onChange={set("workshop_type")} className="h-7 text-xs mt-0.5" placeholder="Crazy 8, How Might We..." />
+          </div>
+          <div className="flex-1">
+            <Label className="text-xs">Kilde / inspirasjon</Label>
+            <Input value={f("source")} onChange={set("source")} className="h-7 text-xs mt-0.5" placeholder="Bok, nettside..." />
+          </div>
+        </div>
+        <div>
+          <Label className="text-xs">Formål</Label>
+          <Textarea value={f("purpose")} onChange={set("purpose")} rows={2} className="text-xs mt-0.5" placeholder="Hva var målet med workshopen?" />
+        </div>
+        <div>
+          <Label className="text-xs">Agenda</Label>
+          <Textarea value={f("agenda")} onChange={set("agenda")} rows={2} className="text-xs mt-0.5" placeholder="Trinn for trinn..." />
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+// ─── Main component ────────────────────────────────────────────────────────────
+
 interface SubSessionBlockProps {
   subSession: any;
   meetingStatus: string;
@@ -51,20 +417,24 @@ interface SubSessionBlockProps {
   onDelete: () => void;
 }
 
-export function SubSessionBlock({ subSession, meetingStatus: _meetingStatus, meetingId: _meetingId, meetingDate: _meetingDate, meetingParticipants: _meetingParticipants, onDelete }: SubSessionBlockProps) {
+export function SubSessionBlock({
+  subSession,
+  meetingStatus: _meetingStatus,
+  meetingId,
+  meetingDate: _meetingDate,
+  meetingParticipants: _meetingParticipants,
+  onDelete,
+}: SubSessionBlockProps) {
   const qc = useQueryClient();
   const { data: items } = useSubSessionItems(subSession.id);
   const { data: catalog } = useActivityCatalog();
   const { data: registrations } = useActivityRegistrations();
+  const { data: members } = useTeamMembers();
   const updateReg = useUpdateRegistration();
+
+  // ── Notes ──
   const [notes, setNotes] = useState(subSession.notes || "");
   const [newItem, setNewItem] = useState("");
-  const [prosesslogg, setProsesslogg] = useState({
-    timing_rationale: "",
-    description: "",
-    experiences: "",
-    reflections: "",
-  });
 
   useEffect(() => { setNotes(subSession.notes || ""); }, [subSession.notes]);
 
@@ -77,28 +447,47 @@ export function SubSessionBlock({ subSession, meetingStatus: _meetingStatus, mee
     return () => clearTimeout(t);
   }, [notes, subSession.notes, saveNotes]);
 
-  const addItem = async () => {
-    if (!newItem.trim()) return;
-    const order = (items?.length ?? 0);
-    await supabase.from("meeting_sub_session_items" as any).insert({
-      sub_session_id: subSession.id,
-      content: newItem.trim(),
-      sort_order: order,
-    } as any);
-    setNewItem("");
-    qc.invalidateQueries({ queryKey: ["meeting_sub_session_items", subSession.id] });
-  };
+  // ── Type-specific data ──
+  const [typeData, setTypeData] = useState<Record<string, any>>(
+    (subSession.type_specific_data as Record<string, any>) || {}
+  );
+  const typeDataDirty = useRef(false);
 
-  const borderColor = typeBorderColors[subSession.type] || "border-l-gray-400";
+  useEffect(() => {
+    setTypeData((subSession.type_specific_data as Record<string, any>) || {});
+    typeDataDirty.current = false;
+  }, [subSession.id]);
 
-  // Activity linking
+  const handleTypeDataChange = useCallback((updates: Record<string, any>) => {
+    typeDataDirty.current = true;
+    setTypeData((prev) => ({ ...prev, ...updates }));
+  }, []);
+
+  useEffect(() => {
+    if (!typeDataDirty.current) return;
+    const t = setTimeout(async () => {
+      await supabase
+        .from("meeting_sub_sessions" as any)
+        .update({ type_specific_data: typeData } as any)
+        .eq("id", subSession.id);
+    }, 600);
+    return () => clearTimeout(t);
+  }, [typeData, subSession.id]);
+
+  // ── Prosesslogg ──
+  const [prosesslogg, setProsesslogg] = useState({
+    timing_rationale: "",
+    description: "",
+    experiences: "",
+    reflections: "",
+  });
+
   const meetingType = activityMeetingTypeMap[subSession.type];
   const matchingCatalog = meetingType ? catalog?.find((c) => c.meeting_type === meetingType) : null;
   const existingRegistration = matchingCatalog
     ? registrations?.find((r) => r.linked_sub_session_id === subSession.id)
     : null;
 
-  // Sync prosesslogg state from registration (on first load / registration change)
   useEffect(() => {
     if (existingRegistration) {
       setProsesslogg({
@@ -110,7 +499,6 @@ export function SubSessionBlock({ subSession, meetingStatus: _meetingStatus, mee
     }
   }, [existingRegistration?.id]);
 
-  // Debounced auto-save prosesslogg fields → activity_registration
   useEffect(() => {
     if (!existingRegistration) return;
     const reg = existingRegistration;
@@ -142,8 +530,25 @@ export function SubSessionBlock({ subSession, meetingStatus: _meetingStatus, mee
     existingRegistration?.reflections,
   ]);
 
+  // ── Agenda items ──
+  const addItem = async () => {
+    if (!newItem.trim()) return;
+    await supabase.from("meeting_sub_session_items" as any).insert({
+      sub_session_id: subSession.id,
+      content: newItem.trim(),
+      sort_order: items?.length ?? 0,
+    } as any);
+    setNewItem("");
+    qc.invalidateQueries({ queryKey: ["meeting_sub_session_items", subSession.id] });
+  };
+
+  const borderColor = typeBorderColors[subSession.type] || "border-l-gray-400";
+  const descriptionPlaceholder =
+    prosessloggPlaceholders[subSession.type] || "Hvordan ble aktiviteten gjennomført?";
+
   return (
-    <div className={`border-l-[3px] ${borderColor} bg-muted/30 rounded-r-md p-3 space-y-2`}>
+    <div className={`border-l-[3px] ${borderColor} bg-muted/30 rounded-r-md p-3 space-y-3`}>
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="text-xs">{typeLabels[subSession.type] || subSession.type}</Badge>
@@ -154,7 +559,7 @@ export function SubSessionBlock({ subSession, meetingStatus: _meetingStatus, mee
         </Button>
       </div>
 
-      {/* Sub-session agenda items */}
+      {/* Agenda items */}
       {items && items.length > 0 && (
         <ul className="space-y-1 text-sm">
           {items.map((item: any) => (
@@ -165,12 +570,11 @@ export function SubSessionBlock({ subSession, meetingStatus: _meetingStatus, mee
           ))}
         </ul>
       )}
-
       <div className="flex gap-1">
         <Input
           value={newItem}
           onChange={(e) => setNewItem(e.target.value)}
-          placeholder="Legg til punkt..."
+          placeholder="Legg til agendapunkt..."
           className="h-7 text-xs"
           onKeyDown={(e) => e.key === "Enter" && addItem()}
         />
@@ -179,16 +583,31 @@ export function SubSessionBlock({ subSession, meetingStatus: _meetingStatus, mee
         </Button>
       </div>
 
-      {/* Notes */}
-      <Textarea
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        placeholder="Notater for denne delen..."
-        rows={2}
-        className="text-xs"
-      />
+      {/* Type-specific fields */}
+      {subSession.type !== "annet" && (
+        <TypeSpecificFields
+          type={subSession.type}
+          typeData={typeData}
+          onChange={handleTypeDataChange}
+          meetingId={meetingId}
+          subSessionId={subSession.id}
+          members={members || []}
+        />
+      )}
 
-      {/* Activity registration status + prosesslogg */}
+      {/* Meeting notes */}
+      <div>
+        <Label className="text-xs text-muted-foreground">Møtenotater</Label>
+        <Textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Notater for denne delen..."
+          rows={2}
+          className="text-xs mt-0.5"
+        />
+      </div>
+
+      {/* Prosesslogg */}
       {matchingCatalog && (
         <div className="pt-2 border-t border-border/50 space-y-2">
           {existingRegistration ? (
@@ -198,7 +617,6 @@ export function SubSessionBlock({ subSession, meetingStatus: _meetingStatus, mee
                 <span>Registrert i aktivitetsplanen (uke {existingRegistration.completed_week})</span>
               </div>
 
-              {/* Prosesslogg fields */}
               <div className="space-y-1.5">
                 <div className="flex items-center gap-1.5">
                   <FileText className="h-3 w-3 text-muted-foreground" />
@@ -208,7 +626,7 @@ export function SubSessionBlock({ subSession, meetingStatus: _meetingStatus, mee
 
                 <Textarea
                   value={prosesslogg.timing_rationale}
-                  onChange={(e) => setProsesslogg(p => ({ ...p, timing_rationale: e.target.value }))}
+                  onChange={(e) => setProsesslogg((p) => ({ ...p, timing_rationale: e.target.value }))}
                   placeholder="Hvorfor dette tidspunktet?"
                   rows={2}
                   className="text-xs"
@@ -216,9 +634,9 @@ export function SubSessionBlock({ subSession, meetingStatus: _meetingStatus, mee
                 <div>
                   <Textarea
                     value={prosesslogg.description}
-                    onChange={(e) => setProsesslogg(p => ({ ...p, description: e.target.value }))}
-                    placeholder="Gjennomføring..."
-                    rows={2}
+                    onChange={(e) => setProsesslogg((p) => ({ ...p, description: e.target.value }))}
+                    placeholder={descriptionPlaceholder}
+                    rows={3}
                     className="text-xs"
                   />
                   {!prosesslogg.description && notes && (
@@ -226,7 +644,7 @@ export function SubSessionBlock({ subSession, meetingStatus: _meetingStatus, mee
                       <span className="text-[10px] text-muted-foreground">Møtenotater finnes.</span>
                       <button
                         className="text-[10px] text-primary underline"
-                        onClick={() => setProsesslogg(p => ({ ...p, description: notes }))}
+                        onClick={() => setProsesslogg((p) => ({ ...p, description: notes }))}
                       >
                         Bruk som gjennomføring
                       </button>
@@ -235,15 +653,15 @@ export function SubSessionBlock({ subSession, meetingStatus: _meetingStatus, mee
                 </div>
                 <Textarea
                   value={prosesslogg.experiences}
-                  onChange={(e) => setProsesslogg(p => ({ ...p, experiences: e.target.value }))}
-                  placeholder="Erfaringer..."
+                  onChange={(e) => setProsesslogg((p) => ({ ...p, experiences: e.target.value }))}
+                  placeholder="Erfaringer (positive og negative)..."
                   rows={2}
                   className="text-xs"
                 />
                 <Textarea
                   value={prosesslogg.reflections}
-                  onChange={(e) => setProsesslogg(p => ({ ...p, reflections: e.target.value }))}
-                  placeholder="Refleksjoner..."
+                  onChange={(e) => setProsesslogg((p) => ({ ...p, reflections: e.target.value }))}
+                  placeholder="Refleksjoner — er dette noe teamet gjør igjen?"
                   rows={2}
                   className="text-xs"
                 />

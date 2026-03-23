@@ -21,6 +21,7 @@ import {
 import { toast } from "sonner";
 import { Link2, FileText, Plus, Trash2, Pencil, Eye } from "lucide-react";
 import { FileUpload, getPublicUrl } from "./FileUpload";
+import { useSubSessionById, useSubSessionActionPoints } from "@/hooks/useMeetingCalendar";
 
 interface RegistrationModalProps {
   open: boolean;
@@ -38,6 +39,9 @@ export function RegistrationModal({ open, onOpenChange, catalogItem, registratio
   const toggleParticipant = useToggleRegistrationParticipant();
 
   const [reg, setReg] = useState<Registration | null>(null);
+  const linkedSubSessionId = (reg ?? registration)?.linked_sub_session_id ?? null;
+  const { data: linkedSubSession } = useSubSessionById(linkedSubSessionId);
+  const { data: ssActionPoints } = useSubSessionActionPoints(linkedSubSessionId);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     status: "not_started",
@@ -170,6 +174,32 @@ export function RegistrationModal({ open, onOpenChange, catalogItem, registratio
 
   const prosessloggComplete = !!(form.timing_rationale && form.description && form.experiences && form.reflections);
 
+  // Duplicate check: registration for same catalog+week already exists (meeting-based only)
+  const duplicateInWeek = (catalogItem.meeting_type && form.completed_date && !reg)
+    ? allRegistrations.find((r) =>
+        r.catalog_id === catalogItem.id &&
+        r.completed_week === getWeekNumber(form.completed_date)
+      ) ?? null
+    : null;
+
+  const openDuplicate = () => {
+    if (!duplicateInWeek) return;
+    const existingParticipantIds = participants?.filter((p) => p.registration_id === duplicateInWeek.id).map((p) => p.member_id) || [];
+    setReg(duplicateInWeek);
+    setEditing(false);
+    setForm({
+      status: duplicateInWeek.status,
+      completed_date: duplicateInWeek.completed_date || "",
+      timing_rationale: duplicateInWeek.timing_rationale || "",
+      description: duplicateInWeek.description || "",
+      experiences: duplicateInWeek.experiences || "",
+      reflections: duplicateInWeek.reflections || "",
+      attachment_links: duplicateInWeek.attachment_links || [],
+      newLink: "",
+      selectedMembers: existingParticipantIds,
+    });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
@@ -186,6 +216,16 @@ export function RegistrationModal({ open, onOpenChange, catalogItem, registratio
           <div className="bg-muted/50 rounded-md p-3 text-sm text-muted-foreground">
             {catalogItem.description}
           </div>
+        )}
+
+        {/* Fra møtekalenderen — read-only type-specific data */}
+        {linkedSubSession && Object.keys(linkedSubSession.type_specific_data ?? {}).length > 0 && (
+          <MeetingDataSection
+            type={linkedSubSession.type}
+            typeData={linkedSubSession.type_specific_data}
+            actionPoints={ssActionPoints ?? []}
+            members={members ?? []}
+          />
         )}
 
         {reg && !editing ? (
@@ -306,6 +346,20 @@ export function RegistrationModal({ open, onOpenChange, catalogItem, registratio
                 />
                 {form.completed_date && (
                   <p className="text-[10px] text-muted-foreground mt-0.5">Uke {getWeekNumber(form.completed_date)}</p>
+                )}
+                {duplicateInWeek && (
+                  <Alert className="mt-2 py-2 border-amber-300 bg-amber-50 dark:bg-amber-950/30">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="h-3.5 w-3.5 mt-0.5 text-amber-600" />
+                      <AlertDescription className="text-xs text-amber-800 dark:text-amber-200">
+                        {catalogItem.name} er allerede registrert i uke {getWeekNumber(form.completed_date)}.
+                        {" "}
+                        <button className="underline font-medium" onClick={openDuplicate}>
+                          Åpne eksisterende
+                        </button>
+                      </AlertDescription>
+                    </div>
+                  </Alert>
                 )}
                 {form.completed_date && !catalogItem.is_mandatory && (() => {
                   const weekNum = getWeekNumber(form.completed_date);
@@ -472,6 +526,92 @@ export function RegistrationModal({ open, onOpenChange, catalogItem, registratio
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─── Meeting data read-only section ──────────────────────────────────────────
+
+const retroFormatLabels: Record<string, string> = {
+  sailboat: "Sailboat", start_stop_continue: "Start-Stop-Continue",
+  mad_sad_glad: "Mad-Sad-Glad", annet: "Annet",
+};
+const standupFormatLabels: Record<string, string> = {
+  fysisk: "Fysisk standup", digital: "Digital", asynkron: "Asynkron i Flyt",
+};
+
+function MeetingDataSection({
+  type, typeData, actionPoints, members,
+}: {
+  type: string;
+  typeData: Record<string, any>;
+  actionPoints: any[];
+  members: any[];
+}) {
+  const f = (key: string) => typeData[key] as string | undefined;
+  const memberName = (id: string) => members.find((m) => m.id === id)?.name?.split(" ")[0] ?? "?";
+
+  const rows: { label: string; value: string }[] = [];
+
+  if (type === "veiledermøte") {
+    if (f("questions_for_advisor")) rows.push({ label: "Spørsmål til veileder", value: f("questions_for_advisor")! });
+    if (f("advisor_feedback")) rows.push({ label: "Feedback fra veileder", value: f("advisor_feedback")! });
+  } else if (type === "sprint_planning") {
+    if (f("sprint_goal")) rows.push({ label: "Sprint goal", value: f("sprint_goal")! });
+    if (f("capacity")) rows.push({ label: "Kapasitet", value: `${f("capacity")} SP` });
+    if (f("planning_notes")) rows.push({ label: "Planlegging", value: f("planning_notes")! });
+  } else if (type === "sprint_review") {
+    if (f("what_was_demonstrated")) rows.push({ label: "Hva ble demonstrert", value: f("what_was_demonstrated")! });
+    if (f("feedback")) rows.push({ label: "Feedback", value: f("feedback")! });
+  } else if (type === "daily_standup") {
+    if (f("format")) rows.push({ label: "Format", value: standupFormatLabels[f("format")!] ?? f("format")! });
+    if (f("duration_minutes")) rows.push({ label: "Varighet", value: `${f("duration_minutes")} min` });
+  } else if (type === "retrospective") {
+    if (f("retro_format")) rows.push({ label: "Format", value: retroFormatLabels[f("retro_format")!] ?? f("retro_format")! });
+    if (f("tools_used")) rows.push({ label: "Verktøy", value: f("tools_used")! });
+    if (f("what_works")) rows.push({ label: "Hva fungerer", value: f("what_works")! });
+    if (f("improvements")) rows.push({ label: "Forbedringspunkter", value: f("improvements")! });
+  } else if (type === "mobb_programmering") {
+    if (f("what_was_built")) rows.push({ label: "Hva ble laget", value: f("what_was_built")! });
+    if (f("code_link")) rows.push({ label: "Kildekode", value: f("code_link")! });
+    if (f("schedule")) rows.push({ label: "Tidsskjema", value: f("schedule")! });
+    if (f("duration_minutes")) rows.push({ label: "Varighet", value: `${f("duration_minutes")} min` });
+  } else if (type === "workshop") {
+    if (f("workshop_type")) rows.push({ label: "Type workshop", value: f("workshop_type")! });
+    if (f("source")) rows.push({ label: "Kilde", value: f("source")! });
+    if (f("purpose")) rows.push({ label: "Formål", value: f("purpose")! });
+    if (f("agenda")) rows.push({ label: "Agenda", value: f("agenda")! });
+  }
+
+  if (rows.length === 0 && actionPoints.length === 0) return null;
+
+  return (
+    <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
+      <div className="flex items-center gap-1.5">
+        <Link2 className="h-3.5 w-3.5 text-muted-foreground" />
+        <p className="text-xs font-medium text-muted-foreground">Fra møtekalenderen</p>
+      </div>
+      {rows.map(({ label, value }) => (
+        <div key={label}>
+          <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
+          <p className="text-xs whitespace-pre-wrap mt-0.5">{value}</p>
+        </div>
+      ))}
+      {actionPoints.length > 0 && (
+        <div>
+          <p className="text-[11px] font-medium text-muted-foreground">Action points</p>
+          <ul className="mt-0.5 space-y-0.5">
+            {actionPoints.map((ap: any) => (
+              <li key={ap.id} className="flex items-center gap-1.5 text-xs">
+                <span>{ap.is_completed ? "✓" : "○"}</span>
+                <span className={ap.is_completed ? "line-through text-muted-foreground" : ""}>{ap.title || "—"}</span>
+                {ap.assignee_id && <span className="text-muted-foreground">→ {memberName(ap.assignee_id)}</span>}
+                {ap.deadline && <span className="text-muted-foreground text-[10px]">({ap.deadline})</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
   );
 }
 
