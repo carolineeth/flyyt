@@ -287,6 +287,15 @@ export default function BacklogPage() {
               </AlertDialogContent>
             </AlertDialog>
           )}
+        </CardContent>
+      </Card>
+    );
+  };
+
+  return (
+    <div className="space-y-6 scroll-reveal">
+      <PageHeader
+        title="Product Backlog"
         description="Dra elementer for å endre rekkefølge eller status"
         action={
           <Button size="sm" onClick={() => setShowCreate(true)}>
