@@ -257,15 +257,36 @@ export default function BacklogPage() {
             <Badge variant="outline" className="text-[9px] text-muted-foreground shrink-0">Ikke i sprint</Badge>
           ) : null}
           {assignee && <MemberAvatar member={assignee} />}
-        </CardContent>
-      </Card>
-    );
-  };
-
-  return (
-    <div className="space-y-6 scroll-reveal">
-      <PageHeader
-        title="Product Backlog"
+          {!itemSprintMap[item.id] && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button
+                  className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                  title="Slett item"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Slett «{item.title}»?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Dette sletter itemet permanent fra backlog, inkludert alle subtasks og endringslogg.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={() => deleteMutation.mutate(item.id)}
+                  >
+                    Slett
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         description="Dra elementer for å endre rekkefølge eller status"
         action={
           <Button size="sm" onClick={() => setShowCreate(true)}>
