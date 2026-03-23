@@ -979,35 +979,47 @@ export type Database = {
         Row: {
           assignee_id: string | null
           created_at: string
+          description: string | null
           id: string
           notes: string | null
+          parent_section: string | null
+          section_number: string | null
           sort_order: number
           status: string
           title: string
           updated_at: string
           word_count_goal: number
+          word_count_target: number | null
         }
         Insert: {
           assignee_id?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           notes?: string | null
+          parent_section?: string | null
+          section_number?: string | null
           sort_order?: number
           status?: string
           title: string
           updated_at?: string
           word_count_goal?: number
+          word_count_target?: number | null
         }
         Update: {
           assignee_id?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           notes?: string | null
+          parent_section?: string | null
+          section_number?: string | null
           sort_order?: number
           status?: string
           title?: string
           updated_at?: string
           word_count_goal?: number
+          word_count_target?: number | null
         }
         Relationships: [
           {
