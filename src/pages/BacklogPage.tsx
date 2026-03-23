@@ -12,8 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { ListTodo, Plus, GripVertical } from "lucide-react";
+import { ListTodo, Plus, GripVertical, Trash2 } from "lucide-react";
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import type { BacklogItem, Sprint } from "@/lib/types";
 import { logBacklogChange } from "@/lib/backlogChangelog";
@@ -164,6 +165,24 @@ export default function BacklogPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["backlog_items"] }),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      // Check if item is in any sprint
+      const inSprint = sprintItems?.some((si) => si.backlog_item_id === id);
+      if (inSprint) throw new Error("Kan ikke slette et item som er i en sprint");
+      // Delete related data first
+      await supabase.from("subtasks").delete().eq("backlog_item_id", id);
+      await supabase.from("backlog_changelog").delete().eq("backlog_item_id", id);
+      const { error } = await supabase.from("backlog_items").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["backlog_items"] });
+      toast.success("Item slettet");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
   const handleDragStart = (e: React.DragEvent, itemId: string) => {
     setDraggedItemId(itemId);
     e.dataTransfer.effectAllowed = "move";
@@ -238,6 +257,36 @@ export default function BacklogPage() {
             <Badge variant="outline" className="text-[9px] text-muted-foreground shrink-0">Ikke i sprint</Badge>
           ) : null}
           {assignee && <MemberAvatar member={assignee} />}
+          {!itemSprintMap[item.id] && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button
+                  className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                  title="Slett item"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Slett «{item.title}»?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Dette sletter itemet permanent fra backlog, inkludert alle subtasks og endringslogg.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={() => deleteMutation.mutate(item.id)}
+                  >
+                    Slett
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </CardContent>
       </Card>
     );
