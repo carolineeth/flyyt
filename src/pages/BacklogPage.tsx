@@ -414,10 +414,10 @@ export default function BacklogPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Ansvarlig</Label>
-                <Select value={newItem.assignee_id ?? ""} onValueChange={(v) => setNewItem((p) => ({ ...p, assignee_id: v || null }))}>
-                  <SelectTrigger><SelectValue placeholder="Velg" /></SelectTrigger>
-                  <SelectContent>{members?.map((m) => <SelectItem key={m.id} value={m.id}>{m.name.split(" ")[0]}</SelectItem>)}</SelectContent>
+                <Label>Status</Label>
+                <Select value={newItem.status} onValueChange={(v) => setNewItem((p) => ({ ...p, status: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{Object.entries(statusLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
@@ -431,13 +431,43 @@ export default function BacklogPage() {
                 </Select>
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Ansvarlig</Label>
+                <Select value={newItem.assignee_id ?? ""} onValueChange={(v) => setNewItem((p) => ({ ...p, assignee_id: v || null }))}>
+                  <SelectTrigger><SelectValue placeholder="Velg" /></SelectTrigger>
+                  <SelectContent>{members?.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Epic/Kategori</Label>
+                <Input value={newItem.epic} onChange={(e) => setNewItem((p) => ({ ...p, epic: e.target.value }))}
+                  placeholder="f.eks. Kartvisning, UX Research" list="epic-suggestions" />
+                <datalist id="epic-suggestions">
+                  {existingEpics.map((e) => <option key={e} value={e} />)}
+                </datalist>
+              </div>
+            </div>
             <div>
-              <Label>Epic/Kategori</Label>
-              <Input value={newItem.epic} onChange={(e) => setNewItem((p) => ({ ...p, epic: e.target.value }))}
-                placeholder="f.eks. Kartvisning, UX Research" list="epic-suggestions" />
-              <datalist id="epic-suggestions">
-                {existingEpics.map((e) => <option key={e} value={e} />)}
-              </datalist>
+              <Label>Medarbeidere</Label>
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {members?.map((m) => {
+                  const selected = newItem.collaborator_ids.includes(m.id);
+                  return (
+                    <button key={m.id} type="button"
+                      onClick={() => setNewItem((p) => ({
+                        ...p,
+                        collaborator_ids: selected
+                          ? p.collaborator_ids.filter((id) => id !== m.id)
+                          : [...p.collaborator_ids, m.id],
+                      }))}
+                      className={`px-2 py-1 rounded-full text-xs font-medium transition-colors ${selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}
+                    >
+                      {m.name.split(" ")[0]}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             <div>
               <Label>Labels (kommaseparert)</Label>
