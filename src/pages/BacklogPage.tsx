@@ -165,6 +165,24 @@ export default function BacklogPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["backlog_items"] }),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      // Check if item is in any sprint
+      const inSprint = sprintItems?.some((si) => si.backlog_item_id === id);
+      if (inSprint) throw new Error("Kan ikke slette et item som er i en sprint");
+      // Delete related data first
+      await supabase.from("subtasks").delete().eq("backlog_item_id", id);
+      await supabase.from("backlog_changelog").delete().eq("backlog_item_id", id);
+      const { error } = await supabase.from("backlog_items").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["backlog_items"] });
+      toast.success("Item slettet");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
   const handleDragStart = (e: React.DragEvent, itemId: string) => {
     setDraggedItemId(itemId);
     e.dataTransfer.effectAllowed = "move";
