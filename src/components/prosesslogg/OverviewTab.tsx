@@ -5,7 +5,6 @@ import { useActivityCatalog, useActivityRegistrations, type Registration, type C
 import { useCompletedMeetings, useMeetingAgendaItemsAll, useMeetingActionPointsAll, type ProsessloggNote } from "@/hooks/useProsesslogg";
 import { useAllMeetingSubSessions } from "@/hooks/useMeetingCalendar";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
-import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
