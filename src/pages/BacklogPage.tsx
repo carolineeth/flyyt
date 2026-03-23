@@ -92,6 +92,7 @@ export default function BacklogPage() {
     title: "", description: "", type: "user_story", priority: "should_have",
     estimate: null as number | null, epic: "", assignee_id: null as string | null,
     sprint_id: null as string | null, labels: "" as string,
+    status: "backlog" as string, collaborator_ids: [] as string[],
   });
 
   const existingEpics = useMemo(() => {
@@ -117,9 +118,11 @@ export default function BacklogPage() {
         description: newItem.description || null,
         type: newItem.type,
         priority: newItem.priority,
+        status: newItem.status,
         estimate: newItem.estimate,
         epic: newItem.epic || null,
         assignee_id: newItem.assignee_id,
+        collaborator_ids: newItem.collaborator_ids.length ? newItem.collaborator_ids : null,
         labels: newItem.labels ? newItem.labels.split(",").map((l) => l.trim()).filter(Boolean) : [],
       }).select().single();
       if (error) throw error;
@@ -142,7 +145,7 @@ export default function BacklogPage() {
       qc.invalidateQueries({ queryKey: ["sprint_items"] });
       qc.invalidateQueries({ queryKey: ["sprint_items_all"] });
       setShowCreate(false);
-      setNewItem({ title: "", description: "", type: "user_story", priority: "should_have", estimate: null, epic: "", assignee_id: null, sprint_id: null, labels: "" });
+      setNewItem({ title: "", description: "", type: "user_story", priority: "should_have", estimate: null, epic: "", assignee_id: null, sprint_id: null, labels: "", status: "backlog", collaborator_ids: [] });
       toast.success("Backlog-item opprettet");
     },
     onError: (e) => toast.error(e.message),
@@ -167,10 +170,10 @@ export default function BacklogPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      // Check if item is in any sprint
-      const inSprint = sprintItems?.some((si) => si.backlog_item_id === id);
-      if (inSprint) throw new Error("Kan ikke slette et item som er i en sprint");
-      // Delete related data first
+      // Remove from sprints first
+      await supabase.from("sprint_items").delete().eq("backlog_item_id", id);
+      // Delete related data
+      await supabase.from("daily_updates").update({ backlog_item_id: null }).eq("backlog_item_id", id);
       await supabase.from("subtasks").delete().eq("backlog_item_id", id);
       await supabase.from("backlog_changelog").delete().eq("backlog_item_id", id);
       const { error } = await supabase.from("backlog_items").delete().eq("id", id);
@@ -178,6 +181,8 @@ export default function BacklogPage() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["backlog_items"] });
+      qc.invalidateQueries({ queryKey: ["sprint_items"] });
+      qc.invalidateQueries({ queryKey: ["sprint_items_all"] });
       toast.success("Item slettet");
     },
     onError: (e) => toast.error(e.message),
@@ -257,36 +262,36 @@ export default function BacklogPage() {
             <Badge variant="outline" className="text-[9px] text-muted-foreground shrink-0">Ikke i sprint</Badge>
           ) : null}
           {assignee && <MemberAvatar member={assignee} />}
-          {!itemSprintMap[item.id] && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <button
-                  className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
-                  onClick={(e) => e.stopPropagation()}
-                  title="Slett item"
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+                onClick={(e) => e.stopPropagation()}
+                title="Slett item"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Slett «{item.title}»?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {itemSprintMap[item.id]
+                    ? `Dette itemet er i ${itemSprintMap[item.id]}. Sletting fjerner det fra sprinten og sletter all tilknyttet data permanent.`
+                    : "Dette sletter itemet permanent fra backlog, inkludert alle subtasks og endringslogg."}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Avbryt</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => deleteMutation.mutate(item.id)}
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Slett «{item.title}»?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Dette sletter itemet permanent fra backlog, inkludert alle subtasks og endringslogg.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Avbryt</AlertDialogCancel>
-                  <AlertDialogAction
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    onClick={() => deleteMutation.mutate(item.id)}
-                  >
-                    Slett
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
+                  Slett
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </CardContent>
       </Card>
     );
