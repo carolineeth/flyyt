@@ -12,8 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { ListTodo, Plus, GripVertical } from "lucide-react";
+import { ListTodo, Plus, GripVertical, Trash2 } from "lucide-react";
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import type { BacklogItem, Sprint } from "@/lib/types";
 import { logBacklogChange } from "@/lib/backlogChangelog";
