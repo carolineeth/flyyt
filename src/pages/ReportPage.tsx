@@ -113,7 +113,10 @@ export default function ReportPage() {
   const allSections = sections ?? [];
   const mainSections = allSections.filter(s => !s.parent_section);
   const subsections = allSections.filter(s => !!s.parent_section);
-  const childrenOf = (num: string) => allSections.filter(s => s.parent_section === num);
+  const childrenOf = (num: string | null) => {
+    if (!num) return [];
+    return allSections.filter(s => s.parent_section === num);
+  };
 
   const subsectionsDone = subsections.filter(s => s.status === "ferdig").length;
   const totalSubsections = subsections.length;
