@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { useActivityCatalog, useActivityRegistrations, type CatalogItem, type Registration } from "@/hooks/useActivityCatalog";
-import { PointsPlanner, getRegWeek, calcWeekPoints } from "@/components/activities/PointsPlanner";
+import { PointsPlanner } from "@/components/activities/PointsPlanner";
+import { calcTotalEarnedPoints } from "@/lib/calcTotalEarnedPoints";
 import { CatalogView } from "@/components/activities/CatalogView";
 import { RegistrationsView } from "@/components/activities/RegistrationsView";
 import { RegistrationModal } from "@/components/activities/RegistrationModal";
@@ -34,21 +35,7 @@ export default function ActivitiesPage() {
   const cat = catalog || [];
   const regs = registrations || [];
 
-  // Calculate earned using mandatory-exempt logic
-  const weekMap: Record<number, Registration[]> = {};
-  regs.forEach((r) => {
-    const w = getRegWeek(r);
-    if (w != null) {
-      if (!weekMap[w]) weekMap[w] = [];
-      weekMap[w].push(r);
-    }
-  });
-
-  let earned = 0;
-  Object.values(weekMap).forEach((weekRegs) => {
-    const calc = calcWeekPoints(weekRegs, cat);
-    earned += calc.mandatoryEarned + calc.optionalEarned;
-  });
+  const earned = calcTotalEarnedPoints(regs, cat);
 
   const progressPct = Math.min((earned / 30) * 100, 100);
 

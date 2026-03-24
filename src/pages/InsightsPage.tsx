@@ -23,6 +23,10 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { useRequirementChanges } from "@/hooks/useRequirementChangelog";
+import { useActivityCatalog } from "@/hooks/useActivityCatalog";
+import { calcTotalEarnedPoints } from "@/lib/calcTotalEarnedPoints";
+import { PROJECT_START } from "@/hooks/useDailyUpdates";
+import type { Registration } from "@/hooks/useActivityCatalog";
 import {
   LineChart,
   Line,
@@ -127,7 +131,10 @@ function useDailyUpdates() {
   return useQuery({
     queryKey: ["daily_updates_insights"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("daily_updates").select("*");
+      const { data, error } = await supabase
+        .from("daily_updates")
+        .select("*")
+        .gte("entry_date", format(PROJECT_START, "yyyy-MM-dd"));
       if (error) throw error;
       return data;
     },
@@ -180,6 +187,7 @@ export default function InsightsPage() {
   const { data: meetings = [] } = useMeetings();
   const { data: actionPoints = [] } = useActionPoints();
   const { data: activityRegs = [] } = useActivityRegistrations();
+  const { data: activityCatalog = [] } = useActivityCatalog();
   const { data: dailyUpdates = [] } = useDailyUpdates();
   const { data: changelog = [] } = useBacklogChangelog();
   const { data: reqChanges = [] } = useRequirementChanges();
@@ -203,11 +211,10 @@ export default function InsightsPage() {
   const completedSprints = sprints.filter((s) => s.completed_at);
   const completedMeetings = meetings.filter((m) => m.status === "completed");
 
-  const totalActivityPoints = useMemo(() => {
-    return activityRegs
-      .filter((r: any) => r.status === "completed")
-      .reduce((s: number, r: any) => s + (r.catalog?.points || 0), 0);
-  }, [activityRegs]);
+  const totalActivityPoints = useMemo(
+    () => calcTotalEarnedPoints(activityRegs as Registration[], activityCatalog),
+    [activityRegs, activityCatalog]
+  );
 
   const avgCompletionRate = useMemo(() => {
     if (!snapshots.length) return 0;

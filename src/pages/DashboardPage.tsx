@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActivityCatalog, useActivityRegistrations } from "@/hooks/useActivityCatalog";
+import { calcTotalEarnedPoints } from "@/lib/calcTotalEarnedPoints";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { useAllDailyUpdates } from "@/hooks/useDailyUpdates";
 import { Card, CardContent } from "@/components/ui/card";
@@ -132,11 +133,7 @@ export default function DashboardPage() {
   const isUrgentDeadline = nextDeadlineDate ? (isToday(nextDeadlineDate) || isTomorrow(nextDeadlineDate)) : false;
   const regs = registrations ?? [];
   const cat = catalog ?? [];
-  const completedRegs = regs.filter((r) => r.status === "completed");
-  const totalEarned = completedRegs.reduce((sum, r) => {
-    const c = cat.find((c) => c.id === r.catalog_id);
-    return sum + (c?.points ?? 0);
-  }, 0);
+  const totalEarned = calcTotalEarnedPoints(regs, cat);
   const maxPossible = 30;
   const mandatoryRemaining = cat.filter((c) => c.is_mandatory && !regs.some((r) => r.catalog_id === c.id && r.status === "completed"));
 
