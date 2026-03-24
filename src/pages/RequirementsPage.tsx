@@ -1,6 +1,12 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  useSeedRequirementChangelog,
+  logRequirementChange,
+  PRIORITY_DISPLAY,
+  STATUS_DISPLAY,
+} from "@/hooks/useRequirementChangelog";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,6 +110,15 @@ export default function RequirementsPage() {
     },
   });
 
+  // ── Seed changelog once on first load ──
+  const seedChangelog = useSeedRequirementChangelog();
+  const seededRef = useRef(false);
+  useEffect(() => {
+    if (seededRef.current) return;
+    seededRef.current = true;
+    seedChangelog.mutate();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const updateReq = useMutation({
     mutationFn: async ({
       id,
@@ -120,9 +135,54 @@ export default function RequirementsPage() {
   });
 
   const handleUpdate = (id: string, field: string, value: any) => {
+    const current = requirements?.find((r) => r.id === id);
+
     updateReq.mutate(
       { id, [field]: value } as any,
-      { onSuccess: () => toast.success("Oppdatert") }
+      {
+        onSuccess: () => {
+          toast.success("Oppdatert");
+          // Log the change
+          if (field === "status" && current) {
+            logRequirementChange({
+              requirement_id: id,
+              change_type: "status_changed",
+              field_changed: "status",
+              old_value: current.status,
+              new_value: value,
+              description: `Status endret fra ${STATUS_DISPLAY[current.status] ?? current.status} til ${STATUS_DISPLAY[value] ?? value}`,
+            });
+          } else if (field === "priority" && current) {
+            logRequirementChange({
+              requirement_id: id,
+              change_type: "priority_changed",
+              field_changed: "priority",
+              old_value: current.priority,
+              new_value: value,
+              description: `Prioritet endret fra ${PRIORITY_DISPLAY[current.priority] ?? current.priority} til ${PRIORITY_DISPLAY[value] ?? value}`,
+            });
+          } else if (field === "linked_backlog_item_id") {
+            const oldVal = current?.linked_backlog_item_id ?? null;
+            if (value && !oldVal) {
+              const item = backlogItems?.find((b) => b.id === value);
+              logRequirementChange({
+                requirement_id: id,
+                change_type: "added_to_backlog",
+                new_value: value,
+                description: `Koblet til backlog-item: ${item?.title ?? value}`,
+              });
+            } else if (!value && oldVal) {
+              const item = backlogItems?.find((b) => b.id === oldVal);
+              logRequirementChange({
+                requirement_id: id,
+                change_type: "removed_from_backlog",
+                old_value: oldVal,
+                description: `Fjernet kobling til backlog-item: ${item?.title ?? oldVal}`,
+              });
+            }
+          }
+        },
+      }
     );
   };
 
