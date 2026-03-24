@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { saveToSupabase } from "@/lib/saveToSupabase";
 import {
   useMeetingAgendaItems,
   useMeetingSubSessions,
@@ -145,10 +146,12 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
 
   // Auto-save room
   useEffect(() => {
-    const t = setTimeout(async () => {
+    const t = setTimeout(() => {
       if (meeting?.id && room !== (meeting?.room || "")) {
-        const { error } = await supabase.from("meetings").update({ room } as any).eq("id", meeting.id);
-        if (error) toast.error("Kunne ikke lagre rom. Prøv igjen.", { duration: 5000 });
+        saveToSupabase(
+          () => supabase.from("meetings").update({ room } as any).eq("id", meeting.id) as any,
+          { silent: true, errorMessage: "Kunne ikke lagre rom. Prøv igjen." }
+        );
       }
     }, 500);
     return () => clearTimeout(t);
@@ -156,8 +159,10 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
 
   const saveNotes = useCallback(async (val: string) => {
     if (!meeting?.id) return;
-    const { error } = await supabase.from("meetings").update({ notes: val } as any).eq("id", meeting.id);
-    if (error) toast.error("Kunne ikke lagre notater. Prøv igjen.", { duration: 5000 });
+    await saveToSupabase(
+      () => supabase.from("meetings").update({ notes: val } as any).eq("id", meeting.id) as any,
+      { silent: true, errorMessage: "Kunne ikke lagre notater. Prøv igjen." }
+    );
   }, [meeting?.id]);
 
   useEffect(() => {

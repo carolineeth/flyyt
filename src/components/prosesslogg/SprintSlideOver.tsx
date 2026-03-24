@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { saveToSupabase } from "@/lib/saveToSupabase";
 import { Copy } from "lucide-react";
 import type { Sprint } from "@/lib/types";
 
@@ -24,7 +25,8 @@ export function SprintSlideOver({ open, onOpenChange, sprint, snapshot }: Props)
   const qc = useQueryClient();
   const [reviewNotes, setReviewNotes] = useState("");
   const [reflection, setReflection] = useState("");
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const reviewDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const reflectionDebounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     if (sprint) {
@@ -33,15 +35,16 @@ export function SprintSlideOver({ open, onOpenChange, sprint, snapshot }: Props)
     }
   }, [sprint]);
 
-  const autoSave = (field: string, value: string) => {
+  const autoSave = (field: string, value: string, debounceRef: React.MutableRefObject<ReturnType<typeof setTimeout> | undefined>) => {
     if (!sprint) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      const { error } = await supabase.from("sprints").update({ [field]: value }).eq("id", sprint.id);
-      if (!error) {
-        toast.success("Lagret", { duration: 1500 });
-        qc.invalidateQueries({ queryKey: ["completed_sprints"] });
-      }
+    debounceRef.current = setTimeout(() => {
+      saveToSupabase(
+        () => supabase.from("sprints").update({ [field]: value }).eq("id", sprint.id) as any,
+        { silent: true, errorMessage: "Kunne ikke lagre sprint-notater. Prøv igjen." }
+      ).then((result) => {
+        if (result !== null) qc.invalidateQueries({ queryKey: ["completed_sprints"] });
+      });
     }, 800);
   };
 
@@ -126,7 +129,7 @@ export function SprintSlideOver({ open, onOpenChange, sprint, snapshot }: Props)
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Review-notater</label>
             <Textarea
               value={reviewNotes}
-              onChange={(e) => { setReviewNotes(e.target.value); autoSave("sprint_review_notes", e.target.value); }}
+              onChange={(e) => { setReviewNotes(e.target.value); autoSave("sprint_review_notes", e.target.value, reviewDebounceRef); }}
               placeholder="Notater fra sprint review..."
               className="mt-1 min-h-[100px] text-sm"
             />
@@ -136,7 +139,7 @@ export function SprintSlideOver({ open, onOpenChange, sprint, snapshot }: Props)
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Refleksjon</label>
             <Textarea
               value={reflection}
-              onChange={(e) => { setReflection(e.target.value); autoSave("reflection", e.target.value); }}
+              onChange={(e) => { setReflection(e.target.value); autoSave("reflection", e.target.value, reflectionDebounceRef); }}
               placeholder="Reflekter over sprinten..."
               className="mt-1 min-h-[100px] text-sm"
             />
