@@ -14,7 +14,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useCurrentMember, useTodayHasUpdate } from "@/hooks/useDailyUpdates";
 import { logoutUser } from "@/lib/auth";
@@ -44,10 +44,15 @@ const navItems = [
   { title: "Rapport", url: "/rapport", icon: FileText },
 ];
 
+function getInitials(name: string) {
+  return name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase();
+}
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const navigate = useNavigate();
   const { currentMember } = useCurrentMember();
   const { data: hasUpdate } = useTodayHasUpdate(currentMember?.id);
   const showDot = hasUpdate === false;
@@ -104,6 +109,24 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="p-2">
+        {currentMember && (
+          <button
+            onClick={() => navigate("/profil")}
+            className={`flex items-center gap-2 w-full rounded-md px-2 py-2 mb-1 hover:bg-accent/60 transition-colors text-left ${
+              location.pathname === "/profil" ? "bg-accent text-accent-foreground" : ""
+            }`}
+          >
+            <div
+              className="h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0"
+              style={{ backgroundColor: currentMember.avatar_color }}
+            >
+              {getInitials(currentMember.name)}
+            </div>
+            {!collapsed && (
+              <span className="text-sm font-medium truncate">{currentMember.name.split(" ")[0]}</span>
+            )}
+          </button>
+        )}
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild className="text-muted-foreground hover:text-foreground">

@@ -21,6 +21,7 @@ import ProcessLogExportPage from "@/pages/ProcessLogExportPage";
 import InsightsPage from "@/pages/InsightsPage";
 import ReportPage from "@/pages/ReportPage";
 import ChangePasswordPage from "@/pages/ChangePasswordPage";
+import ProfilePage from "@/pages/ProfilePage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -94,6 +95,8 @@ const App = () => (
                 <Route path="/innsikt" element={<InsightsPage />} />
                 <Route path="/rapport" element={<ReportPage />} />
                 <Route path="/bytt-passord" element={<ChangePasswordPage />} />
+                <Route path="/profil" element={<ProfilePage />} />
+                <Route path="/profil/:memberId" element={<ProfilePage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AppLayout>

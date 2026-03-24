@@ -338,7 +338,8 @@ export default function DashboardPage() {
             const hasAnyUpdates = weeklyCounts.some((c) => c > 0);
 
             return (
-            <Card key={member.id} className="rounded-xl border-[0.5px]">
+            <Link key={member.id} to={`/profil/${member.id}`} className="block">
+            <Card className="rounded-xl border-[0.5px] hover:shadow-sm transition-shadow cursor-pointer">
               <CardContent className="pt-4 pb-3 space-y-2">
                 <div className="flex items-center gap-2">
                   <MemberAvatar member={member} size="md" />
@@ -381,6 +382,7 @@ export default function DashboardPage() {
                 )}
               </CardContent>
             </Card>
+            </Link>
           );
           })}
         </div>
