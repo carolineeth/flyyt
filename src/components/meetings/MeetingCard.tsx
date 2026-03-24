@@ -190,7 +190,8 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
   };
 
   const cancelMeeting = async () => {
-    await supabase.from("meetings").update({ status: "cancelled" } as any).eq("id", meeting.id);
+    const { error } = await supabase.from("meetings").update({ status: "cancelled" } as any).eq("id", meeting.id);
+    if (error) { toast.error("Kunne ikke avlyse møtet. Prøv igjen.", { duration: 5000 }); return; }
     qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
     toast.success("Møte avlyst");
   };
@@ -205,18 +206,20 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
       const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
       return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
     })();
-    await supabase.from("meetings").update({
+    const { error } = await supabase.from("meetings").update({
       meeting_date: dateStr,
       date: new Date(dateStr).toISOString(),
       week_number: newWeek,
     } as any).eq("id", meeting.id);
+    if (error) { toast.error("Kunne ikke flytte møtet. Prøv igjen.", { duration: 5000 }); return; }
     qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
     setShowReschedule(false);
     toast.success("Møte flyttet til " + newMeetingDate.toLocaleDateString("nb-NO", { day: "numeric", month: "long" }));
   };
 
   const uncancelMeeting = async () => {
-    await supabase.from("meetings").update({ status: "upcoming" } as any).eq("id", meeting.id);
+    const { error } = await supabase.from("meetings").update({ status: "upcoming" } as any).eq("id", meeting.id);
+    if (error) { toast.error("Kunne ikke gjenopprette møtet. Prøv igjen.", { duration: 5000 }); return; }
     qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
     toast.success("Møte gjenopprettet");
   };
@@ -224,19 +227,21 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
   const addAgendaItem = async () => {
     if (!newAgenda.trim()) return;
     const order = (agendaItems?.length ?? 0);
-    await supabase.from("meeting_agenda_items" as any).insert({
+    const { error } = await supabase.from("meeting_agenda_items" as any).insert({
       meeting_id: meeting.id,
       title: newAgenda.trim(),
       sort_order: order,
     } as any);
+    if (error) { toast.error("Kunne ikke legge til agendapunkt. Prøv igjen.", { duration: 5000 }); return; }
     setNewAgenda("");
     qc.invalidateQueries({ queryKey: ["meeting_agenda_items", meeting.id] });
     toast.success("Lagret");
   };
 
   const toggleAgendaItem = async (itemId: string, completed: boolean) => {
-    await supabase.from("meeting_agenda_items" as any).update({ is_completed: completed } as any).eq("id", itemId);
-    qc.invalidateQueries({ queryKey: ["meeting_agenda_items", meeting.id] });
+    const { error } = await supabase.from("meeting_agenda_items" as any).update({ is_completed: completed } as any).eq("id", itemId);
+    if (error) toast.error("Kunne ikke oppdatere agendapunkt. Prøv igjen.", { duration: 5000 });
+    else qc.invalidateQueries({ queryKey: ["meeting_agenda_items", meeting.id] });
   };
 
   const moveAgendaItem = async (index: number, direction: "up" | "down") => {
@@ -245,11 +250,13 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
     if (swapIdx < 0 || swapIdx >= agendaItems.length) return;
     const a = agendaItems[index];
     const b = agendaItems[swapIdx];
-    await Promise.all([
+    const results = await Promise.all([
       supabase.from("meeting_agenda_items" as any).update({ sort_order: b.sort_order } as any).eq("id", a.id),
       supabase.from("meeting_agenda_items" as any).update({ sort_order: a.sort_order } as any).eq("id", b.id),
     ]);
-    qc.invalidateQueries({ queryKey: ["meeting_agenda_items", meeting.id] });
+    const err = results.find((r) => r.error)?.error;
+    if (err) toast.error("Kunne ikke flytte agendapunkt. Prøv igjen.", { duration: 5000 });
+    else qc.invalidateQueries({ queryKey: ["meeting_agenda_items", meeting.id] });
   };
 
   const addSubSession = async (type: string) => {
@@ -302,7 +309,8 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
   const startMeeting = async () => {
     const now = new Date();
     const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-    await supabase.from("meetings").update({ status: "in_progress", actual_start_time: time } as any).eq("id", meeting.id);
+    const { error } = await supabase.from("meetings").update({ status: "in_progress", actual_start_time: time } as any).eq("id", meeting.id);
+    if (error) { toast.error("Kunne ikke starte møtet. Prøv igjen.", { duration: 5000 }); return; }
     qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
     toast.success("Møte startet");
   };
@@ -310,29 +318,33 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
   const endMeeting = async () => {
     const now = new Date();
     const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-    await supabase.from("meetings").update({ status: "completed", actual_end_time: time } as any).eq("id", meeting.id);
+    const { error } = await supabase.from("meetings").update({ status: "completed", actual_end_time: time } as any).eq("id", meeting.id);
+    if (error) { toast.error("Kunne ikke avslutte møtet. Prøv igjen.", { duration: 5000 }); return; }
     qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
     toast.success("Møte avsluttet");
   };
 
   const addActionPoint = async () => {
-    await supabase.from("meeting_action_points").insert({
+    const { error } = await supabase.from("meeting_action_points").insert({
       meeting_id: meeting.id,
       title: "",
       is_completed: false,
     } as any);
+    if (error) { toast.error("Kunne ikke legge til action point. Prøv igjen.", { duration: 5000 }); return; }
     qc.invalidateQueries({ queryKey: ["meeting_action_points", meeting.id] });
   };
 
   const updateActionPoint = async (apId: string, updates: any) => {
-    await supabase.from("meeting_action_points").update(updates).eq("id", apId);
-    qc.invalidateQueries({ queryKey: ["meeting_action_points", meeting.id] });
+    const { error } = await supabase.from("meeting_action_points").update(updates).eq("id", apId);
+    if (error) toast.error("Kunne ikke lagre action point. Prøv igjen.", { duration: 5000 });
+    else qc.invalidateQueries({ queryKey: ["meeting_action_points", meeting.id] });
   };
 
   const toggleMeetingParticipant = async (memberId: string, isPresent: boolean) => {
     const current: string[] = meeting.participants || [];
     const updated = isPresent ? current.filter((id: string) => id !== memberId) : [...current, memberId];
-    await supabase.from("meetings").update({ participants: updated } as any).eq("id", meeting.id);
+    const { error } = await supabase.from("meetings").update({ participants: updated } as any).eq("id", meeting.id);
+    if (error) { toast.error("Kunne ikke oppdatere deltaker. Prøv igjen.", { duration: 5000 }); return; }
     qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
 
     // Sync to linked activity_registration_participants
@@ -355,12 +367,14 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
   };
 
   const deleteActionPoint = async (apId: string) => {
-    await supabase.from("meeting_action_points").delete().eq("id", apId);
-    qc.invalidateQueries({ queryKey: ["meeting_action_points", meeting.id] });
+    const { error } = await supabase.from("meeting_action_points").delete().eq("id", apId);
+    if (error) toast.error("Kunne ikke slette action point. Prøv igjen.", { duration: 5000 });
+    else qc.invalidateQueries({ queryKey: ["meeting_action_points", meeting.id] });
   };
 
   const overrideRole = async (field: "leader_id" | "notetaker_id", memberId: string | null) => {
-    await supabase.from("meetings").update({ [field]: memberId } as any).eq("id", meeting.id);
+    const { error } = await supabase.from("meetings").update({ [field]: memberId } as any).eq("id", meeting.id);
+    if (error) { toast.error("Kunne ikke oppdatere rolle. Prøv igjen.", { duration: 5000 }); return; }
     qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
     toast.success(memberId ? "Rolle oppdatert" : "Rolle fjernet");
   };
