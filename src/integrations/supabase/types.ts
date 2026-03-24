@@ -1031,6 +1031,62 @@ export type Database = {
           },
         ]
       }
+      requirements: {
+        Row: {
+          acceptance_criteria: string | null
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          linked_backlog_item_id: string | null
+          notes: string | null
+          priority: string
+          sort_order: number
+          source: string | null
+          status: string
+          title: string
+          type: string
+        }
+        Insert: {
+          acceptance_criteria?: string | null
+          category: string
+          created_at?: string
+          description?: string | null
+          id: string
+          linked_backlog_item_id?: string | null
+          notes?: string | null
+          priority?: string
+          sort_order?: number
+          source?: string | null
+          status?: string
+          title: string
+          type?: string
+        }
+        Update: {
+          acceptance_criteria?: string | null
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          linked_backlog_item_id?: string | null
+          notes?: string | null
+          priority?: string
+          sort_order?: number
+          source?: string | null
+          status?: string
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requirements_linked_backlog_item_id_fkey"
+            columns: ["linked_backlog_item_id"]
+            isOneToOne: false
+            referencedRelation: "backlog_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       resources: {
         Row: {
           category: string
