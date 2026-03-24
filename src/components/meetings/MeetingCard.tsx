@@ -145,9 +145,10 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
 
   // Auto-save room
   useEffect(() => {
-    const t = setTimeout(() => {
+    const t = setTimeout(async () => {
       if (meeting?.id && room !== (meeting?.room || "")) {
-        supabase.from("meetings").update({ room } as any).eq("id", meeting.id);
+        const { error } = await supabase.from("meetings").update({ room } as any).eq("id", meeting.id);
+        if (error) toast.error("Kunne ikke lagre rom. Prøv igjen.", { duration: 5000 });
       }
     }, 500);
     return () => clearTimeout(t);
@@ -155,7 +156,8 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
 
   const saveNotes = useCallback(async (val: string) => {
     if (!meeting?.id) return;
-    await supabase.from("meetings").update({ notes: val } as any).eq("id", meeting.id);
+    const { error } = await supabase.from("meetings").update({ notes: val } as any).eq("id", meeting.id);
+    if (error) toast.error("Kunne ikke lagre notater. Prøv igjen.", { duration: 5000 });
   }, [meeting?.id]);
 
   useEffect(() => {
