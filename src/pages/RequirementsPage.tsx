@@ -16,6 +16,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   ChevronDown,
   ChevronRight,
   Check,
@@ -85,6 +92,15 @@ export default function RequirementsPage() {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const initializedRef = useRef(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newReq, setNewReq] = useState({
+    type: "functional" as "functional" | "non_functional" | "documentation",
+    category: "Værkart",
+    title: "",
+    description: "",
+    acceptance_criteria: "",
+    priority: "should" as "must" | "should" | "could" | "wont",
+  });
 
   const { data: requirements, isLoading } = useQuery<Requirement[]>({
     queryKey: ["requirements"],
@@ -187,6 +203,52 @@ export default function RequirementsPage() {
       }
     );
   };
+
+  // ── Create new requirement ──
+  const createReqMutation = useMutation({
+    mutationFn: async (form: typeof newReq) => {
+      const all = requirements ?? [];
+      // Auto-generate ID: FK-XX, NFK-XX, DK-XX
+      const prefix =
+        form.type === "functional" ? "FK" :
+        form.type === "non_functional" ? "NFK" : "DK";
+      const existing = all.filter((r) => r.type === form.type);
+      const nums = existing.map((r) => parseInt(r.id.replace(/\D/g, ""), 10)).filter((n) => !isNaN(n));
+      const nextNum = nums.length > 0 ? Math.max(...nums) + 1 : 1;
+      const id = `${prefix}-${String(nextNum).padStart(2, "0")}`;
+      const maxSort = all.length > 0 ? Math.max(...all.map((r) => r.sort_order)) : 0;
+
+      const { error } = await (supabase
+        .from("requirements" as any)
+        .insert({
+          id,
+          title: form.title.trim(),
+          description: form.description.trim() || null,
+          acceptance_criteria: form.acceptance_criteria.trim() || null,
+          type: form.type,
+          category: form.category,
+          priority: form.priority,
+          status: "not_started",
+          sort_order: maxSort + 1,
+        } as any) as any);
+      if (error) throw error;
+
+      await logRequirementChange({
+        requirement_id: id,
+        change_type: "created",
+        description: `Krav opprettet: ${form.title.trim()}`,
+      });
+      return id;
+    },
+    onSuccess: (id) => {
+      queryClient.invalidateQueries({ queryKey: ["requirements"] });
+      toast.success("Krav opprettet");
+      setCreateOpen(false);
+      setNewReq({ type: "functional", category: "Værkart", title: "", description: "", acceptance_criteria: "", priority: "should" });
+      setSelectedId(id);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   // ── Create backlog item from requirement ──
   const REQ_TYPE_TO_BACKLOG: Record<string, string> = {
@@ -484,12 +546,109 @@ export default function RequirementsPage() {
         title="Kravspesifikasjon"
         description="Funksjonelle, ikke-funksjonelle og dokumentasjonskrav for prosjektet"
         action={
-          <Button size="sm" variant="outline" onClick={exportMarkdown}>
-            <Download className="h-3.5 w-3.5 mr-1.5" />
-            Eksporter til rapport
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-3.5 w-3.5 mr-1.5" />
+              Nytt krav
+            </Button>
+            <Button size="sm" variant="outline" onClick={exportMarkdown}>
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              Eksporter til rapport
+            </Button>
+          </div>
         }
       />
+
+      {/* Create requirement dialog */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Nytt krav</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Type</Label>
+                <Select
+                  value={newReq.type}
+                  onValueChange={(v) => setNewReq((p) => ({ ...p, type: v as any }))}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="functional">Funksjonell</SelectItem>
+                    <SelectItem value="non_functional">Ikke-funksjonell</SelectItem>
+                    <SelectItem value="documentation">Dokumentasjon</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Prioritet</Label>
+                <Select
+                  value={newReq.priority}
+                  onValueChange={(v) => setNewReq((p) => ({ ...p, priority: v as any }))}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="must">Must</SelectItem>
+                    <SelectItem value="should">Should</SelectItem>
+                    <SelectItem value="could">Could</SelectItem>
+                    <SelectItem value="wont">Won't</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Kategori</Label>
+              <Select
+                value={newReq.category}
+                onValueChange={(v) => setNewReq((p) => ({ ...p, category: v }))}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.keys(CATEGORY_LABELS).map((k) => (
+                    <SelectItem key={k} value={k}>{CATEGORY_LABELS[k]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Tittel *</Label>
+              <Input
+                value={newReq.title}
+                onChange={(e) => setNewReq((p) => ({ ...p, title: e.target.value }))}
+                placeholder="Kort beskrivelse av kravet"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Beskrivelse</Label>
+              <Textarea
+                value={newReq.description}
+                onChange={(e) => setNewReq((p) => ({ ...p, description: e.target.value }))}
+                placeholder="Detaljert beskrivelse (valgfritt)"
+                rows={3}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Akseptansekriterie</Label>
+              <Textarea
+                value={newReq.acceptance_criteria}
+                onChange={(e) => setNewReq((p) => ({ ...p, acceptance_criteria: e.target.value }))}
+                placeholder="Gitt... Når... Så... (valgfritt)"
+                rows={2}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Avbryt</Button>
+            <Button
+              disabled={!newReq.title.trim() || createReqMutation.isPending}
+              onClick={() => createReqMutation.mutate(newReq)}
+            >
+              Opprett krav
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Info banner */}
       {!bannerDismissed && unlinkedCount > 0 && (
