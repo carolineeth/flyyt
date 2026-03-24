@@ -583,10 +583,9 @@ export default function RequirementsPage() {
       )}
 
       {/* Detail panel */}
+      {selectedId && selectedReq && (
       <div
-        className={`fixed top-0 right-0 h-full w-[450px] bg-background border-l border-border shadow-2xl z-50 flex flex-col transition-transform duration-300 ${
-          selectedId ? "translate-x-0" : "translate-x-full"
-        }`}
+        className="fixed top-0 right-0 h-full w-[450px] bg-background border-l border-border shadow-2xl z-50 flex flex-col"
       >
         {selectedReq ? (
           <>
