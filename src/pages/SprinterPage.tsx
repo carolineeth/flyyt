@@ -18,6 +18,7 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { Layers, Plus, GripVertical, Search, X, StickyNote, Settings2, History, StopCircle, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import type { Sprint, SprintItem, BacklogItem, Subtask } from "@/lib/types";
+import { syncRequirementFromSprint } from "@/hooks/useRequirementChangelog";
 import SprintHistory from "@/components/sprints/SprintHistory";
 import CloseSprintModal from "@/components/sprints/CloseSprintModal";
 
@@ -191,11 +192,15 @@ export default function SprinterPage() {
   });
 
   const moveItemMutation = useMutation({
-    mutationFn: async ({ itemId, newColumn }: { itemId: string; newColumn: string }) => {
+    mutationFn: async ({ itemId, newColumn, backlogItemId }: { itemId: string; newColumn: string; backlogItemId?: string }) => {
       const { error } = await supabase.from("sprint_items").update({ column_name: newColumn }).eq("id", itemId);
       if (error) throw error;
+      // Sync linked requirement status
+      if (backlogItemId) {
+        await syncRequirementFromSprint(backlogItemId, newColumn);
+      }
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["sprint_items"] }); qc.invalidateQueries({ queryKey: ["all_sprint_backlog_ids"] }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["sprint_items"] }); qc.invalidateQueries({ queryKey: ["all_sprint_backlog_ids"] }); qc.invalidateQueries({ queryKey: ["requirements"] }); },
   });
 
   const removeFromSprintMutation = useMutation({
@@ -295,7 +300,7 @@ export default function SprinterPage() {
       // Dragged within sprint board
       const item = sprintItems?.find((i) => i.id === itemId);
       if (item && item.column_name !== colKey) {
-        moveItemMutation.mutate({ itemId, newColumn: colKey });
+        moveItemMutation.mutate({ itemId, newColumn: colKey, backlogItemId: (item as any).backlog_item_id });
       }
     }
   }, [sprintItems, moveItemMutation, addToSprintMutation]);

@@ -7,6 +7,7 @@ import {
   PRIORITY_DISPLAY,
   STATUS_DISPLAY,
 } from "@/hooks/useRequirementChangelog";
+import { logBacklogChange } from "@/lib/backlogChangelog";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ import {
   X,
   ExternalLink,
   Download,
+  Plus,
 } from "lucide-react";
 
 type Requirement = {
@@ -185,6 +187,67 @@ export default function RequirementsPage() {
       }
     );
   };
+
+  // ── Create backlog item from requirement ──
+  const REQ_TYPE_TO_BACKLOG: Record<string, string> = {
+    functional: "user_story",
+    non_functional: "technical",
+    documentation: "technical",
+  };
+  const REQ_PRIORITY_TO_BACKLOG: Record<string, string> = {
+    must: "must_have",
+    should: "should_have",
+    could: "nice_to_have",
+    wont: "nice_to_have",
+  };
+
+  const createBacklogItemMutation = useMutation({
+    mutationFn: async (req: Requirement) => {
+      const desc = [
+        req.description,
+        req.acceptance_criteria ? `\n\nAkseptansekriterie:\n${req.acceptance_criteria}` : null,
+      ].filter(Boolean).join("") || null;
+
+      const { data, error } = await supabase
+        .from("backlog_items")
+        .insert({
+          item_id: "",
+          title: `${req.id} — ${req.title}`,
+          description: desc,
+          type: REQ_TYPE_TO_BACKLOG[req.type] ?? "user_story",
+          priority: REQ_PRIORITY_TO_BACKLOG[req.priority] ?? "should_have",
+          status: "backlog",
+        })
+        .select()
+        .single();
+      if (error) throw error;
+
+      // Link the requirement to the new backlog item
+      const { error: linkErr } = await (supabase
+        .from("requirements" as any)
+        .update({ linked_backlog_item_id: data.id } as any)
+        .eq("id", req.id) as any);
+      if (linkErr) throw linkErr;
+
+      // Log to both changelogs
+      await logRequirementChange({
+        requirement_id: req.id,
+        change_type: "added_to_backlog",
+        new_value: data.id,
+        description: `Oppgave opprettet i backlog og koblet til kravet`,
+      });
+      await logBacklogChange({ backlogItemId: data.id, changeType: "created", newValue: data.title });
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["requirements"] });
+      queryClient.invalidateQueries({ queryKey: ["backlog_items_for_req"] });
+      queryClient.invalidateQueries({ queryKey: ["backlog_items"] });
+      toast.success("Oppgave opprettet i backlog og koblet til kravet");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   useEffect(() => {
     if (!requirements || initializedRef.current) return;
@@ -758,6 +821,25 @@ export default function RequirementsPage() {
                   className="text-xs resize-none"
                 />
               </div>
+
+              {/* Create backlog item from requirement */}
+              {!selectedReq.linked_backlog_item_id && (
+                <div className="pt-1 border-t border-border/50">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-xs"
+                    disabled={createBacklogItemMutation.isPending}
+                    onClick={() => createBacklogItemMutation.mutate(selectedReq)}
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1.5" />
+                    Opprett oppgave i backlog
+                  </Button>
+                  <p className="text-[11px] text-muted-foreground text-center mt-1">
+                    Oppretter og kobler automatisk
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <Label className="text-xs">Koble til backlog-item</Label>

@@ -20,7 +20,9 @@ import {
   Target,
   CheckCircle,
   Activity,
+  ClipboardList,
 } from "lucide-react";
+import { useRequirementChanges } from "@/hooks/useRequirementChangelog";
 import {
   LineChart,
   Line,
@@ -180,6 +182,15 @@ export default function InsightsPage() {
   const { data: activityRegs = [] } = useActivityRegistrations();
   const { data: dailyUpdates = [] } = useDailyUpdates();
   const { data: changelog = [] } = useBacklogChangelog();
+  const { data: reqChanges = [] } = useRequirementChanges();
+  const { data: requirements = [] } = useQuery<{ id: string; title: string; category: string; status: string; priority: string }[]>({
+    queryKey: ["requirements"],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("requirements" as any).select("id, title, category, status, priority") as any);
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const [reflections, setReflections] = useState<Record<string, string>>({});
   const setReflection = (key: string, val: string) =>
@@ -388,12 +399,30 @@ export default function InsightsPage() {
     return text;
   };
 
+  const generateRequirementsReport = () => {
+    const functional = requirements.filter((r) => r.category === "functional");
+    const nonFunctional = requirements.filter((r) => r.category === "non_functional");
+    const documentation = requirements.filter((r) => r.category === "documentation");
+    const implemented = requirements.filter((r) => r.status === "implemented" || r.status === "verified");
+    const lastChange = reqChanges[0];
+    let text = `## 4.3 Kravspesifikasjon og endringer\n\n`;
+    text += `Kravspesifikasjonen inneholder ${requirements.length} krav: ${functional.length} funksjonelle, ${nonFunctional.length} ikke-funksjonelle og ${documentation.length} dokumentasjonskrav.\n\n`;
+    text += `${implemented.length} av ${requirements.length} krav er implementert eller verifisert (${requirements.length > 0 ? Math.round((implemented.length / requirements.length) * 100) : 0}%).\n\n`;
+    text += `Totalt ${reqChanges.length} endringer er logget i endringsloggen.\n`;
+    if (lastChange) {
+      text += `Siste endring: ${format(parseISO(lastChange.created_at), "d. MMMM yyyy", { locale: nb })} — ${lastChange.description ?? lastChange.change_type}.\n`;
+    }
+    if (reflections.requirements) text += `\n${reflections.requirements}`;
+    return text;
+  };
+
   const generateFullReport = () => {
     return [
       generateSprintReport(),
       generateCrossFunctionalReport(),
       generateBacklogReport(),
       generateAgileReport(),
+      generateRequirementsReport(),
     ].join("\n\n---\n\n");
   };
 
@@ -703,6 +732,93 @@ export default function InsightsPage() {
             </div>
           </div>
         )}
+      </SectionCard>
+
+      {/* REQUIREMENTS CHANGELOG */}
+      <SectionCard
+        title="Kravspesifikasjon-endringer"
+        icon={<ClipboardList className="h-4 w-4" />}
+        onCopy={() => copy(generateRequirementsReport())}
+      >
+        {/* Summary cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          <div className="rounded-md border bg-muted/30 p-3">
+            <p className="text-xs text-muted-foreground">Funksjonelle krav</p>
+            <p className="text-lg font-bold">{requirements.filter((r) => r.category === "functional").length}</p>
+          </div>
+          <div className="rounded-md border bg-muted/30 p-3">
+            <p className="text-xs text-muted-foreground">Ikke-funksjonelle</p>
+            <p className="text-lg font-bold">{requirements.filter((r) => r.category === "non_functional").length}</p>
+          </div>
+          <div className="rounded-md border bg-muted/30 p-3">
+            <p className="text-xs text-muted-foreground">Totale endringer</p>
+            <p className="text-lg font-bold">{reqChanges.length}</p>
+          </div>
+          <div className="rounded-md border bg-muted/30 p-3">
+            <p className="text-xs text-muted-foreground">Siste endring</p>
+            <p className="text-sm font-semibold">
+              {reqChanges[0]
+                ? format(parseISO(reqChanges[0].created_at), "d. MMM", { locale: nb })
+                : "—"}
+            </p>
+          </div>
+        </div>
+
+        {/* Implemented progress */}
+        {requirements.length > 0 && (() => {
+          const implemented = requirements.filter((r) => r.status === "implemented" || r.status === "verified").length;
+          const pct = Math.round((implemented / requirements.length) * 100);
+          return (
+            <div className="mb-4">
+              <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                <span>Implementert</span>
+                <span>{implemented} / {requirements.length} ({pct}%)</span>
+              </div>
+              <div className="bg-muted rounded-full h-2">
+                <div className="bg-primary rounded-full h-2 transition-all" style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Change timeline */}
+        {reqChanges.length > 0 ? (
+          <div>
+            <h4 className="text-sm font-medium mb-2 text-muted-foreground">Endringslogg (siste 20)</h4>
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              {reqChanges.slice(0, 20).map((c) => {
+                const colorMap: Record<string, string> = {
+                  created: "bg-green-500",
+                  updated: "bg-blue-500",
+                  deleted: "bg-red-500",
+                  status_changed: "bg-amber-500",
+                  priority_changed: "bg-purple-500",
+                  added_to_backlog: "bg-cyan-500",
+                  removed_from_backlog: "bg-orange-500",
+                };
+                const dot = colorMap[c.change_type] ?? "bg-muted-foreground";
+                return (
+                  <div key={c.id} className="flex gap-3 items-start text-xs">
+                    <span className={`mt-1.5 h-2 w-2 rounded-full flex-shrink-0 ${dot}`} />
+                    <div className="flex-1">
+                      <span className="text-muted-foreground">{format(parseISO(c.created_at), "d. MMM HH:mm", { locale: nb })}</span>
+                      {" · "}
+                      <span>{c.description ?? c.change_type}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Ingen endringer logget ennå.</p>
+        )}
+
+        <ReflectionField
+          value={reflections.requirements || ""}
+          onChange={(v) => setReflection("requirements", v)}
+          placeholder="Refleksjon: Hvordan utviklet kravspesifikasjonen seg gjennom prosjektet?"
+        />
       </SectionCard>
 
       {/* EXPORT */}

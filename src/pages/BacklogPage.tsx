@@ -80,6 +80,25 @@ export default function BacklogPage() {
     },
   });
 
+  // Unlinked requirements for pre-fill
+  const { data: unlinkedRequirements } = useQuery<{
+    id: string; title: string; description: string | null;
+    acceptance_criteria: string | null; type: string; priority: string;
+  }[]>({
+    queryKey: ["requirements_unlinked"],
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("requirements" as any)
+        .select("id, title, description, acceptance_criteria, type, priority")
+        .is("linked_backlog_item_id", null)
+        .order("sort_order") as any);
+      if (error) throw error;
+      return data as any;
+    },
+  });
+  const REQ_TYPE_MAP: Record<string, string> = { functional: "user_story", non_functional: "technical", documentation: "technical" };
+  const REQ_PRIO_MAP: Record<string, string> = { must: "must_have", should: "should_have", could: "nice_to_have", wont: "nice_to_have" };
+
   const [showCreate, setShowCreate] = useState(false);
   const [filterType, setFilterType] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -379,6 +398,32 @@ export default function BacklogPage() {
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Nytt backlog-item</DialogTitle></DialogHeader>
           <div className="space-y-3">
+            {/* Pre-fill from requirement */}
+            {(unlinkedRequirements?.length ?? 0) > 0 && (
+              <div className="rounded-md bg-muted/50 p-3 space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Forhåndsutfyll fra krav (valgfritt)</Label>
+                <Select value="none" onValueChange={(v) => {
+                  if (v === "none") return;
+                  const req = unlinkedRequirements?.find((r) => r.id === v);
+                  if (!req) return;
+                  setNewItem((p) => ({
+                    ...p,
+                    title: `${req.id} — ${req.title}`,
+                    description: [req.description, req.acceptance_criteria ? `\n\nAkseptansekriterie:\n${req.acceptance_criteria}` : null].filter(Boolean).join(""),
+                    type: REQ_TYPE_MAP[req.type] ?? "user_story",
+                    priority: REQ_PRIO_MAP[req.priority] ?? "should_have",
+                  }));
+                }}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Velg krav for å forhåndsutfylle..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Velg krav —</SelectItem>
+                    {unlinkedRequirements?.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>{r.id} — {r.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div><Label>Tittel *</Label><Input value={newItem.title} onChange={(e) => setNewItem((p) => ({ ...p, title: e.target.value }))} placeholder="Kort beskrivende tittel" /></div>
             <div>
               <Label>Beskrivelse</Label>

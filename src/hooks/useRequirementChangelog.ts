@@ -109,6 +109,59 @@ export function useSeedRequirementChangelog() {
   });
 }
 
+// ─── Sprint → Requirement status sync ────────────────────────────────────────
+
+/**
+ * After a sprint item is moved to a new column, sync the status of any
+ * requirement linked to the corresponding backlog item.
+ *
+ * Column mapping:
+ *  done        → "implemented"  (always)
+ *  in_progress → "in_progress"  (only if currently "not_started")
+ *  review      → "in_progress"  (only if currently "not_started")
+ *  todo        → no change      (behold — don't go backwards)
+ */
+export async function syncRequirementFromSprint(
+  backlogItemId: string,
+  columnName: string,
+  backlogItemTitle?: string
+) {
+  const { data: reqs, error } = await (supabase
+    .from("requirements" as any)
+    .select("id, status")
+    .eq("linked_backlog_item_id", backlogItemId) as any);
+  if (error || !reqs?.length) return;
+
+  for (const req of reqs as { id: string; status: string }[]) {
+    let newStatus: string | null = null;
+
+    if (columnName === "done" && req.status !== "implemented" && req.status !== "verified") {
+      newStatus = "implemented";
+    } else if (
+      (columnName === "in_progress" || columnName === "review") &&
+      req.status === "not_started"
+    ) {
+      newStatus = "in_progress";
+    }
+
+    if (newStatus) {
+      await (supabase
+        .from("requirements" as any)
+        .update({ status: newStatus } as any)
+        .eq("id", req.id) as any);
+
+      await logRequirementChange({
+        requirement_id: req.id,
+        change_type: "status_changed",
+        field_changed: "status",
+        old_value: req.status,
+        new_value: newStatus,
+        description: `Auto-oppdatert fra Sprint Board: ${backlogItemTitle ?? "item"} flyttet til ${columnName}`,
+      });
+    }
+  }
+}
+
 // ─── Human-readable labels ────────────────────────────────────────────────────
 
 export const CHANGE_TYPE_LABELS: Record<string, string> = {
