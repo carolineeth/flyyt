@@ -250,6 +250,24 @@ export default function RequirementsPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  // ── Delete requirement ──
+  const deleteReqMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase
+        .from("requirements" as any)
+        .delete()
+        .eq("id", id) as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["requirements"] });
+      queryClient.invalidateQueries({ queryKey: ["requirement_changes"] });
+      toast.success("Krav slettet");
+      setSelectedId(null);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   // ── Create backlog item from requirement ──
   const REQ_TYPE_TO_BACKLOG: Record<string, string> = {
     functional: "user_story",
@@ -1045,6 +1063,24 @@ export default function RequirementsPage() {
                     Auto-status fra Sprint Board: item er i Ferdig-kolonnen
                   </div>
                 )}
+              </div>
+
+              {/* Delete */}
+              <div className="pt-2 border-t border-border">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                  disabled={deleteReqMutation.isPending}
+                  onClick={() => {
+                    if (confirm(`Slett "${selectedReq.id} — ${selectedReq.title}"? Dette kan ikke angres.`)) {
+                      deleteReqMutation.mutate(selectedReq.id);
+                    }
+                  }}
+                >
+                  <X className="h-3.5 w-3.5 mr-1.5" />
+                  Slett krav
+                </Button>
               </div>
             </div>
       </div>
