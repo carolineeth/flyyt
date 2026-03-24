@@ -86,7 +86,7 @@ export default function RequirementsPage() {
         .select("*")
         .order("sort_order");
       if (error) throw error;
-      return data as Requirement[];
+      return (data as unknown) as Requirement[];
     },
   });
 
