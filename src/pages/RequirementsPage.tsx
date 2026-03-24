@@ -583,13 +583,10 @@ export default function RequirementsPage() {
       )}
 
       {/* Detail panel */}
+      {selectedId && selectedReq && (
       <div
-        className={`fixed top-0 right-0 h-full w-[450px] bg-background border-l border-border shadow-2xl z-50 flex flex-col transition-transform duration-300 ${
-          selectedId ? "translate-x-0" : "translate-x-full"
-        }`}
+        className="fixed top-0 right-0 h-full w-[450px] bg-background border-l border-border shadow-2xl z-50 flex flex-col"
       >
-        {selectedReq ? (
-          <>
             {/* Panel header */}
             <div className="flex items-start justify-between p-4 border-b border-border">
               <div className="flex-1 min-w-0">
@@ -610,14 +607,12 @@ export default function RequirementsPage() {
 
             {/* Panel body */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {/* Description */}
               {selectedReq.description && (
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   {selectedReq.description}
                 </p>
               )}
 
-              {/* Acceptance criteria */}
               {selectedReq.acceptance_criteria && (
                 <div>
                   <p className="text-xs font-medium text-muted-foreground mb-1.5">
@@ -635,7 +630,6 @@ export default function RequirementsPage() {
                 </div>
               )}
 
-              {/* Prioritet */}
               <div className="space-y-1.5">
                 <Label className="text-xs">Prioritet</Label>
                 <Select
@@ -656,7 +650,6 @@ export default function RequirementsPage() {
                 </Select>
               </div>
 
-              {/* Kilde */}
               {selectedReq.source && (
                 <div className="space-y-1.5">
                   <Label className="text-xs">Kilde</Label>
@@ -666,7 +659,6 @@ export default function RequirementsPage() {
                 </div>
               )}
 
-              {/* Status */}
               <div className="space-y-1.5">
                 <Label className="text-xs">Status</Label>
                 <Select
@@ -687,7 +679,6 @@ export default function RequirementsPage() {
                 </Select>
               </div>
 
-              {/* Type */}
               <div className="space-y-1.5">
                 <Label className="text-xs">Type</Label>
                 <p className="text-xs text-muted-foreground px-3 py-2 rounded-md bg-muted">
@@ -695,7 +686,6 @@ export default function RequirementsPage() {
                 </p>
               </div>
 
-              {/* Notater */}
               <div className="space-y-1.5">
                 <Label className="text-xs">Notater</Label>
                 <Textarea
@@ -709,7 +699,6 @@ export default function RequirementsPage() {
                 />
               </div>
 
-              {/* Koble til backlog-item */}
               <div className="space-y-1.5">
                 <Label className="text-xs">Koble til backlog-item</Label>
                 <Select
@@ -735,7 +724,6 @@ export default function RequirementsPage() {
                   </SelectContent>
                 </Select>
 
-                {/* Linked item card */}
                 {linkedBacklogItem && (
                   <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5 flex items-center justify-between gap-2 mt-2">
                     <div>
@@ -750,7 +738,6 @@ export default function RequirementsPage() {
                   </div>
                 )}
 
-                {/* Auto-status from sprint board */}
                 {isInDone && (
                   <div className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 px-2 py-1.5 rounded mt-1">
                     <Check className="h-3 w-3" />
@@ -759,9 +746,8 @@ export default function RequirementsPage() {
                 )}
               </div>
             </div>
-          </>
-        ) : null}
       </div>
+      )}
     </div>
   );
 }
