@@ -12,6 +12,7 @@ import AuthPage from "@/pages/AuthPage";
 import DashboardPage from "@/pages/DashboardPage";
 import ActivitiesPage from "@/pages/ActivitiesPage";
 import SprinterPage from "@/pages/SprinterPage";
+import RequirementsPage from "@/pages/RequirementsPage";
 import OppgaverPage from "@/pages/OppgaverPage";
 import StandupPage from "@/pages/StandupPage";
 import MeetingCalendarPage from "@/pages/MeetingCalendarPage";
@@ -85,6 +86,7 @@ const App = () => (
                 <Route path="/aktiviteter" element={<ActivitiesPage />} />
                 <Route path="/standup" element={<StandupPage />} />
                 <Route path="/sprinter" element={<SprinterPage />} />
+                <Route path="/krav" element={<RequirementsPage />} />
                 <Route path="/oppgaver" element={<OppgaverPage />} />
                 <Route path="/moter" element={<MeetingCalendarPage />} />
                 <Route path="/ressurser" element={<ResourcesPage />} />
