@@ -233,6 +233,17 @@ export function OverviewTab({ notes }: Props) {
 
   const progressPct = totalElements > 0 ? Math.round((completeElements / totalElements) * 100) : 0;
 
+  // Auto-collapse empty sections after data loads
+  useEffect(() => {
+    if (completedRegs.length === 0) setActivitiesOpen(false);
+  }, [completedRegs.length]);
+  useEffect(() => {
+    if (filteredSprints.length === 0) setSprintsOpen(false);
+  }, [filteredSprints.length]);
+  useEffect(() => {
+    if (filteredMeetings.length === 0) setMeetingsOpen(false);
+  }, [filteredMeetings.length]);
+
   // Group activities by week
   const activitiesByWeek = useMemo(() => {
     const groups: Record<number, Registration[]> = {};
