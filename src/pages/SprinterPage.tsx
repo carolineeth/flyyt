@@ -16,7 +16,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Layers, Plus, GripVertical, Search, X, StickyNote, Settings2, History, StopCircle, PanelLeftClose, PanelLeftOpen, Check } from "lucide-react";
+import { Layers, Plus, GripVertical, Search, X, StickyNote, Settings2, History, StopCircle, PanelLeftClose, PanelLeftOpen, Check, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import type { Sprint, SprintItem, BacklogItem, Subtask } from "@/lib/types";
 import { syncRequirementFromSprint } from "@/hooks/useRequirementChangelog";
 import SprintHistory from "@/components/sprints/SprintHistory";
@@ -128,6 +129,7 @@ export default function SprinterPage() {
   const [detailItem, setDetailItem] = useState<BacklogItem | null>(null);
   const [detailSprintItemId, setDetailSprintItemId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<any>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
 
   // Computed
@@ -214,6 +216,26 @@ export default function SprinterPage() {
       setDetailItem(null);
       toast.success("Fjernet fra sprint");
     },
+  });
+
+  const deleteBacklogItemMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from("sprint_items").delete().eq("backlog_item_id", id);
+      await supabase.from("daily_updates").update({ backlog_item_id: null }).eq("backlog_item_id", id);
+      await supabase.from("subtasks").delete().eq("backlog_item_id", id);
+      await supabase.from("backlog_changelog").delete().eq("backlog_item_id", id);
+      const { error } = await supabase.from("backlog_items").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["sprint_items"] });
+      qc.invalidateQueries({ queryKey: ["all_sprint_backlog_ids"] });
+      qc.invalidateQueries({ queryKey: ["backlog_items"] });
+      setDetailItem(null);
+      setConfirmDeleteId(null);
+      toast.success("Item slettet");
+    },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const inlineCreateMutation = useMutation({
@@ -815,6 +837,10 @@ export default function SprinterPage() {
                 </div>
               </div>
               <DialogFooter>
+                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive mr-auto"
+                  onClick={() => setConfirmDeleteId(detailItem.id)}>
+                  <Trash2 className="h-4 w-4 mr-1" />Slett item
+                </Button>
                 <Button variant="ghost" onClick={() => setDetailItem(null)}>Avbryt</Button>
                 <Button onClick={saveDetail}>Lagre</Button>
               </DialogFooter>
@@ -822,6 +848,26 @@ export default function SprinterPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!confirmDeleteId} onOpenChange={(o) => !o && setConfirmDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Slette item?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Itemet fjernes fra backlog og eventuelle sprinter. Dette kan ikke angres.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => confirmDeleteId && deleteBacklogItemMutation.mutate(confirmDeleteId)}
+            >
+              Slett
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Close sprint modal */}
       {currentSprint && sprintItems && (

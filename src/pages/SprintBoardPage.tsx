@@ -16,7 +16,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { toast } from "sonner";
-import { Columns3, Plus, StickyNote, GripVertical, PanelRightOpen, Search, X, Check } from "lucide-react";
+import { Columns3, Plus, StickyNote, GripVertical, PanelRightOpen, Search, X, Check, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import type { Sprint, SprintItem, BacklogItem } from "@/lib/types";
 
 const columns = [
@@ -115,6 +116,7 @@ export default function SprintBoardPage() {
   const [inlineTitle, setInlineTitle] = useState("");
   const [detailItem, setDetailItem] = useState<(SprintItem & { backlog_item: BacklogItem }) | null>(null);
   const [editForm, setEditForm] = useState<any>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const wipLimit = 2;
 
@@ -193,6 +195,25 @@ export default function SprintBoardPage() {
       setDetailItem(null);
       toast.success("Fjernet fra sprint");
     },
+  });
+
+  const deleteBacklogItemMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from("sprint_items").delete().eq("backlog_item_id", id);
+      await supabase.from("daily_updates").update({ backlog_item_id: null }).eq("backlog_item_id", id);
+      await supabase.from("subtasks").delete().eq("backlog_item_id", id);
+      await supabase.from("backlog_changelog").delete().eq("backlog_item_id", id);
+      const { error } = await supabase.from("backlog_items").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["sprint_items"] });
+      qc.invalidateQueries({ queryKey: ["backlog_items"] });
+      setDetailItem(null);
+      setConfirmDeleteId(null);
+      toast.success("Item slettet");
+    },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const inlineCreateMutation = useMutation({
@@ -640,6 +661,10 @@ export default function SprintBoardPage() {
                 <Button variant="destructive" size="sm" onClick={() => removeFromSprintMutation.mutate(detailItem.id)}>
                   Fjern fra sprint
                 </Button>
+                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive"
+                  onClick={() => setConfirmDeleteId(detailItem.backlog_item_id)}>
+                  <Trash2 className="h-4 w-4 mr-1" />Slett item
+                </Button>
                 <div className="flex-1" />
                 <Button variant="ghost" onClick={() => setDetailItem(null)}>Avbryt</Button>
                 <Button onClick={saveDetail}>Lagre</Button>
@@ -648,6 +673,26 @@ export default function SprintBoardPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!confirmDeleteId} onOpenChange={(o) => !o && setConfirmDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Slette item?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Itemet fjernes fra backlog og eventuelle sprinter. Dette kan ikke angres.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Avbryt</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => confirmDeleteId && deleteBacklogItemMutation.mutate(confirmDeleteId)}
+            >
+              Slett
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
