@@ -4,59 +4,129 @@
 
 @layer base {
   :root {
-    --background: 0 0% 99%;
-    --foreground: 210 11% 15%;
+    /* ── Bakgrunn og tekst ──────────────────────────────── */
+    /* Varm grå nøytral (#FAFAF8 → HSL 40 20% 98%) */
+    --background: 40 20% 98%;
+    /* Varm mørk (#2E2C28 → HSL 38 10% 18%) */
+    --foreground: 38 10% 18%;
 
+    /* Kort: hvit med varm undertone */
     --card: 0 0% 100%;
-    --card-foreground: 210 11% 15%;
+    --card-foreground: 38 10% 18%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 210 11% 15%;
+    --popover-foreground: 38 10% 18%;
 
+    /* ── Primær (teal — uendret) ────────────────────────── */
     --primary: 160 76% 24%;
     --primary-foreground: 0 0% 100%;
 
+    /* ── Sekundær (lys teal) ────────────────────────────── */
     --secondary: 160 14% 95%;
     --secondary-foreground: 160 76% 24%;
 
-    --muted: 210 11% 96%;
-    --muted-foreground: 210 7% 46%;
+    /* ── Muted / dempet ─────────────────────────────────── */
+    /* neutral-100 (#F5F4F1 → HSL 40 18% 95%) */
+    --muted: 40 18% 95%;
+    /* neutral-500 (#8E8A81 → HSL 38 6% 53%) */
+    --muted-foreground: 38 6% 53%;
 
-    --accent: 160 14% 93%;
+    /* ── Aksent (teal tint) ─────────────────────────────── */
+    --accent: 160 30% 93%;
     --accent-foreground: 160 76% 20%;
 
-    --destructive: 0 72% 51%;
+    /* ── Destruktiv / danger (#C43333 → HSL 0 59% 48%) ──── */
+    --destructive: 0 59% 48%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 14% 91%;
-    --input: 210 14% 89%;
+    /* ── Border, input, ring ────────────────────────────── */
+    /* neutral-200 (#ECEAE5 → HSL 38 15% 91%) */
+    --border: 38 15% 91%;
+    /* neutral-300 (#D9D6CF → HSL 38 10% 84%) */
+    --input: 38 10% 84%;
     --ring: 160 76% 24%;
 
-    --radius: 0.5rem;
+    /* ── Border radius: 12px for cards ─────────────────── */
+    --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 210 7% 36%;
+    /* ── Sidebar ────────────────────────────────────────── */
+    /* neutral-50 (#FAFAF8) */
+    --sidebar-background: 40 20% 98%;
+    /* neutral-600 (#6B675F → HSL 38 7% 39%) */
+    --sidebar-foreground: 38 7% 39%;
     --sidebar-primary: 160 76% 24%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 160 14% 95%;
+    --sidebar-accent: 160 30% 93%;
     --sidebar-accent-foreground: 160 76% 20%;
-    --sidebar-border: 210 14% 93%;
+    /* neutral-200 */
+    --sidebar-border: 38 15% 91%;
     --sidebar-ring: 160 76% 24%;
 
-    /* Semantic tokens */
-    --success: 160 76% 24%;
+    /* ── Semantiske status-farger ───────────────────────── */
+    /* success: #2D7A4F → HSL 145 46% 33% — skilt fra primær */
+    --success: 145 46% 33%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
+
+    /* warning: #B8860B → HSL 44 88% 38% — mørkere for kontrast (4.5:1 på hvit) */
+    --warning: 44 88% 38%;
     --warning-foreground: 0 0% 100%;
-    --info: 200 80% 44%;
+
+    /* info: #2563A8 → HSL 211 63% 41% */
+    --info: 211 63% 41%;
     --info-foreground: 0 0% 100%;
 
-    /* Type badges */
+    /* ── Type badges (krav-kategorier) ─────────────────── */
     --badge-code: 210 80% 52%;
     --badge-design: 330 65% 55%;
     --badge-report: 270 55% 55%;
-    --badge-admin: 210 7% 56%;
-    --badge-mandatory: 0 72% 51%;
+    --badge-admin: 38 6% 53%;
+    --badge-mandatory: 0 59% 48%;
+  }
+
+  .dark {
+    --background: 38 10% 8%;
+    --foreground: 40 18% 95%;
+
+    --card: 38 10% 11%;
+    --card-foreground: 40 18% 95%;
+
+    --popover: 38 10% 11%;
+    --popover-foreground: 40 18% 95%;
+
+    --primary: 160 60% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 38 10% 18%;
+    --secondary-foreground: 40 18% 95%;
+
+    --muted: 38 10% 15%;
+    --muted-foreground: 38 6% 63%;
+
+    --accent: 38 10% 18%;
+    --accent-foreground: 40 18% 95%;
+
+    --destructive: 0 59% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 38 10% 22%;
+    --input: 38 10% 22%;
+    --ring: 160 60% 45%;
+
+    --sidebar-background: 38 10% 9%;
+    --sidebar-foreground: 38 6% 63%;
+    --sidebar-primary: 160 60% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 38 10% 15%;
+    --sidebar-accent-foreground: 40 18% 95%;
+    --sidebar-border: 38 10% 18%;
+    --sidebar-ring: 160 60% 45%;
+
+    --success: 145 46% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 44 88% 50%;
+    --warning-foreground: 0 0% 100%;
+    --info: 211 63% 55%;
+    --info-foreground: 0 0% 100%;
   }
 }
 
@@ -67,34 +137,57 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'DM Sans', system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.625;
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    @apply tracking-tight;
-    text-wrap: balance;
+  h1 {
+    @apply text-2xl font-semibold tracking-tight;
+    color: hsl(var(--foreground));
+  }
+  h2 {
+    @apply text-lg font-semibold tracking-tight;
+  }
+  h3 {
+    @apply text-[15px] font-semibold;
   }
 
   p {
     text-wrap: pretty;
   }
+
+  /* Fokus-ring — synlig for alle interaktive elementer */
+  :focus-visible {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 2px;
+  }
+
+  /* Monospace for IDs og kode */
+  code, kbd, .font-mono {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.875em;
+  }
 }
 
 @layer utilities {
   .scroll-reveal {
-    animation: scrollReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: scrollReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Touch-target hjelper: gjør klikkbart område minimum 44px */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
   }
 }
 
 @keyframes scrollReveal {
   from {
     opacity: 0;
-    transform: translateY(16px);
-    filter: blur(4px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
-    filter: blur(0);
   }
 }

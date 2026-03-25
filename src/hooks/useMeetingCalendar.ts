@@ -192,9 +192,9 @@ export function useAllMeetingSubSessions() {
     queryFn: async () => {
       const { data, error } = await (supabase
         .from("meeting_sub_sessions" as any)
-        .select("id, type, notes, type_specific_data") as any);
+        .select("id, meeting_id, type, notes, type_specific_data") as any);
       if (error) throw error;
-      return data as { id: string; type: string; notes: string | null; type_specific_data: Record<string, any> }[];
+      return data as { id: string; meeting_id: string; type: string; notes: string | null; type_specific_data: Record<string, any> }[];
     },
   });
 }

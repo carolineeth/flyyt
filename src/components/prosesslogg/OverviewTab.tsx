@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActivityCatalog, useActivityRegistrations, type Registration, type CatalogItem } from "@/hooks/useActivityCatalog";
@@ -14,7 +14,7 @@ import { ActivitySlideOver } from "./ActivitySlideOver";
 import { SprintSlideOver } from "./SprintSlideOver";
 import { MeetingSlideOver } from "./MeetingSlideOver";
 import { toast } from "sonner";
-import { Copy, FileText, ChevronRight } from "lucide-react";
+import { Copy, FileText, ChevronRight, ChevronDown } from "lucide-react";
 import type { Sprint } from "@/lib/types";
 
 function formatTypeSpecificExport(
@@ -135,6 +135,17 @@ export function OverviewTab({ notes }: Props) {
     return map;
   }, [allSubSessions]);
 
+  // Map meeting_id → sub_sessions for filtering
+  const subSessionsByMeeting = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    (allSubSessions ?? []).forEach((ss) => {
+      if (!ss.meeting_id) return;
+      if (!map[ss.meeting_id]) map[ss.meeting_id] = [];
+      map[ss.meeting_id].push(ss);
+    });
+    return map;
+  }, [allSubSessions]);
+
   const effectiveDescription = (r: Registration) =>
     r.description || (r.linked_sub_session_id ? (subSessionMap[r.linked_sub_session_id]?.notes ?? null) : null);
   const { data: allAgendaItems } = useMeetingAgendaItemsAll();
@@ -154,6 +165,22 @@ export function OverviewTab({ notes }: Props) {
   const [selectedSprint, setSelectedSprint] = useState<Sprint | null>(null);
   const [selectedMeeting, setSelectedMeeting] = useState<any>(null);
   const [exportType, setExportType] = useState("all");
+
+  // Section collapse state — default expanded for sections with content, collapsed when empty
+  const [activitiesOpen, setActivitiesOpen] = useState(true);
+  const [sprintsOpen, setSprintsOpen] = useState(true);
+  const [meetingsOpen, setMeetingsOpen] = useState(true);
+
+  // Auto-collapse empty sections after data loads
+  useEffect(() => {
+    if (completedRegs.length === 0) setActivitiesOpen(false);
+  }, [completedRegs.length]);
+  useEffect(() => {
+    if (filteredSprints.length === 0) setSprintsOpen(false);
+  }, [filteredSprints.length]);
+  useEffect(() => {
+    if (filteredMeetings.length === 0) setMeetingsOpen(false);
+  }, [filteredMeetings.length]);
 
   const catalogMap = useMemo(() => {
     const map: Record<string, CatalogItem> = {};
@@ -193,8 +220,16 @@ export function OverviewTab({ notes }: Props) {
   }, [sprints, dateFrom, dateTo]);
 
   const filteredMeetings = useMemo(() => {
-    return (meetings ?? []).filter((m) => inRange(m.meeting_date || m.date)).filter((m) => m.notes || (allAgendaItems ?? []).some((a) => a.meeting_id === m.id));
-  }, [meetings, allAgendaItems, dateFrom, dateTo]);
+    return (meetings ?? [])
+      .filter((m) => inRange(m.meeting_date))
+      .filter((m) => {
+        if (m.notes) return true;
+        if ((allActionPoints ?? []).some((a: any) => a.meeting_id === m.id)) return true;
+        if ((allAgendaItems ?? []).some((a) => a.meeting_id === m.id)) return true;
+        const subs = subSessionsByMeeting[m.id] ?? [];
+        return subs.some((ss) => ss.notes || Object.keys(ss.type_specific_data ?? {}).some((k) => ss.type_specific_data[k]));
+      });
+  }, [meetings, allAgendaItems, allActionPoints, subSessionsByMeeting, dateFrom, dateTo]);
 
   // Completeness counting
   const totalElements = completedRegs.length + filteredSprints.length + filteredMeetings.length + (decisions ?? []).length;
@@ -320,14 +355,22 @@ export function OverviewTab({ notes }: Props) {
 
       {/* Activities */}
       <section>
-        <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-3">Teamaktiviteter ({completedRegs.length})</h3>
-        {activitiesByWeek.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4">Ingen fullførte aktiviteter</p>
+        <button
+          onClick={() => setActivitiesOpen((o) => !o)}
+          className="flex items-center gap-1.5 w-full text-left mb-2 group"
+        >
+          <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${activitiesOpen ? "" : "-rotate-90"}`} />
+          <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium group-hover:text-foreground transition-colors">
+            Teamaktiviteter ({completedRegs.length})
+          </h3>
+        </button>
+        {activitiesOpen && (activitiesByWeek.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-2">Ingen fullførte aktiviteter</p>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {activitiesByWeek.map(([week, regs]) => (
               <div key={week}>
-                <p className="text-[11px] text-muted-foreground mb-1.5">Uke {week}</p>
+                <p className="text-[11px] text-muted-foreground mb-1">Uke {week}</p>
                 <div className="space-y-0">
                   {regs.map((r) => {
                     const cat = catalogMap[r.catalog_id];
@@ -337,12 +380,12 @@ export function OverviewTab({ notes }: Props) {
                       <button
                         key={r.id}
                         onClick={() => setSelectedActivity(r)}
-                        className="w-full flex items-center gap-3 py-2.5 px-3 hover:bg-muted/50 rounded-md transition-colors text-left border-b border-border/50 last:border-0"
+                        className="w-full flex items-center gap-2 py-2 px-3 hover:bg-muted/50 rounded-md transition-colors text-left border-b border-border/50 last:border-0"
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="text-[13px] font-medium truncate">{cat?.name ?? "Ukjent"} #{r.occurrence_number}</span>
-                            {filled < 4 && <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30">Mangler detaljer</Badge>}
+                            {filled < 4 && <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30 shrink-0">Mangler</Badge>}
                           </div>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className="text-xs text-muted-foreground">{r.completed_date ? formatDate(r.completed_date) : "Ikke fullført"}</span>
@@ -350,7 +393,7 @@ export function OverviewTab({ notes }: Props) {
                           </div>
                         </div>
                         <CompleteDots fields={fields} />
-                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                       </button>
                     );
                   })}
@@ -358,14 +401,22 @@ export function OverviewTab({ notes }: Props) {
               </div>
             ))}
           </div>
-        )}
+        ))}
       </section>
 
       {/* Sprints */}
       <section>
-        <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-3">Sprinter ({filteredSprints.length})</h3>
-        {filteredSprints.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4">Ingen fullførte sprinter</p>
+        <button
+          onClick={() => setSprintsOpen((o) => !o)}
+          className="flex items-center gap-1.5 w-full text-left mb-2 group"
+        >
+          <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${sprintsOpen ? "" : "-rotate-90"}`} />
+          <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium group-hover:text-foreground transition-colors">
+            Sprinter ({filteredSprints.length})
+          </h3>
+        </button>
+        {sprintsOpen && (filteredSprints.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-2">Ingen fullførte sprinter</p>
         ) : (
           <div className="space-y-0">
             {filteredSprints.map((s) => {
@@ -375,7 +426,7 @@ export function OverviewTab({ notes }: Props) {
                 <button
                   key={s.id}
                   onClick={() => setSelectedSprint(s)}
-                  className="w-full flex items-center gap-3 py-2.5 px-3 hover:bg-muted/50 rounded-md transition-colors text-left border-b border-border/50 last:border-0"
+                  className="w-full flex items-center gap-2 py-2 px-3 hover:bg-muted/50 rounded-md transition-colors text-left border-b border-border/50 last:border-0"
                 >
                   <div className="flex-1 min-w-0">
                     <span className="text-[13px] font-medium">{s.name}</span>
@@ -387,67 +438,70 @@ export function OverviewTab({ notes }: Props) {
                     </div>
                   </div>
                   <CompleteDots fields={[s.sprint_review_notes, s.reflection]} />
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                 </button>
               );
             })}
           </div>
-        )}
+        ))}
       </section>
 
       {/* Meetings */}
       <section>
-        <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-3">Møtereferater ({filteredMeetings.length})</h3>
-        {filteredMeetings.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4">Ingen møter med notater</p>
+        <button
+          onClick={() => setMeetingsOpen((o) => !o)}
+          className="flex items-center gap-1.5 w-full text-left mb-2 group"
+        >
+          <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${meetingsOpen ? "" : "-rotate-90"}`} />
+          <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium group-hover:text-foreground transition-colors">
+            Møtereferater ({filteredMeetings.length})
+          </h3>
+        </button>
+        {meetingsOpen && (filteredMeetings.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-2">Ingen møter med notater</p>
         ) : (
           <div className="space-y-0">
             {filteredMeetings.map((m) => {
-              const agenda = (allAgendaItems ?? []).filter((a) => a.meeting_id === m.id);
-              const actions = (allActionPoints ?? []).filter((a) => a.meeting_id === m.id);
+              const subs = subSessionsByMeeting[m.id] ?? [];
+              const actions = (allActionPoints ?? []).filter((a: any) => a.meeting_id === m.id);
+              const subsWithNotes = subs.filter((ss) => ss.notes || Object.keys(ss.type_specific_data ?? {}).some((k) => ss.type_specific_data[k]));
               return (
                 <button
                   key={m.id}
                   onClick={() => setSelectedMeeting(m)}
-                  className="w-full flex items-center gap-3 py-2.5 px-3 hover:bg-muted/50 rounded-md transition-colors text-left border-b border-border/50 last:border-0"
+                  className="w-full flex items-center gap-2 py-2 px-3 hover:bg-muted/50 rounded-md transition-colors text-left border-b border-border/50 last:border-0"
                 >
                   <div className="flex-1 min-w-0">
                     <span className="text-[13px] font-medium">{typeLabels[m.type] || m.type}</span>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs text-muted-foreground">{formatDate(m.meeting_date || m.date)}</span>
-                      {agenda.length > 0 && <span className="text-[10px] text-muted-foreground">{agenda.length} agenda</span>}
-                      {actions.length > 0 && <span className="text-[10px] text-muted-foreground">{actions.length} action points</span>}
+                      <span className="text-xs text-muted-foreground">{formatDate(m.meeting_date)}</span>
+                      {subs.length > 0 && <span className="text-[10px] text-muted-foreground">{subs.length} delmøter</span>}
+                      {actions.length > 0 && <span className="text-[10px] text-muted-foreground">{actions.length} aksjoner</span>}
                     </div>
                   </div>
-                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                  <CompleteDots fields={subsWithNotes.map((ss) => ss.notes)} />
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                 </button>
               );
             })}
           </div>
-        )}
+        ))}
       </section>
 
       {/* Export section */}
-      <section className="border-t pt-4">
-        <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-3">Samlet eksport</h3>
+      <section className="border-t pt-3">
+        <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Samlet eksport</h3>
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             <label className="text-xs text-muted-foreground">Fra:</label>
-            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-36 h-8 text-sm" />
+            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-32 h-7 text-xs" />
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             <label className="text-xs text-muted-foreground">Til:</label>
-            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-36 h-8 text-sm" />
+            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-32 h-7 text-xs" />
           </div>
-          {(dateFrom || dateTo) && (
-            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setDateFrom(""); setDateTo(""); }}>
-              Nullstill
-            </Button>
-          )}
-        </div>
-        <div className="flex items-center gap-2 mt-3">
           <Select value={exportType} onValueChange={setExportType}>
-            <SelectTrigger className="w-[200px] h-8 text-sm">
+            <SelectTrigger className="w-[160px] h-7 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -457,12 +511,17 @@ export function OverviewTab({ notes }: Props) {
               <SelectItem value="meetings">Alle møtereferater</SelectItem>
             </SelectContent>
           </Select>
-          <Button size="sm" variant="outline" className="h-8" onClick={() => handleExport("plain")}>
-            <Copy className="h-3.5 w-3.5 mr-1" /> Ren tekst
+          <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => handleExport("plain")}>
+            <Copy className="h-3 w-3 mr-1" /> Ren tekst
           </Button>
-          <Button size="sm" variant="outline" className="h-8" onClick={() => handleExport("markdown")}>
-            <FileText className="h-3.5 w-3.5 mr-1" /> Markdown
+          <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={() => handleExport("markdown")}>
+            <FileText className="h-3 w-3 mr-1" /> Markdown
           </Button>
+          {(dateFrom || dateTo) && (
+            <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => { setDateFrom(""); setDateTo(""); }}>
+              Nullstill
+            </Button>
+          )}
         </div>
       </section>
 

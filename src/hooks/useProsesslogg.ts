@@ -66,8 +66,7 @@ export function useCompletedMeetings() {
       const { data, error } = await supabase
         .from("meetings")
         .select("*")
-        .eq("status", "completed")
-        .order("date", { ascending: false });
+        .order("meeting_date", { ascending: false });
       if (error) throw error;
       return data;
     },
