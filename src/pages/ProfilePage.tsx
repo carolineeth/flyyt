@@ -51,12 +51,12 @@ function useMemberSprintItems(memberId: string | undefined, sprintId: string | u
     queryFn: async () => {
       const { data, error } = await supabase
         .from("sprint_items")
-        .select("id, column_name, column_order, backlog_item:backlog_items(id, item_id, title, estimate, assignee_id)")
+        .select("id, column_name, column_order, backlog_item:backlog_items(id, item_id, title, estimate, collaborator_ids)")
         .eq("sprint_id", sprintId!)
         .order("column_order");
       if (error) throw error;
       const items = (data as any[]) ?? [];
-      return items.filter((si) => si.backlog_item?.assignee_id === memberId);
+      return items.filter((si) => (si.backlog_item?.collaborator_ids ?? []).includes(memberId));
     },
   });
 }

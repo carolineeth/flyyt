@@ -473,7 +473,7 @@ export default function DashboardPage() {
   const teamData = useMemo(() => {
     if (!members || !sprintItems) return [];
     return members.map((m) => {
-      const myItems = sprintItems.filter((si) => si.backlog_item?.assignee_id === m.id);
+      const myItems = sprintItems.filter((si) => ((si.backlog_item as any)?.collaborator_ids ?? []).includes(m.id));
       const active = myItems.filter((si) => si.column_name !== "done");
       const todo = myItems
         .filter((si) => si.column_name === "todo")

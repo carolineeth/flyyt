@@ -372,7 +372,8 @@ export default function SprintBoardPage() {
                 {isOverWip && <p className="text-[10px] text-destructive px-1">⚠️ WIP-limit overskredet</p>}
                 <div className={`space-y-2 min-h-[120px] rounded-lg p-1 transition-colors ${isDragTarget ? "bg-primary/5 ring-2 ring-primary/20 ring-dashed" : ""}`}>
                   {colItems.map((item) => {
-                    const assignee = members?.find((m) => m.id === item.backlog_item?.assignee_id);
+                    const collaborators = ((item.backlog_item as any)?.collaborator_ids ?? [])
+                      .map((id: string) => members?.find((m) => m.id === id)).filter(Boolean);
                     const isDragging = draggedItemId === item.id;
                     return (
                       <Card key={item.id} draggable
@@ -385,7 +386,14 @@ export default function SprintBoardPage() {
                           <div className="flex items-start gap-1.5">
                             <GripVertical className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground/40" />
                             <span className="text-[13px] font-medium leading-snug flex-1">{item.backlog_item?.title}</span>
-                            {assignee && <MemberAvatar member={assignee} />}
+                            {collaborators.length > 0 && (
+                              <div className="flex -space-x-1.5 shrink-0">
+                                {collaborators.slice(0, 3).map((m: any) => <MemberAvatar key={m.id} member={m} />)}
+                                {collaborators.length > 3 && (
+                                  <div className="h-5 w-5 rounded-full bg-muted text-[9px] font-medium flex items-center justify-center border border-background text-muted-foreground shrink-0">+{collaborators.length - 3}</div>
+                                )}
+                              </div>
+                            )}
                           </div>
                           <div className="flex items-center gap-1.5 flex-wrap pl-5">
                             <span className={`h-2 w-2 rounded-full shrink-0 ${priorityDot[item.backlog_item?.priority] ?? "bg-gray-400"}`} />

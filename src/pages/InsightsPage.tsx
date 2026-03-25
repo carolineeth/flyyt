@@ -267,11 +267,13 @@ export default function InsightsPage() {
     });
     const doneItemsList = items.filter((i) => i.status === "done");
     doneItemsList.forEach((item) => {
-      const assignee = item.assignee_id;
-      if (assignee && result[assignee]) {
-        const type = item.type || "user_story";
-        result[assignee][type] = (result[assignee][type] || 0) + (item.estimate || 1);
-      }
+      const assignees: string[] = (item as any).collaborator_ids ?? (item.assignee_id ? [item.assignee_id] : []);
+      assignees.forEach((id) => {
+        if (result[id]) {
+          const type = item.type || "user_story";
+          result[id][type] = (result[id][type] || 0) + (item.estimate || 1);
+        }
+      });
     });
     return members.map((m) => {
       const data = result[m.id] || {};
@@ -353,9 +355,10 @@ export default function InsightsPage() {
   const workloadDistribution = useMemo(() => {
     const spPerPerson: Record<string, number> = {};
     doneItems.forEach((item) => {
-      if (item.assignee_id) {
-        spPerPerson[item.assignee_id] = (spPerPerson[item.assignee_id] || 0) + (item.estimate || 0);
-      }
+      const assignees: string[] = (item as any).collaborator_ids ?? (item.assignee_id ? [item.assignee_id] : []);
+      assignees.forEach((id) => {
+        spPerPerson[id] = (spPerPerson[id] || 0) + (item.estimate || 0);
+      });
     });
     const values = Object.values(spPerPerson);
     if (values.length < 2) return { stddev: 0, values: [] };

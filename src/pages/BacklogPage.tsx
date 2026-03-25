@@ -251,7 +251,8 @@ export default function BacklogPage() {
   });
 
   const renderItemCard = (item: BacklogItem, compact = false) => {
-    const assignee = members?.find((m) => m.id === item.assignee_id);
+    const collaborators = ((item as any).collaborator_ids ?? [])
+      .map((id: string) => members?.find((m) => m.id === id)).filter(Boolean);
     const isDragging = draggedItemId === item.id;
     const sprintName = itemSprintMap[item.id];
     return (
@@ -280,7 +281,14 @@ export default function BacklogPage() {
           ) : !compact ? (
             <Badge variant="outline" className="text-[9px] text-muted-foreground shrink-0">Ikke i sprint</Badge>
           ) : null}
-          {assignee && <MemberAvatar member={assignee} />}
+          {collaborators.length > 0 && (
+            <div className="flex -space-x-1.5 shrink-0">
+              {collaborators.slice(0, 3).map((m: any) => <MemberAvatar key={m.id} member={m} />)}
+              {collaborators.length > 3 && (
+                <div className="h-5 w-5 rounded-full bg-muted text-[9px] font-medium flex items-center justify-center border border-background text-muted-foreground shrink-0">+{collaborators.length - 3}</div>
+              )}
+            </div>
+          )}
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <button

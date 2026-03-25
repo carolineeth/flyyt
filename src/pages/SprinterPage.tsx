@@ -374,7 +374,8 @@ export default function SprinterPage() {
       {/* List */}
       <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
         {backlogFiltered.map((item) => {
-          const assignee = members?.find((m) => m.id === item.assignee_id);
+          const collaborators = ((item as any).collaborator_ids ?? [])
+            .map((id: string) => members?.find((m) => m.id === id)).filter(Boolean);
           return (
             <div key={item.id}
               draggable={!planningMode}
@@ -405,15 +406,11 @@ export default function SprinterPage() {
                 <span className="h-5 w-5 rounded-full bg-muted text-[10px] font-medium flex items-center justify-center shrink-0 tabular-nums">{item.estimate}</span>
               )}
               <span className={`h-2 w-2 rounded-full shrink-0 ${priorityDot[item.priority] ?? "bg-gray-400"}`} />
-              {assignee && <MemberAvatar member={assignee} />}
-              {((item as any).collaborator_ids ?? []).length > 0 && (
-                <div className="flex -space-x-1">
-                  {((item as any).collaborator_ids as string[]).slice(0, 2).map((cid) => {
-                    const c = members?.find((m) => m.id === cid);
-                    return c ? <MemberAvatar key={cid} member={c} /> : null;
-                  })}
-                  {((item as any).collaborator_ids as string[]).length > 2 && (
-                    <span className="text-[9px] text-muted-foreground">+{((item as any).collaborator_ids as string[]).length - 2}</span>
+              {collaborators.length > 0 && (
+                <div className="flex -space-x-1.5 shrink-0">
+                  {collaborators.slice(0, 3).map((m: any) => <MemberAvatar key={m.id} member={m} />)}
+                  {collaborators.length > 3 && (
+                    <div className="h-5 w-5 rounded-full bg-muted text-[9px] font-medium flex items-center justify-center border border-background text-muted-foreground shrink-0">+{collaborators.length - 3}</div>
                   )}
                 </div>
               )}
@@ -546,7 +543,8 @@ export default function SprinterPage() {
                     isDragTarget ? "bg-primary/5 ring-1 ring-primary/20 ring-dashed" : ""
                   }`}>
                     {colItems.map((item) => {
-                      const assignee = members?.find((m) => m.id === item.backlog_item?.assignee_id);
+                      const collaborators = ((item.backlog_item as any)?.collaborator_ids ?? [])
+                        .map((id: string) => members?.find((m) => m.id === id)).filter(Boolean);
                       return (
                         <Card key={item.id} draggable
                           onDragStart={(e) => handleDragStartSprint(e, item.id)}
@@ -560,7 +558,14 @@ export default function SprinterPage() {
                             <div className="flex items-start gap-1">
                               <GripVertical className="h-3.5 w-3.5 shrink-0 mt-0.5 text-muted-foreground/40" />
                               <span className="text-[13px] font-medium leading-snug flex-1 min-w-0 line-clamp-2">{item.backlog_item?.title}</span>
-                              {assignee && <MemberAvatar member={assignee} />}
+                              {collaborators.length > 0 && (
+                                <div className="flex -space-x-1.5 shrink-0">
+                                  {collaborators.slice(0, 3).map((m: any) => <MemberAvatar key={m.id} member={m} />)}
+                                  {collaborators.length > 3 && (
+                                    <div className="h-5 w-5 rounded-full bg-muted text-[9px] font-medium flex items-center justify-center border border-background text-muted-foreground shrink-0">+{collaborators.length - 3}</div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                             <div className="flex items-center gap-1 pl-4 flex-wrap">
                               <span className={`h-2 w-2 rounded-full shrink-0 ${priorityDot[item.backlog_item?.priority] ?? "bg-gray-400"}`} />
