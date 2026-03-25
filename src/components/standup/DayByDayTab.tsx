@@ -3,12 +3,12 @@ import { format, isToday, isYesterday, startOfDay, isWeekend } from "date-fns";
 import { nb } from "date-fns/locale";
 import { StandupInput } from "./StandupInput";
 import { PersonCard } from "./PersonCard";
-import { MemberAvatar } from "@/components/ui/MemberAvatar";
+
 import type { TeamMember } from "@/lib/types";
 import type { DailyUpdate, DailyTeamNote } from "@/hooks/useDailyUpdates";
 import { useUpsertTeamNote } from "@/hooks/useDailyUpdates";
 import { Button } from "@/components/ui/button";
-import { PenLine, ChevronDown, Users } from "lucide-react";
+import { PenLine, Users } from "lucide-react";
 
 interface TeamNoteFieldProps {
   entryDate: string;
@@ -85,16 +85,6 @@ export function DayByDayTab({ weekdays, entries, teamNotes, members, currentMemb
   const today = startOfDay(new Date());
   const [editingDay, setEditingDay] = useState<string | null>(null);
   const [todayCollapsed, setTodayCollapsed] = useState(false);
-  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
-
-  const toggleExpand = (dayStr: string) => {
-    setExpandedDays((prev) => {
-      const next = new Set(prev);
-      if (next.has(dayStr)) next.delete(dayStr);
-      else next.add(dayStr);
-      return next;
-    });
-  };
 
   // Sorted newest first
   const sortedDays = useMemo(() => [...weekdays].sort((a, b) => b.getTime() - a.getTime()), [weekdays]);
@@ -104,35 +94,35 @@ export function DayByDayTab({ weekdays, entries, teamNotes, members, currentMemb
     return sortedDays.filter((day) => {
       const dayStr = format(day, "yyyy-MM-dd");
       const dayEntries = entries.filter((e) => e.entry_date === dayStr);
-      // Weekend: only show if has entries
       if (isWeekend(day) && dayEntries.length === 0) return false;
       return true;
     });
   }, [sortedDays, entries]);
 
-  // Is today a weekend?
   const todayIsWeekend = isWeekend(today);
 
   return (
-    <div className="space-y-4">
-      {/* Input for today - only show in current week AND not weekend */}
+    <div className="space-y-0">
+      {/* Input for today */}
       {isCurrentWeek && currentMemberId && !todayCollapsed && !todayIsWeekend && (() => {
         const todayStr = format(today, "yyyy-MM-dd");
         const todayEntry = entries.find((e) => e.entry_date === todayStr && e.member_id === currentMemberId) ?? null;
         return (
-          <StandupInput
-            memberId={currentMemberId}
-            existingEntry={todayEntry}
-            date={today}
-            dayLabel=""
-            onSaved={() => setTodayCollapsed(true)}
-            compact
-          />
+          <div className="mb-6">
+            <StandupInput
+              memberId={currentMemberId}
+              existingEntry={todayEntry}
+              date={today}
+              dayLabel=""
+              onSaved={() => setTodayCollapsed(true)}
+              compact
+            />
+          </div>
         );
       })()}
 
       {isCurrentWeek && currentMemberId && todayCollapsed && !todayIsWeekend && (
-        <div className="flex justify-end">
+        <div className="flex justify-end mb-4">
           <Button
             variant="ghost"
             size="sm"
@@ -153,53 +143,79 @@ export function DayByDayTab({ weekdays, entries, teamNotes, members, currentMemb
         </div>
       )}
 
-      {visibleDays.map((day) => {
+      {visibleDays.map((day, idx) => {
         const dayStr = format(day, "yyyy-MM-dd");
         const dayEntries = entries.filter((e) => e.entry_date === dayStr);
         const isPast = day < today && !isToday(day);
+        const isFuture = day > today;
         const myEntry = entries.find((e) => e.entry_date === dayStr && e.member_id === currentMemberId) ?? null;
         const showInput = editingDay === dayStr && currentMemberId;
-
-        let dayHeading: string;
-        if (isToday(day)) dayHeading = "I dag";
-        else if (isYesterday(day)) dayHeading = "I går";
-        else dayHeading = format(day, "EEEE d. MMMM", { locale: nb });
-
-        // Determine if this day should be expanded by default
         const isRecentDay = isToday(day) || isYesterday(day);
-        const isExpanded = isRecentDay || expandedDays.has(dayStr);
         const entryCount = dayEntries.length;
 
-        // Members who wrote vs didn't write
+        // Older weekdays with 0 entries: skip
+        if (!isRecentDay && entryCount === 0) return null;
+
+        let dayLabel: string;
+        if (isToday(day)) dayLabel = "I dag";
+        else if (isYesterday(day)) dayLabel = "I går";
+        else dayLabel = format(day, "EEEE", { locale: nb });
+
+        const dateLabel = format(day, "d. MMMM", { locale: nb });
+
         const membersWithEntry = members.filter((m) => dayEntries.some((e) => e.member_id === m.id));
         const membersWithoutEntry = members.filter((m) => !dayEntries.some((e) => e.member_id === m.id));
 
-        // Older days with no entries: skip entirely (already filtered by visibleDays for weekends)
-        // For weekdays with 0 entries that aren't today/yesterday: show nothing
-        if (!isRecentDay && entryCount === 0) return null;
+        const isLast = idx === visibleDays.length - 1 ||
+          // Check if rest are all null-rendered
+          visibleDays.slice(idx + 1).every((d) => {
+            const ds = format(d, "yyyy-MM-dd");
+            const de = entries.filter((e) => e.entry_date === ds);
+            const recent = isToday(d) || isYesterday(d);
+            return !recent && de.length === 0;
+          });
 
         return (
-          <div key={dayStr}>
-            <div className="flex items-center gap-2 mb-2">
-              {!isRecentDay ? (
-                <button
-                  onClick={() => toggleExpand(dayStr)}
-                  className="flex items-center gap-1.5 text-sm font-medium text-foreground capitalize hover:text-primary transition-colors"
-                >
-                  <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isExpanded ? "rotate-0" : "-rotate-90"}`} />
-                  {dayHeading}
-                  <span className="text-[11px] text-muted-foreground font-normal ml-1">
-                    — {entryCount} {entryCount === 1 ? "oppdatering" : "oppdateringer"}
-                  </span>
-                </button>
-              ) : (
-                <h3 className="text-sm font-medium text-foreground capitalize">{dayHeading}</h3>
-              )}
-              {isPast && currentMemberId && !isToday(day) && isExpanded && (
+          <div key={dayStr} className={`relative ${!isLast ? "pb-8" : "pb-2"}`}>
+            {/* Timeline connector */}
+            {!isLast && (
+              <div className="absolute left-[15px] top-[36px] bottom-0 w-px bg-border" />
+            )}
+
+            {/* Day header */}
+            <div className="flex items-center gap-3 mb-3">
+              {/* Timeline dot */}
+              <div className={`relative z-10 w-[31px] h-[31px] rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                isToday(day)
+                  ? "bg-primary text-primary-foreground"
+                  : entryCount > 0
+                    ? "bg-muted-foreground/15 text-foreground"
+                    : "bg-muted text-muted-foreground"
+              }`}>
+                {format(day, "d")}
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-2">
+                  <h3 className={`text-sm font-semibold capitalize ${
+                    isToday(day) ? "text-primary" : isFuture ? "text-muted-foreground" : "text-foreground"
+                  }`}>
+                    {dayLabel}
+                  </h3>
+                  <span className="text-xs text-muted-foreground">{dateLabel}</span>
+                  {entryCount > 0 && (
+                    <span className="text-[11px] text-muted-foreground">
+                      {entryCount}/{members.length}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {isPast && currentMemberId && !isToday(day) && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
+                  className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground shrink-0"
                   onClick={() => setEditingDay(editingDay === dayStr ? null : dayStr)}
                 >
                   <PenLine className="h-3 w-3 mr-1" />
@@ -208,26 +224,27 @@ export function DayByDayTab({ weekdays, entries, teamNotes, members, currentMemb
               )}
             </div>
 
-            {isExpanded && (
-              <div className="animate-fade-in">
-                {showInput && (
-                  <div className="mb-3">
-                    <StandupInput
-                      memberId={currentMemberId}
-                      existingEntry={myEntry}
-                      date={day}
-                      dayLabel={`${dayHeading} — etterregistrering`}
-                      onSaved={() => setEditingDay(null)}
-                    />
-                  </div>
-                )}
+            {/* Day content */}
+            <div className="ml-[46px]">
+              {showInput && (
+                <div className="mb-3">
+                  <StandupInput
+                    memberId={currentMemberId}
+                    existingEntry={myEntry}
+                    date={day}
+                    dayLabel={`${dayLabel} — etterregistrering`}
+                    onSaved={() => setEditingDay(null)}
+                  />
+                </div>
+              )}
 
-                <TeamNoteField
-                  entryDate={dayStr}
-                  note={teamNotes.find((n) => n.entry_date === dayStr)}
-                  editable={!!currentMemberId && (isToday(day) || isPast)}
-                />
+              <TeamNoteField
+                entryDate={dayStr}
+                note={teamNotes.find((n) => n.entry_date === dayStr)}
+                editable={!!currentMemberId && (isToday(day) || isPast)}
+              />
 
+              {membersWithEntry.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {membersWithEntry.map((m) => {
                     const entry = dayEntries.find((e) => e.member_id === m.id) ?? null;
@@ -242,32 +259,32 @@ export function DayByDayTab({ weekdays, entries, teamNotes, members, currentMemb
                     );
                   })}
                 </div>
+              )}
 
-                {/* Compact line for members without entry */}
-                {membersWithoutEntry.length > 0 && membersWithEntry.length > 0 && (
-                  <div className="flex items-center gap-2 mt-2 px-1">
-                    <span className="text-[11px] text-muted-foreground">Ikke oppdatert:</span>
-                    <div className="flex -space-x-1">
-                      {membersWithoutEntry.map((m) => (
-                        <div
-                          key={m.id}
-                          className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-medium text-white border border-background"
-                          style={{ backgroundColor: m.avatar_color }}
-                          title={m.name}
-                        >
-                          {m.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-                        </div>
-                      ))}
-                    </div>
+              {/* Members without entry */}
+              {membersWithoutEntry.length > 0 && membersWithEntry.length > 0 && (
+                <div className="flex items-center gap-2 mt-2 px-1">
+                  <span className="text-[11px] text-muted-foreground">Ikke oppdatert:</span>
+                  <div className="flex -space-x-1">
+                    {membersWithoutEntry.map((m) => (
+                      <div
+                        key={m.id}
+                        className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-medium text-white border border-background"
+                        style={{ backgroundColor: m.avatar_color }}
+                        title={m.name}
+                      >
+                        {m.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                      </div>
+                    ))}
                   </div>
-                )}
+                </div>
+              )}
 
-                {/* If today/yesterday and nobody has entries, show a softer message */}
-                {isRecentDay && membersWithEntry.length === 0 && (
-                  <p className="text-xs text-muted-foreground italic px-1">Ingen oppdateringer ennå</p>
-                )}
-              </div>
-            )}
+              {/* Recent day with no entries */}
+              {isRecentDay && membersWithEntry.length === 0 && (
+                <p className="text-xs text-muted-foreground italic px-1">Ingen oppdateringer ennå</p>
+              )}
+            </div>
           </div>
         );
       })}
