@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,8 +55,24 @@ export function RegistrationModal({ open, onOpenChange, catalogItem, registratio
     selectedMembers: [] as string[],
   });
 
+  // Keep a ref so the init effect can read latest participants without making
+  // participants a reactive dependency (would cause modal to reset on every toggle).
+  const participantsRef = useRef(participants);
+  participantsRef.current = participants;
+
+  // Track the last "session key" so we only initialize once per open+registration combo.
+  // This prevents ANY background refetch (participants, registrations, etc.) from
+  // resetting the form while the user is actively filling it in.
+  const initKeyRef = useRef<string>("");
+
   useEffect(() => {
-    const existingParticipantIds = participants?.filter((p) => p.registration_id === registration?.id).map((p) => p.member_id) || [];
+    const key = open ? (registration?.id ?? "new") : "";
+    if (initKeyRef.current === key) return;
+    initKeyRef.current = key;
+
+    if (!open) return;
+
+    const existingParticipantIds = participantsRef.current?.filter((p) => p.registration_id === registration?.id).map((p) => p.member_id) || [];
     if (registration) {
       setReg(registration);
       setEditing(false);
@@ -86,7 +102,8 @@ export function RegistrationModal({ open, onOpenChange, catalogItem, registratio
         selectedMembers: [],
       });
     }
-  }, [registration, open, participants]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, registration?.id]);
 
   const regParticipants = participants?.filter((p) => p.registration_id === reg?.id) || [];
 

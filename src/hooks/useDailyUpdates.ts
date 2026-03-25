@@ -179,4 +179,43 @@ export function useInProgressBacklogItems(memberId: string | undefined) {
   });
 }
 
+export interface DailyTeamNote {
+  id: string;
+  entry_date: string;
+  content: string;
+  updated_at: string;
+}
+
+export function useDailyTeamNotes(weekStart: Date, weekEnd: Date) {
+  const startStr = format(weekStart, "yyyy-MM-dd");
+  const endStr = format(weekEnd, "yyyy-MM-dd");
+  return useQuery<DailyTeamNote[]>({
+    queryKey: ["daily_team_notes", startStr, endStr],
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from("daily_team_notes" as any)
+        .select("id, entry_date, content, updated_at")
+        .gte("entry_date", startStr)
+        .lte("entry_date", endStr) as any);
+      if (error) throw error;
+      return (data ?? []) as DailyTeamNote[];
+    },
+  });
+}
+
+export function useUpsertTeamNote() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ entry_date, content }: { entry_date: string; content: string }) => {
+      const { error } = await (supabase
+        .from("daily_team_notes" as any)
+        .upsert({ entry_date, content, updated_at: new Date().toISOString() }, { onConflict: "entry_date" }) as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["daily_team_notes"] });
+    },
+  });
+}
+
 export { PROJECT_START };

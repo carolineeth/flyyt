@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
-import { useWeekNavigation, useDailyUpdates, useCurrentMember } from "@/hooks/useDailyUpdates";
+import { useWeekNavigation, useDailyUpdates, useCurrentMember, useDailyTeamNotes } from "@/hooks/useDailyUpdates";
 import { WeekNavigation } from "@/components/standup/WeekNavigation";
 import { HeatmapStripe } from "@/components/standup/HeatmapStripe";
 import { DayByDayTab } from "@/components/standup/DayByDayTab";
@@ -15,6 +15,7 @@ export default function StandupPage() {
   const { currentMember } = useCurrentMember();
   const week = useWeekNavigation();
   const { data: entries } = useDailyUpdates(week.weekStart, week.weekEnd);
+  const { data: teamNotes = [] } = useDailyTeamNotes(week.weekStart, week.weekEnd);
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "daily", label: "Dag for dag" },
@@ -60,6 +61,7 @@ export default function StandupPage() {
         <DayByDayTab
           weekdays={week.weekdays}
           entries={entries ?? []}
+          teamNotes={teamNotes}
           members={members}
           currentMemberId={currentMember?.id ?? null}
           isCurrentWeek={week.isCurrentWeek}

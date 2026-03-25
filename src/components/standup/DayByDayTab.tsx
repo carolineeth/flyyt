@@ -1,23 +1,87 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { format, isToday, isYesterday, startOfDay, isWeekend } from "date-fns";
 import { nb } from "date-fns/locale";
 import { StandupInput } from "./StandupInput";
 import { PersonCard } from "./PersonCard";
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import type { TeamMember } from "@/lib/types";
-import type { DailyUpdate } from "@/hooks/useDailyUpdates";
+import type { DailyUpdate, DailyTeamNote } from "@/hooks/useDailyUpdates";
+import { useUpsertTeamNote } from "@/hooks/useDailyUpdates";
 import { Button } from "@/components/ui/button";
-import { PenLine, ChevronDown } from "lucide-react";
+import { PenLine, ChevronDown, Users } from "lucide-react";
+
+interface TeamNoteFieldProps {
+  entryDate: string;
+  note: DailyTeamNote | undefined;
+  editable: boolean;
+}
+
+function TeamNoteField({ entryDate, note, editable }: TeamNoteFieldProps) {
+  const [text, setText] = useState(note?.content ?? "");
+  const [saved, setSaved] = useState(true);
+  const upsert = useUpsertTeamNote();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Sync if note changes externally (e.g. another user updated)
+  useEffect(() => {
+    setText(note?.content ?? "");
+  }, [note?.content]);
+
+  // Auto-resize
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 80) + "px";
+  }, [text]);
+
+  // Debounced auto-save
+  useEffect(() => {
+    if (saved) return;
+    const t = setTimeout(() => {
+      upsert.mutate({ entry_date: entryDate, content: text });
+      setSaved(true);
+    }, 800);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text, saved]);
+
+  if (!editable && !note?.content) return null;
+
+  return (
+    <div className="flex gap-2 items-start mb-3 bg-muted/40 rounded-lg px-3 py-2.5">
+      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground shrink-0 mt-0.5 min-w-[40px]">
+        <Users className="h-3 w-3" />
+        Alle
+      </div>
+      {editable ? (
+        <textarea
+          ref={textareaRef}
+          value={text}
+          onChange={(e) => { setText(e.target.value); setSaved(false); }}
+          placeholder="Hva jobbet dere på som team i dag?"
+          className="flex-1 bg-transparent text-sm resize-none outline-none placeholder:text-muted-foreground/60 min-h-[20px]"
+          rows={1}
+          style={{ maxHeight: "80px" }}
+        />
+      ) : (
+        <p className="flex-1 text-sm text-foreground whitespace-pre-wrap">{note?.content}</p>
+      )}
+      {!saved && <span className="text-[10px] text-muted-foreground shrink-0 mt-0.5">lagrer…</span>}
+    </div>
+  );
+}
 
 interface Props {
   weekdays: Date[];
   entries: DailyUpdate[];
+  teamNotes: DailyTeamNote[];
   members: TeamMember[];
   currentMemberId: string | null;
   isCurrentWeek: boolean;
 }
 
-export function DayByDayTab({ weekdays, entries, members, currentMemberId, isCurrentWeek }: Props) {
+export function DayByDayTab({ weekdays, entries, teamNotes, members, currentMemberId, isCurrentWeek }: Props) {
   const today = startOfDay(new Date());
   const [editingDay, setEditingDay] = useState<string | null>(null);
   const [todayCollapsed, setTodayCollapsed] = useState(false);
@@ -157,6 +221,12 @@ export function DayByDayTab({ weekdays, entries, members, currentMemberId, isCur
                     />
                   </div>
                 )}
+
+                <TeamNoteField
+                  entryDate={dayStr}
+                  note={teamNotes.find((n) => n.entry_date === dayStr)}
+                  editable={!!currentMemberId && (isToday(day) || isPast)}
+                />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {membersWithEntry.map((m) => {
