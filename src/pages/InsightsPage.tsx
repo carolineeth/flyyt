@@ -25,7 +25,7 @@ import {
 import { useRequirementChanges } from "@/hooks/useRequirementChangelog";
 import { useActivityCatalog } from "@/hooks/useActivityCatalog";
 import { calcTotalEarnedPoints } from "@/lib/calcTotalEarnedPoints";
-import { PROJECT_START } from "@/hooks/useDailyUpdates";
+import { PROJECT_START as _PROJECT_START_IMPORT } from "@/hooks/useDailyUpdates";
 import type { Registration } from "@/hooks/useActivityCatalog";
 import {
   LineChart,
