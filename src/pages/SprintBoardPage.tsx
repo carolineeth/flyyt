@@ -16,7 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { toast } from "sonner";
-import { Columns3, Plus, StickyNote, GripVertical, PanelRightOpen, Search, X } from "lucide-react";
+import { Columns3, Plus, StickyNote, GripVertical, PanelRightOpen, Search, X, Check } from "lucide-react";
 import type { Sprint, SprintItem, BacklogItem } from "@/lib/types";
 
 const columns = [
@@ -273,8 +273,8 @@ export default function SprintBoardPage() {
       type: item.backlog_item?.type ?? "technical",
       priority: item.backlog_item?.priority ?? "should_have",
       estimate: item.backlog_item?.estimate,
-      assignee_id: item.backlog_item?.assignee_id,
       epic: item.backlog_item?.epic ?? "",
+      collaborator_ids: (item.backlog_item as any)?.collaborator_ids ?? [],
     });
   };
 
@@ -287,9 +287,9 @@ export default function SprintBoardPage() {
       type: editForm.type,
       priority: editForm.priority,
       estimate: editForm.estimate,
-      assignee_id: editForm.assignee_id,
       epic: editForm.epic || null,
-    });
+      collaborator_ids: editForm.collaborator_ids ?? [],
+    } as any);
     setDetailItem(null);
   };
 
@@ -566,11 +566,29 @@ export default function SprintBoardPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label>Ansvarlig</Label>
-                    <Select value={editForm.assignee_id ?? ""} onValueChange={(v) => setEditForm((p: any) => ({ ...p, assignee_id: v || null }))}>
-                      <SelectTrigger><SelectValue placeholder="Velg" /></SelectTrigger>
-                      <SelectContent>{members?.map((m) => <SelectItem key={m.id} value={m.id}>{m.name.split(" ")[0]}</SelectItem>)}</SelectContent>
-                    </Select>
+                    <Label>Tildelt</Label>
+                    <div className="space-y-0.5 mt-1.5">
+                      {members?.map((m) => {
+                        const selected = (editForm.collaborator_ids ?? []).includes(m.id);
+                        return (
+                          <button key={m.id} type="button"
+                            onClick={() => setEditForm((p: any) => ({
+                              ...p,
+                              collaborator_ids: selected
+                                ? (p.collaborator_ids ?? []).filter((id: string) => id !== m.id)
+                                : [...(p.collaborator_ids ?? []), m.id],
+                            }))}
+                            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors text-left ${selected ? "bg-primary/10" : "hover:bg-muted"}`}
+                          >
+                            <div className={`h-4 w-4 rounded border shrink-0 flex items-center justify-center ${selected ? "bg-primary border-primary" : "border-muted-foreground/40"}`}>
+                              {selected && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+                            </div>
+                            <MemberAvatar member={m} />
+                            <span className={`text-sm ${selected ? "text-foreground font-medium" : "text-muted-foreground"}`}>{m.name.split(" ")[0]}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                   <div>
                     <Label>Epic</Label>

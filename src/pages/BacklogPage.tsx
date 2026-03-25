@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { ListTodo, Plus, GripVertical, Trash2 } from "lucide-react";
+import { ListTodo, Plus, GripVertical, Trash2, Check } from "lucide-react";
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import type { BacklogItem, Sprint } from "@/lib/types";
 import { logBacklogChange } from "@/lib/backlogChangelog";
@@ -109,7 +109,7 @@ export default function BacklogPage() {
   const [dragOverStatus, setDragOverStatus] = useState<string | null>(null);
   const [newItem, setNewItem] = useState({
     title: "", description: "", type: "user_story", priority: "should_have",
-    estimate: null as number | null, epic: "", assignee_id: null as string | null,
+    estimate: null as number | null, epic: "",
     sprint_id: null as string | null, labels: "" as string,
     status: "backlog" as string, collaborator_ids: [] as string[],
   });
@@ -140,7 +140,7 @@ export default function BacklogPage() {
         status: newItem.status,
         estimate: newItem.estimate,
         epic: newItem.epic || null,
-        assignee_id: newItem.assignee_id,
+        assignee_id: null,
         collaborator_ids: newItem.collaborator_ids.length ? newItem.collaborator_ids : null,
         labels: newItem.labels ? newItem.labels.split(",").map((l) => l.trim()).filter(Boolean) : [],
       }).select().single();
@@ -164,7 +164,7 @@ export default function BacklogPage() {
       qc.invalidateQueries({ queryKey: ["sprint_items"] });
       qc.invalidateQueries({ queryKey: ["sprint_items_all"] });
       setShowCreate(false);
-      setNewItem({ title: "", description: "", type: "user_story", priority: "should_have", estimate: null, epic: "", assignee_id: null, sprint_id: null, labels: "", status: "backlog", collaborator_ids: [] });
+      setNewItem({ title: "", description: "", type: "user_story", priority: "should_have", estimate: null, epic: "", sprint_id: null, labels: "", status: "backlog", collaborator_ids: [] });
       toast.success("Backlog-item opprettet");
     },
     onError: (e) => toast.error(e.message),
@@ -478,11 +478,29 @@ export default function BacklogPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Ansvarlig</Label>
-                <Select value={newItem.assignee_id ?? ""} onValueChange={(v) => setNewItem((p) => ({ ...p, assignee_id: v || null }))}>
-                  <SelectTrigger><SelectValue placeholder="Velg" /></SelectTrigger>
-                  <SelectContent>{members?.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
-                </Select>
+                <Label>Tildelt</Label>
+                <div className="space-y-0.5 mt-1.5">
+                  {members?.map((m) => {
+                    const selected = newItem.collaborator_ids.includes(m.id);
+                    return (
+                      <button key={m.id} type="button"
+                        onClick={() => setNewItem((p) => ({
+                          ...p,
+                          collaborator_ids: selected
+                            ? p.collaborator_ids.filter((id) => id !== m.id)
+                            : [...p.collaborator_ids, m.id],
+                        }))}
+                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors text-left ${selected ? "bg-primary/10" : "hover:bg-muted"}`}
+                      >
+                        <div className={`h-4 w-4 rounded border shrink-0 flex items-center justify-center ${selected ? "bg-primary border-primary" : "border-muted-foreground/40"}`}>
+                          {selected && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+                        </div>
+                        <MemberAvatar member={m} />
+                        <span className={`text-sm ${selected ? "text-foreground font-medium" : "text-muted-foreground"}`}>{m.name.split(" ")[0]}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <div>
                 <Label>Epic/Kategori</Label>
@@ -491,27 +509,6 @@ export default function BacklogPage() {
                 <datalist id="epic-suggestions">
                   {existingEpics.map((e) => <option key={e} value={e} />)}
                 </datalist>
-              </div>
-            </div>
-            <div>
-              <Label>Medarbeidere</Label>
-              <div className="flex flex-wrap gap-1.5 mt-1">
-                {members?.map((m) => {
-                  const selected = newItem.collaborator_ids.includes(m.id);
-                  return (
-                    <button key={m.id} type="button"
-                      onClick={() => setNewItem((p) => ({
-                        ...p,
-                        collaborator_ids: selected
-                          ? p.collaborator_ids.filter((id) => id !== m.id)
-                          : [...p.collaborator_ids, m.id],
-                      }))}
-                      className={`px-2 py-1 rounded-full text-xs font-medium transition-colors ${selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}
-                    >
-                      {m.name.split(" ")[0]}
-                    </button>
-                  );
-                })}
               </div>
             </div>
             <div>

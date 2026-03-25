@@ -16,7 +16,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Layers, Plus, GripVertical, Search, X, StickyNote, Settings2, History, StopCircle, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Layers, Plus, GripVertical, Search, X, StickyNote, Settings2, History, StopCircle, PanelLeftClose, PanelLeftOpen, Check } from "lucide-react";
 import type { Sprint, SprintItem, BacklogItem, Subtask } from "@/lib/types";
 import { syncRequirementFromSprint } from "@/hooks/useRequirementChangelog";
 import SprintHistory from "@/components/sprints/SprintHistory";
@@ -311,7 +311,7 @@ export default function SprinterPage() {
     setEditForm({
       title: item.title, description: item.description ?? "",
       type: item.type, priority: item.priority,
-      estimate: item.estimate, assignee_id: item.assignee_id,
+      estimate: item.estimate,
       epic: item.epic ?? "", labels: (item.labels ?? []).join(", "),
       collaborator_ids: (item as any).collaborator_ids ?? [],
     });
@@ -323,7 +323,7 @@ export default function SprinterPage() {
       id: detailItem.id, title: editForm.title,
       description: editForm.description || null, type: editForm.type,
       priority: editForm.priority, estimate: editForm.estimate,
-      assignee_id: editForm.assignee_id, epic: editForm.epic || null,
+      epic: editForm.epic || null,
       labels: editForm.labels ? editForm.labels.split(",").map((l: string) => l.trim()).filter(Boolean) : [],
       collaborator_ids: editForm.collaborator_ids ?? [],
     });
@@ -725,38 +725,33 @@ export default function SprinterPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label>Ansvarlig</Label>
-                    <Select value={editForm.assignee_id ?? ""} onValueChange={(v) => setEditForm((p: any) => ({ ...p, assignee_id: v || null }))}>
-                      <SelectTrigger><SelectValue placeholder="Velg" /></SelectTrigger>
-                      <SelectContent>{members?.map((m) => <SelectItem key={m.id} value={m.id}>{m.name.split(" ")[0]}</SelectItem>)}</SelectContent>
-                    </Select>
+                    <Label>Tildelt</Label>
+                    <div className="space-y-0.5 mt-1.5">
+                      {members?.map((m) => {
+                        const selected = (editForm.collaborator_ids ?? []).includes(m.id);
+                        return (
+                          <button key={m.id} type="button"
+                            onClick={() => setEditForm((p: any) => ({
+                              ...p,
+                              collaborator_ids: selected
+                                ? (p.collaborator_ids ?? []).filter((id: string) => id !== m.id)
+                                : [...(p.collaborator_ids ?? []), m.id],
+                            }))}
+                            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors text-left ${selected ? "bg-primary/10" : "hover:bg-muted"}`}
+                          >
+                            <div className={`h-4 w-4 rounded border shrink-0 flex items-center justify-center ${selected ? "bg-primary border-primary" : "border-muted-foreground/40"}`}>
+                              {selected && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+                            </div>
+                            <MemberAvatar member={m} />
+                            <span className={`text-sm ${selected ? "text-foreground font-medium" : "text-muted-foreground"}`}>{m.name.split(" ")[0]}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                   <div>
                     <Label>Epic</Label>
                     <Input value={editForm.epic} onChange={(e) => setEditForm((p: any) => ({ ...p, epic: e.target.value }))} />
-                  </div>
-                </div>
-                <div>
-                  <Label>Bidragsytere</Label>
-                  <div className="flex gap-1 flex-wrap mt-1">
-                    {members?.map((m) => {
-                      const selected = (editForm.collaborator_ids ?? []).includes(m.id);
-                      return (
-                        <button key={m.id} type="button"
-                          onClick={() => setEditForm((p: any) => ({
-                            ...p,
-                            collaborator_ids: selected
-                              ? (p.collaborator_ids ?? []).filter((id: string) => id !== m.id)
-                              : [...(p.collaborator_ids ?? []), m.id],
-                          }))}
-                          className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-colors ${
-                            selected ? "bg-primary/10 text-primary ring-1 ring-primary/30" : "bg-muted text-muted-foreground hover:bg-accent"
-                          }`}>
-                          <MemberAvatar member={m} />
-                          <span>{m.name.split(" ")[0]}</span>
-                        </button>
-                      );
-                    })}
                   </div>
                 </div>
                 <div>
