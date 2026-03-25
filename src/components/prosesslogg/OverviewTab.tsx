@@ -171,16 +171,7 @@ export function OverviewTab({ notes }: Props) {
   const [sprintsOpen, setSprintsOpen] = useState(true);
   const [meetingsOpen, setMeetingsOpen] = useState(true);
 
-  // Auto-collapse empty sections after data loads
-  useEffect(() => {
-    if (completedRegs.length === 0) setActivitiesOpen(false);
-  }, [completedRegs.length]);
-  useEffect(() => {
-    if (filteredSprints.length === 0) setSprintsOpen(false);
-  }, [filteredSprints.length]);
-  useEffect(() => {
-    if (filteredMeetings.length === 0) setMeetingsOpen(false);
-  }, [filteredMeetings.length]);
+  // Auto-collapse empty sections after data loads (effects moved after useMemo declarations below)
 
   const catalogMap = useMemo(() => {
     const map: Record<string, CatalogItem> = {};
