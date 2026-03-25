@@ -249,7 +249,7 @@ export default function DashboardPage() {
       {/* 3. Sprint + Activities (most prominent) */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Sprint (3/5) */}
-        <Card className="lg:col-span-3 rounded-xl border-[0.5px]">
+        <Card className="lg:col-span-3 rounded-xl border">
           <CardContent className="pt-5 space-y-3">
             {activeSprint ? (
               <>
@@ -301,7 +301,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Activities (2/5) */}
-        <Card className="lg:col-span-2 rounded-xl border-[0.5px]">
+        <Card className="lg:col-span-2 rounded-xl border">
           <CardContent className="pt-5 space-y-3">
             <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Aktivitetspoeng</p>
             <div className="flex items-baseline gap-1.5">
@@ -339,7 +339,7 @@ export default function DashboardPage() {
 
             return (
             <Link key={member.id} to={`/profil/${member.id}`} className="block">
-            <Card className="rounded-xl border-[0.5px] hover:shadow-sm transition-shadow cursor-pointer">
+            <Card className="rounded-xl border hover:shadow-sm transition-shadow cursor-pointer">
               <CardContent className="pt-4 pb-3 space-y-2">
                 <div className="flex items-center gap-2">
                   <MemberAvatar member={member} size="md" />
@@ -394,7 +394,7 @@ export default function DashboardPage() {
           <p className="text-[11px] text-muted-foreground uppercase tracking-wider px-1">Kommende møter</p>
           {enrichedMeetings.map((m) => (
             <Link key={m.id} to="/moter">
-              <Card className="rounded-xl border-[0.5px] hover:shadow-sm transition-shadow cursor-pointer">
+              <Card className="rounded-xl border hover:shadow-sm transition-shadow cursor-pointer">
                 <CardContent className="py-3 px-4 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-medium">
@@ -445,7 +445,7 @@ export default function DashboardPage() {
           { label: "Møtekalender", to: "/moter", sub: enrichedMeetings[0] ? format(parseISO(enrichedMeetings[0].meeting_date!), "d. MMM", { locale: nb }) : "Vis møter" },
         ].map((link) => (
           <Link key={link.to} to={link.to}>
-            <Card className="rounded-xl border-[0.5px] hover:shadow-md transition-shadow cursor-pointer group">
+            <Card className="rounded-xl border hover:shadow-md transition-shadow cursor-pointer group">
               <CardContent className="pt-4 pb-3 flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">{link.label}</p>

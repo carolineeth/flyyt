@@ -86,7 +86,7 @@ function MetricCards({ milestones }: { milestones: Milestone[] }) {
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       {/* Next milestone - hero card */}
       <Card className={cn(
-        "rounded-xl border-[0.5px] sm:col-span-2 lg:col-span-2",
+        "rounded-xl border sm:col-span-2 lg:col-span-2",
         daysToNext !== null && daysToNext <= 3 && "border-red-200 bg-red-50/30",
         daysToNext !== null && daysToNext > 3 && daysToNext <= 7 && "border-amber-200 bg-amber-50/30",
       )}>
@@ -122,7 +122,7 @@ function MetricCards({ milestones }: { milestones: Milestone[] }) {
         </CardContent>
       </Card>
 
-      <Card className="rounded-xl border-[0.5px]">
+      <Card className="rounded-xl border">
         <CardContent className="pt-4 pb-3">
           <div className="flex items-center gap-2 mb-1">
             <Clock className="h-3.5 w-3.5 text-muted-foreground" />
@@ -137,7 +137,7 @@ function MetricCards({ milestones }: { milestones: Milestone[] }) {
         </CardContent>
       </Card>
 
-      <Card className="rounded-xl border-[0.5px]">
+      <Card className="rounded-xl border">
         <CardContent className="pt-4 pb-3">
           <div className="flex items-center gap-2 mb-1">
             <Check className="h-3.5 w-3.5 text-muted-foreground" />
@@ -194,7 +194,7 @@ function Timeline({ milestones, sprints, onSelect }: { milestones: Milestone[]; 
   const rowH = 56;
 
   return (
-    <Card className="rounded-xl border-[0.5px] overflow-hidden">
+    <Card className="rounded-xl border overflow-hidden">
       {/* Legend */}
       <div className="flex items-center gap-4 px-4 py-2.5 border-b border-border/60 bg-muted/30 flex-wrap">
         <p className="text-xs font-semibold text-muted-foreground mr-1">Kategorier:</p>

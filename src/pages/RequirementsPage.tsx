@@ -446,7 +446,7 @@ export default function RequirementsPage() {
         color: "#791F1F",
         fontSize: "11px",
         padding: "3px 8px",
-        borderRadius: "9999px",
+        borderRadius: "6px",
         fontWeight: 500,
         whiteSpace: "nowrap",
       };
@@ -456,7 +456,7 @@ export default function RequirementsPage() {
         color: "#633806",
         fontSize: "11px",
         padding: "3px 8px",
-        borderRadius: "9999px",
+        borderRadius: "6px",
         fontWeight: 500,
         whiteSpace: "nowrap",
       };
@@ -478,7 +478,7 @@ export default function RequirementsPage() {
           style={{
             fontSize: "11px",
             padding: "3px 8px",
-            borderRadius: "9999px",
+            borderRadius: "6px",
             border: "1px solid rgba(100,100,100,0.3)",
             color: "var(--muted-foreground)",
             whiteSpace: "nowrap",
@@ -495,7 +495,7 @@ export default function RequirementsPage() {
             color: "#0C447C",
             fontSize: "11px",
             padding: "3px 8px",
-            borderRadius: "9999px",
+            borderRadius: "6px",
             whiteSpace: "nowrap",
           }}
         >
@@ -510,7 +510,7 @@ export default function RequirementsPage() {
             color: "#085041",
             fontSize: "11px",
             padding: "3px 8px",
-            borderRadius: "9999px",
+            borderRadius: "6px",
             whiteSpace: "nowrap",
           }}
         >
@@ -525,7 +525,7 @@ export default function RequirementsPage() {
             color: "#085041",
             fontSize: "11px",
             padding: "3px 8px",
-            borderRadius: "9999px",
+            borderRadius: "6px",
             display: "inline-flex",
             alignItems: "center",
             gap: "4px",
@@ -677,8 +677,9 @@ export default function RequirementsPage() {
           <button
             onClick={() => setBannerDismissed(true)}
             className="shrink-0 text-amber-600 hover:text-amber-900"
+            aria-label="Lukk banner"
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
       )}

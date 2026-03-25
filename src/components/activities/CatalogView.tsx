@@ -152,9 +152,10 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
                     <button
                       className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
                       onClick={(e) => { e.stopPropagation(); setDeleteTarget(reg); }}
+                      aria-label="Slett registrering"
                       title="Slett registrering"
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-3 w-3" aria-hidden="true" />
                     </button>
                   </div>
                 ))}

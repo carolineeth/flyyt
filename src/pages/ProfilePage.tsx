@@ -264,7 +264,7 @@ export default function ProfilePage() {
         ) : (
           <div className="space-y-1.5">
             {sprintItems.map((si) => (
-              <Card key={si.id} className="rounded-lg border-[0.5px]">
+              <Card key={si.id} className="rounded-lg border">
                 <CardContent className="py-2.5 px-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm text-foreground truncate">
@@ -297,7 +297,7 @@ export default function ProfilePage() {
           <div className="space-y-1.5 pt-1">
             <p className="text-[11px] text-muted-foreground">Åpne aksjoner fra møter</p>
             {openAPs.map((ap) => (
-              <Card key={ap.id} className="rounded-lg border-[0.5px]">
+              <Card key={ap.id} className="rounded-lg border">
                 <CardContent className="py-2.5 px-3 flex items-center justify-between gap-3">
                   <p className="text-sm text-foreground truncate">{ap.title}</p>
                   {ap.due_date && (
@@ -324,7 +324,7 @@ export default function ProfilePage() {
         ) : (
           <div className="space-y-1.5">
             {weekUpdates.map((u) => (
-              <Card key={u.id} className="rounded-lg border-[0.5px]">
+              <Card key={u.id} className="rounded-lg border">
                 <CardContent className="py-2.5 px-3">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[11px] text-muted-foreground">
@@ -357,26 +357,26 @@ export default function ProfilePage() {
         </CollapsibleTrigger>
         <CollapsibleContent className="pt-3 space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <Card className="rounded-lg border-[0.5px]">
+            <Card className="rounded-lg border">
               <CardContent className="pt-3 pb-3 px-4">
                 <p className="text-2xl font-bold tabular-nums">{standupCount}</p>
                 <p className="text-[11px] text-muted-foreground mt-0.5">totale standup-dager</p>
               </CardContent>
             </Card>
-            <Card className="rounded-lg border-[0.5px]">
+            <Card className="rounded-lg border">
               <CardContent className="pt-3 pb-3 px-4">
                 <p className="text-2xl font-bold tabular-nums">{streak}</p>
                 <p className="text-[11px] text-muted-foreground mt-0.5">dagers streak</p>
               </CardContent>
             </Card>
-            <Card className="rounded-lg border-[0.5px]">
+            <Card className="rounded-lg border">
               <CardContent className="pt-3 pb-3 px-4">
                 <p className="text-2xl font-bold tabular-nums">{doneSprintItems.length}</p>
                 <p className="text-[11px] text-muted-foreground mt-0.5">oppgaver levert denne sprint</p>
               </CardContent>
             </Card>
             {isOwnProfile && (
-              <Card className="rounded-lg border-[0.5px]">
+              <Card className="rounded-lg border">
                 <CardContent className="pt-3 pb-3 px-4">
                   <p className="text-2xl font-bold tabular-nums">{totalEarned} / 30</p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">aktivitetspoeng</p>

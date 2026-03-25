@@ -72,41 +72,44 @@ export function AppSidebar() {
       <SidebarContent className="pt-4">
         {!collapsed && (
           <div className="px-4 pb-4 mb-2">
-            <h1 className="text-lg font-bold text-foreground tracking-tight">Flyt</h1>
-            <p className="text-xs text-muted-foreground">Prosjektstyring for Team 34</p>
+            <span className="text-lg font-bold text-primary tracking-tight">Flyyt</span>
+            <p className="text-xs text-muted-foreground mt-0.5">Prosjektstyring for Team 34</p>
           </div>
         )}
         {collapsed && (
           <div className="flex items-center justify-center pb-4 mb-2">
-            <span className="text-lg font-bold text-primary">V</span>
+            <span className="text-base font-bold text-primary">F</span>
           </div>
         )}
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      end={item.url === "/"}
-                      className="hover:bg-accent/60 transition-colors duration-150"
-                      activeClassName="bg-accent text-accent-foreground font-medium"
-                    >
-                      <span className="relative shrink-0">
-                        <item.icon className="h-4 w-4" />
-                        {item.hasNotification && showDot && (
-                          <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-destructive" />
-                        )}
-                      </span>
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        <nav aria-label="Hovedmeny">
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {navItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        end={item.url === "/"}
+                        className="hover:bg-accent/60 transition-colors duration-150"
+                        activeClassName="bg-accent text-accent-foreground font-medium"
+                        aria-label={collapsed ? item.title : undefined}
+                      >
+                        <span className="relative shrink-0">
+                          <item.icon className="h-4 w-4" aria-hidden="true" />
+                          {item.hasNotification && showDot && (
+                            <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-destructive" aria-label="Standup mangler" />
+                          )}
+                        </span>
+                        {!collapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </nav>
       </SidebarContent>
       <SidebarFooter className="p-2">
         {currentMember && (

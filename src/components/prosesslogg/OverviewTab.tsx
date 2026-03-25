@@ -15,6 +15,7 @@ import { SprintSlideOver } from "./SprintSlideOver";
 import { MeetingSlideOver } from "./MeetingSlideOver";
 import { toast } from "sonner";
 import { Copy, FileText, ChevronRight, ChevronDown } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Sprint } from "@/lib/types";
 
 function formatTypeSpecificExport(
@@ -77,17 +78,34 @@ function formatDate(d: string) {
   return new Date(d).toLocaleDateString("nb-NO", { day: "numeric", month: "long", year: "numeric" });
 }
 
-function CompleteDots({ fields }: { fields: (string | null | undefined)[] }) {
+function CompleteDots({ fields, labels }: { fields: (string | null | undefined)[]; labels?: string[] }) {
+  const filled = fields.filter(Boolean).length;
+  const total = fields.length;
+  const tooltipText = labels
+    ? fields.map((f, i) => `${f ? "✓" : "○"} ${labels[i]}`).join("\n")
+    : `${filled} av ${total} felt utfylt`;
+
   return (
-    <div className="flex items-center gap-0.5">
-      {fields.map((f, i) => (
-        <span
-          key={i}
-          className="inline-block w-1.5 h-1.5 rounded-full"
-          style={{ backgroundColor: f ? "#97C459" : "hsl(var(--border))" }}
-        />
-      ))}
-    </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div
+          className="flex items-center gap-0.5 shrink-0"
+          aria-label={`${filled} av ${total} felt utfylt`}
+          role="img"
+        >
+          {fields.map((f, i) => (
+            <span
+              key={i}
+              className="inline-block w-1.5 h-1.5 rounded-full"
+              style={{ backgroundColor: f ? "#2D7A4F" : "hsl(var(--border))" }}
+            />
+          ))}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="left" className="text-xs whitespace-pre-line max-w-[180px]">
+        {tooltipText}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -394,7 +412,7 @@ export function OverviewTab({ notes }: Props) {
                             <Badge variant="secondary" className="text-[10px] h-4">{cat?.points ?? 0}p</Badge>
                           </div>
                         </div>
-                        <CompleteDots fields={fields} />
+                        <CompleteDots fields={fields} labels={["Tidspunkt", "Gjennomføring", "Erfaringer", "Refleksjoner"]} />
                         <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                       </button>
                     );
@@ -439,7 +457,7 @@ export function OverviewTab({ notes }: Props) {
                       )}
                     </div>
                   </div>
-                  <CompleteDots fields={[s.sprint_review_notes, s.reflection]} />
+                  <CompleteDots fields={[s.sprint_review_notes, s.reflection]} labels={["Review-notater", "Refleksjon"]} />
                   <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                 </button>
               );

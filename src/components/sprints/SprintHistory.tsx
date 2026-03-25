@@ -222,7 +222,7 @@ ${sprint.reflection ?? "–"}`;
         const incompletePct = 100 - completionPct;
 
         return (
-          <Card key={sprint.id} id={`sprint-card-${sprint.id}`} className="border-[0.5px] rounded-xl overflow-hidden">
+          <Card key={sprint.id} id={`sprint-card-${sprint.id}`} className="border rounded-xl overflow-hidden">
             {/* Header - always visible */}
             <button onClick={() => setExpandedId(isExpanded ? "__none__" : sprint.id)}
               className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-accent/30 transition-colors">
