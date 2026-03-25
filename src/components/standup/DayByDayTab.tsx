@@ -153,8 +153,7 @@ export function DayByDayTab({ weekdays, entries, teamNotes, members, currentMemb
         const isRecentDay = isToday(day) || isYesterday(day);
         const entryCount = dayEntries.length;
 
-        // Older weekdays with 0 entries: skip
-        if (!isRecentDay && entryCount === 0) return null;
+        // Future days with no entries: show header only (handled below)
 
         let dayLabel: string;
         if (isToday(day)) dayLabel = "I dag";
