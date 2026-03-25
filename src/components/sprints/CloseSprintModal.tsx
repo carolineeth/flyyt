@@ -43,20 +43,19 @@ export default function CloseSprintModal({ open, onOpenChange, sprint, sprintIte
         itemsByType[t] = (itemsByType[t] ?? 0) + 1;
       });
 
-      // Items by person (each person on an item counts — collaborator_ids)
+      // Items by person — keyed by member UUID (or "Ufordelt" for unassigned)
       const itemsByPerson: Record<string, { assigned: number; completed: number; points: number }> = {};
       sprintItems.forEach((i) => {
-        const assignees: string[] = (i.backlog_item as any)?.collaborator_ids
-          ?? (i.backlog_item?.assignee_id ? [i.backlog_item.assignee_id] : []);
-        const names = assignees.length > 0
-          ? assignees.map((id) => members.find((m) => m.id === id)?.name?.split(" ")[0] ?? "Ukjent")
-          : ["Ufordelt"];
-        names.forEach((name) => {
-          if (!itemsByPerson[name]) itemsByPerson[name] = { assigned: 0, completed: 0, points: 0 };
-          itemsByPerson[name].assigned++;
+        const assignees: string[] = (i.backlog_item as any)?.collaborator_ids?.length > 0
+          ? (i.backlog_item as any).collaborator_ids
+          : [];
+        const keys = assignees.length > 0 ? assignees : ["Ufordelt"];
+        keys.forEach((key) => {
+          if (!itemsByPerson[key]) itemsByPerson[key] = { assigned: 0, completed: 0, points: 0 };
+          itemsByPerson[key].assigned++;
           if (i.column_name === "done") {
-            itemsByPerson[name].completed++;
-            itemsByPerson[name].points += i.backlog_item?.estimate ?? 0;
+            itemsByPerson[key].completed++;
+            itemsByPerson[key].points += i.backlog_item?.estimate ?? 0;
           }
         });
       });

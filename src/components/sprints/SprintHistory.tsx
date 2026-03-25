@@ -312,26 +312,33 @@ ${sprint.reflection ?? "–"}`;
                   <div>
                     <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">Bidrag per person</p>
                     <div className="space-y-1.5">
-                      {Object.entries(sn.items_by_person)
-                        .sort(([, a], [, b]) => b.points - a.points)
-                        .map(([name, data]) => {
-                          const member = members?.find((m) => m.name.split(" ")[0].toLowerCase() === name.toLowerCase());
-                          const maxPts = Math.max(...Object.values(sn.items_by_person).map((d) => d.points), 1);
-                          return (
-                            <div key={name} className="flex items-center gap-2">
-                              {member ? <MemberAvatar member={member} /> : <span className="text-xs w-6">{name.slice(0, 2)}</span>}
-                              <span className="text-xs w-16 truncate">{name}</span>
-                              <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                                <div className="h-full rounded-full transition-all"
-                                  style={{
-                                    width: `${(data.points / maxPts) * 100}%`,
-                                    backgroundColor: member?.avatar_color ?? "hsl(var(--primary))",
-                                  }} />
+                      {(() => {
+                        const entries = Object.entries(sn.items_by_person);
+                        const maxPts = Math.max(...entries.map(([, d]) => d.points ?? 0), 1);
+                        return entries
+                          .sort(([, a], [, b]) => (b.points ?? 0) - (a.points ?? 0))
+                          .map(([key, data]) => {
+                            // key is either a UUID (new format) or first name (legacy)
+                            const member = members?.find((m) => m.id === key)
+                              ?? members?.find((m) => m.name.split(" ")[0].toLowerCase() === key.toLowerCase());
+                            const displayName = member ? member.name.split(" ")[0] : key;
+                            const pts = data.points ?? 0;
+                            return (
+                              <div key={key} className="flex items-center gap-2">
+                                {member ? <MemberAvatar member={member} /> : <span className="text-xs w-6 text-muted-foreground">{displayName.slice(0, 2)}</span>}
+                                <span className="text-xs w-16 truncate">{displayName}</span>
+                                <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                                  <div className="h-full rounded-full transition-all"
+                                    style={{
+                                      width: `${(pts / maxPts) * 100}%`,
+                                      backgroundColor: member?.avatar_color ?? "hsl(var(--primary))",
+                                    }} />
+                                </div>
+                                <span className="text-xs tabular-nums text-muted-foreground w-12 text-right">{pts} SP</span>
                               </div>
-                              <span className="text-xs tabular-nums text-muted-foreground w-12 text-right">{data.points} SP</span>
-                            </div>
-                          );
-                        })}
+                            );
+                          });
+                      })()}
                     </div>
                   </div>
                 )}
