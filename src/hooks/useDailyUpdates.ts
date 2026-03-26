@@ -193,11 +193,11 @@ export function useDailyTeamNotes(weekStart: Date, weekEnd: Date) {
   return useQuery<DailyTeamNote[]>({
     queryKey: ["daily_team_notes", startStr, endStr],
     queryFn: async () => {
-      const { data, error } = await (supabase
-        .from("daily_team_notes" as any)
+      const { data, error } = await supabase
+        .from("daily_team_notes")
         .select("id, entry_date, content, updated_at")
         .gte("entry_date", startStr)
-        .lte("entry_date", endStr) as any);
+        .lte("entry_date", endStr);
       if (error) throw error;
       return (data ?? []) as DailyTeamNote[];
     },
@@ -208,22 +208,22 @@ export function useUpsertTeamNote() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ entry_date, content }: { entry_date: string; content: string }) => {
-      const { data: existing } = await (supabase
-        .from("daily_team_notes" as any)
+      const { data: existing } = await supabase
+        .from("daily_team_notes")
         .select("id")
         .eq("entry_date", entry_date)
-        .maybeSingle() as any);
+        .maybeSingle();
 
       if (existing) {
-        const { error } = await (supabase
-          .from("daily_team_notes" as any)
-          .update({ content, updated_at: new Date().toISOString() } as any)
-          .eq("id", existing.id) as any);
+        const { error } = await supabase
+          .from("daily_team_notes")
+          .update({ content, updated_at: new Date().toISOString() })
+          .eq("id", existing.id);
         if (error) throw error;
       } else {
-        const { error } = await (supabase
-          .from("daily_team_notes" as any)
-          .insert({ entry_date, content, updated_at: new Date().toISOString() } as any) as any);
+        const { error } = await supabase
+          .from("daily_team_notes")
+          .insert({ entry_date, content, updated_at: new Date().toISOString() });
         if (error) throw error;
       }
     },
