@@ -41,15 +41,16 @@ export function useWeekNavigation() {
 
   const weekLabel = `Uke ${weekNumber} — ${format(weekStart, "d.", { locale: nb })}–${format(weekEnd, "d. MMMM yyyy", { locale: nb })}`;
 
-  // All days in this week (mon-sun), filtered to not show future days and not before project start
+  // All days in this week (mon-sun)
+  // Past weeks: show all 7 days. Current week: hide future days. Respect project start.
   const weekdays = useMemo(() => {
     const allDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
     return allDays.filter((d) => {
-      if (isAfter(d, today)) return false;
+      if (isCurrentWeek && isAfter(d, today)) return false;
       if (isBefore(d, PROJECT_START)) return false;
       return true;
     });
-  }, [weekStart, weekEnd, today]);
+  }, [weekStart, weekEnd, today, isCurrentWeek]);
 
   return { weekStart, weekEnd, weekNumber, weekLabel, isCurrentWeek, weekdays, goToPrevWeek, goToNextWeek, goToThisWeek, goToWeek, currentDate };
 }
@@ -207,10 +208,24 @@ export function useUpsertTeamNote() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ entry_date, content }: { entry_date: string; content: string }) => {
-      const { error } = await (supabase
+      const { data: existing } = await (supabase
         .from("daily_team_notes" as any)
-        .upsert({ entry_date, content, updated_at: new Date().toISOString() }, { onConflict: "entry_date" }) as any);
-      if (error) throw error;
+        .select("id")
+        .eq("entry_date", entry_date)
+        .maybeSingle() as any);
+
+      if (existing) {
+        const { error } = await (supabase
+          .from("daily_team_notes" as any)
+          .update({ content, updated_at: new Date().toISOString() } as any)
+          .eq("id", existing.id) as any);
+        if (error) throw error;
+      } else {
+        const { error } = await (supabase
+          .from("daily_team_notes" as any)
+          .insert({ entry_date, content, updated_at: new Date().toISOString() } as any) as any);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["daily_team_notes"] });

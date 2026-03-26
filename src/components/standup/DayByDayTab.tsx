@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from "react";
-import { format, isToday, isYesterday, startOfDay, isWeekend } from "date-fns";
+import { format, isToday, isYesterday, startOfDay } from "date-fns";
 import { nb } from "date-fns/locale";
 import { StandupInput } from "./StandupInput";
 import { PersonCard } from "./PersonCard";
@@ -89,22 +89,13 @@ export function DayByDayTab({ weekdays, entries, teamNotes, members, currentMemb
   // Sorted newest first
   const sortedDays = useMemo(() => [...weekdays].sort((a, b) => b.getTime() - a.getTime()), [weekdays]);
 
-  // Filter: for weekends, only show if there are entries
-  const visibleDays = useMemo(() => {
-    return sortedDays.filter((day) => {
-      const dayStr = format(day, "yyyy-MM-dd");
-      const dayEntries = entries.filter((e) => e.entry_date === dayStr);
-      if (isWeekend(day) && dayEntries.length === 0) return false;
-      return true;
-    });
-  }, [sortedDays, entries]);
-
-  const todayIsWeekend = isWeekend(today);
+  // Show all days — no weekend filtering
+  const visibleDays = sortedDays;
 
   return (
     <div className="space-y-0">
       {/* Input for today */}
-      {isCurrentWeek && currentMemberId && !todayCollapsed && !todayIsWeekend && (() => {
+      {isCurrentWeek && currentMemberId && !todayCollapsed && true && (() => {
         const todayStr = format(today, "yyyy-MM-dd");
         const todayEntry = entries.find((e) => e.entry_date === todayStr && e.member_id === currentMemberId) ?? null;
         return (
@@ -121,7 +112,7 @@ export function DayByDayTab({ weekdays, entries, teamNotes, members, currentMemb
         );
       })()}
 
-      {isCurrentWeek && currentMemberId && todayCollapsed && !todayIsWeekend && (
+      {isCurrentWeek && currentMemberId && todayCollapsed && true && (
         <div className="flex justify-end mb-4">
           <Button
             variant="ghost"
