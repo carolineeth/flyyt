@@ -127,10 +127,10 @@ export async function syncRequirementFromSprint(
   backlogItemTitle?: string
 ) {
   // Find requirements linked via junction table
-  const { data: links, error: linkErr } = await supabase
-    .from("requirement_backlog_links")
+  const { data: links, error: linkErr } = await (supabase
+    .from("requirement_backlog_links" as any)
     .select("requirement_id")
-    .eq("backlog_item_id", backlogItemId);
+    .eq("backlog_item_id", backlogItemId) as any);
 
   // Fallback: also check old column for backwards compatibility
   const { data: oldReqs } = await (supabase
