@@ -130,7 +130,9 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
                     </Button>
                   )}
                 </div>
-                {getRegistrationsFor(advisorMeeting.id).map((reg, i) => (
+                {[...getRegistrationsFor(advisorMeeting.id)].sort((a, b) =>
+                  (a.completed_date ?? a.created_at ?? "").localeCompare(b.completed_date ?? b.created_at ?? "")
+                ).map((reg, i) => (
                   <div
                     key={reg.id}
                     className="flex items-center gap-2 text-xs px-2 py-1.5 rounded hover:bg-accent/30 cursor-pointer transition-colors"
@@ -192,7 +194,9 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
         {/* 3-column grid for agile meetings */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {agileMeetings.map((item) => {
-            const regs = getRegistrationsFor(item.id);
+            const regs = [...getRegistrationsFor(item.id)].sort((a, b) =>
+              (a.completed_date ?? a.created_at ?? "").localeCompare(b.completed_date ?? b.created_at ?? "")
+            );
             const totalAgileCompleted = agileMeetings.reduce((sum, m) =>
               sum + getRegistrationsFor(m.id).filter((r) => r.status === "completed").length, 0
             );

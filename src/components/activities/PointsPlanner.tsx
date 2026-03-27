@@ -81,6 +81,7 @@ interface PointsPlannerProps {
 export function PointsPlanner({ catalog, registrations, onClickRegistration }: PointsPlannerProps) {
   const updateReg = useUpdateRegistration();
   const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [showAllWeeks, setShowAllWeeks] = useState(false);
   const currentWeek = getCurrentWeek();
 
   const weekData = useMemo(() => {
@@ -191,50 +192,47 @@ export function PointsPlanner({ catalog, registrations, onClickRegistration }: P
         </p>
       )}
 
-      <div id="points-planner-card" className="card-elevated p-6 space-y-4">
-        <p className="text-base font-semibold text-foreground">Poengplanlegger — dra aktiviteter inn i ukene</p>
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            {/* Unplanned column */}
-            <div
-              className="shrink-0 w-32 rounded-lg border border-dashed border-neutral-300 bg-neutral-50 min-h-[140px]"
-              onDragOver={handleDragOver}
-              onDrop={(e) => handleDrop(e, null)}
-            >
-              <div className="py-2 px-3">
-                <p className="text-xs text-muted-foreground italic">Uplanlagt</p>
-              </div>
-              <div className="p-2 space-y-1">
-                {unplanned.map((r) => {
-                  const cat = catalog.find((c) => c.id === r.catalog_id);
-                  if (!cat) return null;
-                  return <RegBlock key={r.id} reg={r} cat={cat} onDragStart={handleDragStart} isDragging={draggedId === r.id} onClick={() => onClickRegistration?.(r, cat)} />;
-                })}
-              </div>
+      <div id="points-planner-card" className="card-elevated pt-6 px-6 pb-4 space-y-4" style={{ overflow: "visible" }}>
+        <div className="flex items-center gap-2">
+          <p className="text-base font-semibold text-foreground">Poengplanlegger — dra aktiviteter inn i ukene</p>
+          <span className="ml-auto bg-amber-50 text-amber-700 text-xs font-medium py-1 px-2.5 rounded-md shrink-0">Frist: 5. april</span>
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {/* Unplanned column */}
+          <div
+            className="shrink-0 w-32 rounded-lg border border-dashed border-neutral-300 bg-neutral-50 min-h-[140px]"
+            onDragOver={handleDragOver}
+            onDrop={(e) => handleDrop(e, null)}
+          >
+            <div className="py-2 px-3">
+              <p className="text-xs text-muted-foreground italic">Uplanlagt</p>
             </div>
+            <div className="p-2 space-y-1">
+              {unplanned.map((r) => {
+                const cat = catalog.find((c) => c.id === r.catalog_id);
+                if (!cat) return null;
+                return <RegBlock key={r.id} reg={r} cat={cat} onDragStart={handleDragStart} isDragging={draggedId === r.id} onClick={() => onClickRegistration?.(r, cat)} />;
+              })}
+            </div>
+          </div>
 
-            {weekData.map((w) => {
+          {weekData
+            .filter((w) => showAllWeeks || w.registrations.length > 0 || w.week <= currentWeek)
+            .map((w) => {
               const isCurrentWeek = w.week === currentWeek;
-              const isDeadlineWeek = w.week === 14;
               return (
                 <div key={w.week} className="flex shrink-0">
                   <div
                     className={`w-28 min-h-[140px] transition-colors flex flex-col ${
-                      isCurrentWeek
-                        ? "ring-2 ring-primary ring-offset-1 rounded-lg"
-                        : ""
+                      isCurrentWeek ? "ring-2 ring-primary ring-offset-1 rounded-lg" : ""
                     }`}
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, w.week)}
                   >
-                    {/* Week header */}
                     <div className={`py-2 px-3 rounded-t-lg text-center ${isCurrentWeek ? "bg-primary/10" : "bg-neutral-100"}`}>
                       <p className={`text-xs font-semibold uppercase tracking-wide ${isCurrentWeek ? "text-primary" : "text-foreground"}`}>Uke {w.week}</p>
                       <p className="text-[9px] text-muted-foreground leading-tight">{WEEK_RANGES[w.week]}</p>
-                      {isDeadlineWeek && (
-                        <span className="inline-block mt-1 bg-red-50 text-red-700 text-[9px] font-medium px-2 py-0.5 rounded">Frist 5. apr</span>
-                      )}
                     </div>
-                    {/* Week body */}
                     <div className={`flex-1 p-2 border border-t-0 rounded-b-lg ${isCurrentWeek ? "bg-white border-primary/20" : "bg-white border-neutral-200"}`}>
                       <div className="space-y-1 mb-2">
                         {w.registrations.map((r) => {
@@ -251,7 +249,17 @@ export function PointsPlanner({ catalog, registrations, onClickRegistration }: P
                 </div>
               );
             })}
-          </div>
+
+          {/* Show more weeks button */}
+          {!showAllWeeks && weekData.some((w) => w.registrations.length === 0 && w.week > currentWeek) && (
+            <button
+              onClick={() => setShowAllWeeks(true)}
+              className="shrink-0 w-10 min-h-[140px] rounded-lg border border-dashed border-neutral-300 flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-neutral-400 transition-colors"
+            >
+              <span className="text-lg font-medium">+</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="card-elevated p-6">
