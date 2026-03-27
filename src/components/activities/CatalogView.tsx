@@ -189,7 +189,8 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
           <h3 className="text-lg font-semibold">Smidige møter</h3>
           <p className="text-sm text-muted-foreground">1p per type per uke · Maks 3p totalt · Ulike typer ikke i samme uke</p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* 3-column grid for agile meetings */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {agileMeetings.map((item) => {
             const regs = getRegistrationsFor(item.id);
             const totalAgileCompleted = agileMeetings.reduce((sum, m) =>
@@ -198,89 +199,71 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
             const canAddMore = totalAgileCompleted < 3;
             return (
               <div key={item.id} className="bg-neutral-50 rounded-xl p-4 space-y-2">
-                  <div className="text-center">
-                    <p className="text-sm font-medium">{item.name.replace("Smidige møter: ", "")}</p>
-                    <Badge variant="secondary" className="text-[10px]">{item.points}p</Badge>
+                <div className="text-center">
+                  <p className="text-sm font-semibold">{item.name.replace("Smidige møter: ", "")}</p>
+                  <Badge variant="secondary" className="text-xs">{item.points}p</Badge>
+                </div>
+                {regs.map((reg, i) => (
+                  <div
+                    key={reg.id}
+                    className="flex items-center gap-2 text-xs px-2 py-1.5 rounded hover:bg-accent/30 cursor-pointer transition-colors"
+                    onClick={() => openModalWithRegistration(item, reg)}
+                  >
+                    <StatusIcon catId={item.id} />
+                    <span className="flex-1">#{i + 1}{reg.completed_date ? ` — ${reg.completed_date}` : ""}</span>
+                    {reg.linked_meeting_id && (
+                      <a href="/moter" onClick={(e) => e.stopPropagation()} className="flex items-center gap-0.5 text-[10px] text-primary/70 hover:text-primary shrink-0">
+                        <Link2 className="h-2.5 w-2.5" /> Møte
+                      </a>
+                    )}
+                    <Badge variant={reg.status === "completed" ? "default" : "outline"} className="text-xs py-0.5 px-2">
+                      {reg.status === "completed" ? "Fullført" : reg.status === "in_progress" ? "Pågår" : "Planlagt"}
+                    </Badge>
+                    <button className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" onClick={(e) => { e.stopPropagation(); setDeleteTarget(reg); }}>
+                      <Trash2 className="h-3 w-3" />
+                    </button>
                   </div>
-                  {regs.map((reg, i) => (
-                    <div
-                      key={reg.id}
-                      className="flex items-center gap-2 text-xs px-2 py-1.5 rounded hover:bg-accent/30 cursor-pointer transition-colors"
-                      onClick={() => openModalWithRegistration(item, reg)}
-                    >
-                      <StatusIcon catId={item.id} />
-                      <span className="flex-1">#{i + 1}{reg.completed_date ? ` — ${reg.completed_date}` : ""}</span>
-                      {reg.linked_meeting_id && (
-                        <a
-                          href="/moter"
-                          onClick={(e) => e.stopPropagation()}
-                          className="flex items-center gap-0.5 text-[10px] text-primary/70 hover:text-primary shrink-0"
-                          title="Koblet til møtekalenderen"
-                        >
-                          <Link2 className="h-2.5 w-2.5" />
-                          Møte
-                        </a>
-                      )}
-                      <Badge variant={reg.status === "completed" ? "default" : "outline"} className="text-[10px]">
-                        {reg.status === "completed" ? "Fullført" : reg.status === "in_progress" ? "Pågår" : "Planlagt"}
-                      </Badge>
-                      <button
-                        className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                        onClick={(e) => { e.stopPropagation(); setDeleteTarget(reg); }}
-                        title="Slett registrering"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                  {regs.length === 0 && (
-                    <div className="flex justify-center">
-                      <StatusIcon catId={item.id} />
-                    </div>
-                  )}
-                  {canAddMore && (
-                    <Button variant="outline" size="sm" className="w-full h-7 text-xs" onClick={() => openModalNew(item)}>
-                      + Registrer ny
-                    </Button>
-                  )}
-              </div>
-            );
-          })}
-          {/* Custom activity as 4th card */}
-          {custom.map((item) => {
-            const regs = getRegistrationsFor(item.id);
-            return (
-              <div key={item.id} className="bg-neutral-50 rounded-xl p-4 space-y-2">
-                  <div className="text-center">
-                    <p className="text-sm font-medium">Egendefinert</p>
-                    <Badge variant="secondary" className="text-[10px]">{item.points}p</Badge>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground text-center leading-tight">Gjennomfør en smidig aktivitet som ikke er nevnt i kursdokumentet</p>
-                  {regs.map((reg, i) => (
-                    <div
-                      key={reg.id}
-                      className="flex items-center gap-2 text-xs px-2 py-1.5 rounded hover:bg-accent/30 cursor-pointer transition-colors"
-                      onClick={() => openModalWithRegistration(item, reg)}
-                    >
-                      <StatusIcon catId={item.id} />
-                      <span className="flex-1">#{i + 1}{reg.completed_date ? ` — ${reg.completed_date}` : ""}</span>
-                      <Badge variant={reg.status === "completed" ? "default" : "outline"} className="text-[10px]">
-                        {reg.status === "completed" ? "Fullført" : "Planlagt"}
-                      </Badge>
-                    </div>
-                  ))}
-                  {regs.length === 0 && (
-                    <div className="flex justify-center">
-                      <StatusIcon catId={item.id} />
-                    </div>
-                  )}
-                  <Button variant="outline" size="sm" className="w-full h-7 text-xs" onClick={() => openModal(item)}>
-                    {regs.length > 0 ? "Se detaljer" : "+ Registrer"}
-                  </Button>
+                ))}
+                {regs.length === 0 && <div className="flex justify-center"><StatusIcon catId={item.id} /></div>}
+                {canAddMore && (
+                  <Button variant="outline" size="sm" className="w-full h-7 text-xs" onClick={() => openModalNew(item)}>+ Registrer ny</Button>
+                )}
               </div>
             );
           })}
         </div>
+
+        {/* Custom activity — full-width row */}
+        {custom.map((item) => {
+          const regs = getRegistrationsFor(item.id);
+          return (
+            <div key={item.id} className="bg-neutral-50 rounded-xl p-4 mt-4 flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold">Egendefinert aktivitet</p>
+                    <Badge variant="secondary" className="text-xs">{item.points}p</Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-0.5">Gjennomfør en smidig aktivitet som ikke er nevnt i kursdokumentet</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                {regs.map((reg, i) => (
+                  <div key={reg.id} className="flex items-center gap-1.5 text-xs px-2 py-1 rounded hover:bg-accent/30 cursor-pointer" onClick={() => openModalWithRegistration(item, reg)}>
+                    <StatusIcon catId={item.id} />
+                    <span>#{i + 1}</span>
+                    <Badge variant={reg.status === "completed" ? "default" : "outline"} className="text-xs py-0.5 px-2">
+                      {reg.status === "completed" ? "Fullført" : "Planlagt"}
+                    </Badge>
+                  </div>
+                ))}
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openModal(item)}>
+                  {regs.length > 0 ? "Se detaljer" : "+ Registrer"}
+                </Button>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Second half */}

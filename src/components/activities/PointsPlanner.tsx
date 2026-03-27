@@ -194,13 +194,16 @@ export function PointsPlanner({ catalog, registrations, onClickRegistration }: P
       <div id="points-planner-card" className="card-elevated p-6 space-y-4">
         <p className="text-base font-semibold text-foreground">Poengplanlegger — dra aktiviteter inn i ukene</p>
           <div className="flex gap-2 overflow-x-auto pb-2">
+            {/* Unplanned column */}
             <div
-              className="shrink-0 w-36 rounded-lg border-2 border-dashed border-muted p-2 min-h-[180px] bg-muted/30"
+              className="shrink-0 w-32 rounded-lg border border-dashed border-neutral-300 bg-neutral-50 min-h-[140px]"
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, null)}
             >
-              <p className="text-[10px] font-medium text-muted-foreground mb-2 uppercase tracking-wider">Uplanlagt</p>
-              <div className="space-y-1">
+              <div className="py-2 px-3">
+                <p className="text-xs text-muted-foreground italic">Uplanlagt</p>
+              </div>
+              <div className="p-2 space-y-1">
                 {unplanned.map((r) => {
                   const cat = catalog.find((c) => c.id === r.catalog_id);
                   if (!cat) return null;
@@ -211,38 +214,39 @@ export function PointsPlanner({ catalog, registrations, onClickRegistration }: P
 
             {weekData.map((w) => {
               const isCurrentWeek = w.week === currentWeek;
-              const isDeadlineBorder = w.week === 15;
+              const isDeadlineWeek = w.week === 14;
               return (
-                <div key={w.week} className="flex">
-                  {isDeadlineBorder && (
-                    <div className="flex flex-col items-center mx-1 shrink-0 relative">
-                      <div className="w-0 h-full border-l-2 border-dashed border-amber-500" />
-                      <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap shadow-sm">
-                        Frist 5. apr
-                      </div>
-                    </div>
-                  )}
+                <div key={w.week} className="flex shrink-0">
                   <div
-                    className={`shrink-0 w-28 rounded-xl border-2 p-3 min-h-[180px] transition-colors ${
-                      isCurrentWeek ? "border-primary bg-primary/5" : draggedId ? "border-dashed border-primary/30 bg-primary/5" : "border-border bg-neutral-50"
+                    className={`w-28 min-h-[140px] transition-colors flex flex-col ${
+                      isCurrentWeek
+                        ? "ring-2 ring-primary ring-offset-1 rounded-lg"
+                        : ""
                     }`}
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, w.week)}
                   >
-                    <div className="text-center mb-2">
-                      <p className={`text-xs font-semibold ${isCurrentWeek ? "text-info" : ""}`}>Uke {w.week}</p>
+                    {/* Week header */}
+                    <div className={`py-2 px-3 rounded-t-lg text-center ${isCurrentWeek ? "bg-primary/10" : "bg-neutral-100"}`}>
+                      <p className={`text-xs font-semibold uppercase tracking-wide ${isCurrentWeek ? "text-primary" : "text-foreground"}`}>Uke {w.week}</p>
                       <p className="text-[9px] text-muted-foreground leading-tight">{WEEK_RANGES[w.week]}</p>
+                      {isDeadlineWeek && (
+                        <span className="inline-block mt-1 bg-red-50 text-red-700 text-[9px] font-medium px-2 py-0.5 rounded">Frist 5. apr</span>
+                      )}
                     </div>
-                    <div className="space-y-1 mb-2">
-                      {w.registrations.map((r) => {
-                        const cat = catalog.find((c) => c.id === r.catalog_id);
-                        if (!cat) return null;
-                        return <RegBlock key={r.id} reg={r} cat={cat} onDragStart={handleDragStart} isDragging={draggedId === r.id} onClick={() => onClickRegistration?.(r, cat)} />;
-                      })}
+                    {/* Week body */}
+                    <div className={`flex-1 p-2 border border-t-0 rounded-b-lg ${isCurrentWeek ? "bg-white border-primary/20" : "bg-white border-neutral-200"}`}>
+                      <div className="space-y-1 mb-2">
+                        {w.registrations.map((r) => {
+                          const cat = catalog.find((c) => c.id === r.catalog_id);
+                          if (!cat) return null;
+                          return <RegBlock key={r.id} reg={r} cat={cat} onDragStart={handleDragStart} isDragging={draggedId === r.id} onClick={() => onClickRegistration?.(r, cat)} />;
+                        })}
+                      </div>
+                      <div className={`text-center text-sm font-semibold tabular-nums ${
+                        w.overLimit ? "text-red-600" : w.total > 0 ? "text-primary" : "text-muted-foreground"
+                      }`}>{w.total > 0 ? `${w.total}p` : "—"}</div>
                     </div>
-                    <div className={`text-center text-xs font-bold tabular-nums rounded px-1 py-0.5 ${
-                      w.overLimit ? "bg-destructive/15 text-destructive" : w.total > 0 ? "text-primary" : "text-muted-foreground"
-                    }`}>{w.total > 0 ? `${w.total}p` : "—"}</div>
                   </div>
                 </div>
               );
@@ -274,26 +278,35 @@ export function PointsPlanner({ catalog, registrations, onClickRegistration }: P
   );
 }
 
+const REG_BLOCK_COLORS: Record<string, string> = {
+  mandatory: "bg-amber-50 text-amber-700",
+  optional: "bg-teal-50 text-teal-700",
+  meeting_advisor: "bg-purple-50 text-purple-700",
+  meeting_agile: "bg-blue-50 text-blue-700",
+};
+
+function getRegBlockColor(cat: CatalogItem): string {
+  if (cat.is_mandatory) return REG_BLOCK_COLORS.mandatory;
+  if (cat.category === "meeting_based") {
+    if (cat.meeting_type === "veiledermøte") return REG_BLOCK_COLORS.meeting_advisor;
+    return REG_BLOCK_COLORS.meeting_agile;
+  }
+  return REG_BLOCK_COLORS.optional;
+}
+
 function RegBlock({ reg, cat, onDragStart, isDragging, onClick }: { reg: Registration; cat: CatalogItem; onDragStart: (e: React.DragEvent, id: string) => void; isDragging: boolean; onClick?: () => void }) {
-  const isCompleted = reg.status === "completed";
-  const isMandatory = cat.is_mandatory;
   return (
     <div
       draggable
       onDragStart={(e) => onDragStart(e, reg.id)}
       onClick={(e) => { e.stopPropagation(); onClick?.(); }}
-      className={`text-[10px] leading-tight rounded px-1.5 py-1 cursor-pointer active:cursor-grabbing transition-all flex items-start gap-1 hover:ring-1 hover:ring-primary/40 ${
+      className={`text-xs leading-tight rounded-md px-2 py-1.5 mb-1 cursor-pointer active:cursor-grabbing transition-all flex items-start gap-1 hover:ring-1 hover:ring-primary/40 font-medium ${
         isDragging ? "opacity-40 scale-95" : "opacity-100"
-      } ${isCompleted ? "bg-primary/15 text-primary" : "bg-blue-50 text-blue-700"} ${
-        isMandatory ? "border-t-2 border-t-[#E07A5F]" : ""
-      }`}
+      } ${getRegBlockColor(cat)}`}
     >
       <GripVertical className="h-3 w-3 shrink-0 mt-px opacity-40" />
       <span className="flex-1 min-w-0">
-        <span className="line-clamp-2">
-          
-          {cat.name}
-        </span>
+        <span className="line-clamp-2">{cat.name}</span>
         <span className="font-semibold ml-0.5">{cat.points}p</span>
       </span>
     </div>
