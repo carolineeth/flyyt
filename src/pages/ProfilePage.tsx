@@ -169,7 +169,7 @@ export default function ProfilePage() {
       if (uploadError) throw uploadError;
       const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(path);
       const avatarUrl = urlData.publicUrl + `?t=${Date.now()}`;
-      const { error } = await supabase.from("team_members").update({ avatar_url: avatarUrl }).eq("id", memberId!);
+      const { error } = await supabase.from("team_members").update({ avatar_url: avatarUrl } as any).eq("id", memberId!);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -181,7 +181,7 @@ export default function ProfilePage() {
 
   const removeAvatar = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("team_members").update({ avatar_url: null }).eq("id", memberId!);
+      const { error } = await supabase.from("team_members").update({ avatar_url: null } as any).eq("id", memberId!);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -292,7 +292,7 @@ export default function ProfilePage() {
                 title="Velg farge"
               />
               <span className="text-[11px] text-muted-foreground">Velg farge</span>
-              {member.avatar_url && (
+              {(member as any).avatar_url && (
                 <button
                   onClick={() => removeAvatar.mutate()}
                   className="text-[11px] text-muted-foreground hover:text-destructive flex items-center gap-0.5 ml-2"
