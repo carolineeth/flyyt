@@ -189,18 +189,21 @@ function WeeklyPlan({
       map[dateStr].push({ type: "activity_done", id: r.id, label: cat.name });
     });
 
-    // 3. Planned activities this week (not completed) — placed on Monday
-    const mondayStr = format(weekStart, "yyyy-MM-dd");
-    registrations.forEach((r) => {
-      if (r.status === "completed") return;
-      if (r.planned_week !== weekNum) return;
-      const cat = catalog.find((c) => c.id === r.catalog_id);
-      if (!cat || !map[mondayStr]) return;
-      map[mondayStr].push({ type: "activity_planned", id: r.id, label: cat.name });
-    });
+    // Planned activities removed from day columns — shown in separate section below
 
     return map;
-  }, [days, weekMeetings, subSessions, registrations, catalog, recurringMeetings, weekNum, weekStart]);
+  }, [days, weekMeetings, subSessions, registrations, catalog, recurringMeetings, weekStart]);
+
+  // Planned-but-not-completed activities for this week (separate row)
+  const plannedActivities = useMemo(() => {
+    return registrations
+      .filter((r) => r.status !== "completed" && r.planned_week === weekNum)
+      .map((r) => {
+        const c = catalog.find((c) => c.id === r.catalog_id);
+        return c ? { id: r.id, label: c.name } : null;
+      })
+      .filter(Boolean) as { id: string; label: string }[];
+  }, [registrations, catalog, weekNum]);
 
   const isCurrentWeek = weekOffset === 0;
   const weekLabel = `Uke ${weekNum} — ${format(weekStart, "d.", { locale: nb })}–${format(weekEnd, "d. MMMM", { locale: nb })}`;
@@ -387,6 +390,24 @@ function WeeklyPlan({
             <p className="text-xs text-muted-foreground">Ingen hendelser denne uken</p>
           )}
         </div>
+
+        {/* Planned activities for this week (not day-specific) */}
+        {plannedActivities.length > 0 && (
+          <div className="border-t border-border/40 pt-3 mt-3 px-1">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Planlagt denne uken</p>
+            <div className="flex flex-wrap gap-2">
+              {plannedActivities.map((a) => (
+                <span
+                  key={a.id}
+                  className="bg-amber-50 text-amber-700 rounded-md py-1 px-3 text-sm font-medium inline-flex items-center gap-1.5"
+                >
+                  <Clock className="h-3 w-3 shrink-0" />
+                  {a.label}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
