@@ -1055,6 +1055,32 @@ export type Database = {
           },
         ]
       }
+      requirement_backlog_links: {
+        Row: {
+          backlog_item_id: string
+          id: string
+          requirement_id: string
+        }
+        Insert: {
+          backlog_item_id: string
+          id?: string
+          requirement_id: string
+        }
+        Update: {
+          backlog_item_id?: string
+          id?: string
+          requirement_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requirement_backlog_links_backlog_item_id_fkey"
+            columns: ["backlog_item_id"]
+            isOneToOne: false
+            referencedRelation: "backlog_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       requirements: {
         Row: {
           acceptance_criteria: string | null
@@ -1525,6 +1551,7 @@ export type Database = {
         Row: {
           auth_user_id: string | null
           avatar_color: string
+          avatar_url: string | null
           created_at: string
           email: string
           id: string
@@ -1533,6 +1560,7 @@ export type Database = {
         Insert: {
           auth_user_id?: string | null
           avatar_color?: string
+          avatar_url?: string | null
           created_at?: string
           email: string
           id?: string
@@ -1541,6 +1569,7 @@ export type Database = {
         Update: {
           auth_user_id?: string | null
           avatar_color?: string
+          avatar_url?: string | null
           created_at?: string
           email?: string
           id?: string
