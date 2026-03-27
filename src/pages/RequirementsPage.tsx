@@ -142,10 +142,10 @@ export default function RequirementsPage() {
 
   const addLinkMutation = useMutation({
     mutationFn: async ({ requirementId, backlogItemId }: { requirementId: string; backlogItemId: string }) => {
-      const { error } = await supabase.from("requirement_backlog_links").insert({
+      const { error } = await (supabase.from("requirement_backlog_links" as any).insert({
         requirement_id: requirementId,
         backlog_item_id: backlogItemId,
-      });
+      } as any) as any);
       if (error) throw error;
       // Double-write to old column as backup (fail silently)
       try { await (supabase.from("requirements" as any).update({ linked_backlog_item_id: backlogItemId } as any).eq("id", requirementId) as any); } catch {}

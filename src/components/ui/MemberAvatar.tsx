@@ -25,7 +25,7 @@ export function MemberAvatar({
   size?: "sm" | "md" | "lg" | "xl";
 }) {
   const [imgError, setImgError] = useState(false);
-  const hasImage = member.avatar_url && !imgError;
+  const hasImage = (member as any).avatar_url && !imgError;
 
   return (
     <div
@@ -37,7 +37,7 @@ export function MemberAvatar({
     >
       {hasImage ? (
         <img
-          src={member.avatar_url!}
+          src={(member as any).avatar_url!}
           alt={member.name}
           className="h-full w-full object-cover"
           onError={() => setImgError(true)}

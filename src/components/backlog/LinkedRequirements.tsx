@@ -26,12 +26,12 @@ export function LinkedRequirements({ backlogItemId }: Props) {
   const { data: links = [] } = useQuery({
     queryKey: ["req_links_for_item", backlogItemId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("requirement_backlog_links")
+      const { data, error } = await (supabase
+        .from("requirement_backlog_links" as any)
         .select("id, requirement_id, backlog_item_id")
-        .eq("backlog_item_id", backlogItemId);
+        .eq("backlog_item_id", backlogItemId) as any);
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
   });
 
@@ -57,10 +57,10 @@ export function LinkedRequirements({ backlogItemId }: Props) {
 
   const addLink = useMutation({
     mutationFn: async (reqId: string) => {
-      const { error } = await supabase.from("requirement_backlog_links").insert({
+      const { error } = await (supabase.from("requirement_backlog_links" as any).insert({
         requirement_id: reqId,
         backlog_item_id: backlogItemId,
-      });
+      } as any) as any);
       if (error) throw error;
       // Double-write backup (fail silently)
       try { await (supabase.from("requirements" as any).update({ linked_backlog_item_id: backlogItemId } as any).eq("id", reqId) as any); } catch {}
@@ -83,10 +83,10 @@ export function LinkedRequirements({ backlogItemId }: Props) {
 
   const removeLink = useMutation({
     mutationFn: async (reqId: string) => {
-      const { error } = await supabase.from("requirement_backlog_links")
+      const { error } = await (supabase.from("requirement_backlog_links" as any)
         .delete()
         .eq("requirement_id", reqId)
-        .eq("backlog_item_id", backlogItemId);
+        .eq("backlog_item_id", backlogItemId) as any);
       if (error) throw error;
     },
     onSuccess: (_, reqId) => {
