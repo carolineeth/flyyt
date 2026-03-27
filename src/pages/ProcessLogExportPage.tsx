@@ -8,7 +8,7 @@ export default function ProcessLogExportPage() {
   const { data: notes } = useProsessloggNotes();
 
   return (
-    <div className="space-y-6 scroll-reveal">
+    <div className="space-y-8 scroll-reveal">
       <PageHeader
         title="Prosesslogg"
         description="Samle notater, skriv og eksporter prosessloggen"

@@ -186,7 +186,7 @@ export default function OppgaverPage() {
   };
 
   return (
-    <div className="space-y-4 max-w-3xl mx-auto">
+    <div className="space-y-8 max-w-3xl mx-auto">
       <PageHeader title="Oppgaver" description="For oppgaver som ikke er direkte knyttet til app-utvikling. Brukerhistorier og tekniske oppgaver hører hjemme i Sprinter." />
 
       {/* Category tabs */}
@@ -260,7 +260,7 @@ export default function OppgaverPage() {
                     updateMutation.mutate({ id: from, sort_order: task.sort_order });
                   }
                 }}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all hover:bg-accent/50 ${
+                className={`flex items-center gap-2 px-3 py-3 rounded-lg transition-all hover:bg-accent/50 ${
                   task.is_completed ? "opacity-50" : ""
                 } ${draggedId === task.id ? "opacity-30" : ""}`}>
                 <GripVertical className="h-3.5 w-3.5 shrink-0 text-muted-foreground/30 cursor-grab" />
@@ -320,7 +320,7 @@ export default function OppgaverPage() {
             return (
               <>
                 <DialogHeader><DialogTitle>Rediger oppgave</DialogTitle></DialogHeader>
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div><Label>Tittel</Label><Input value={editTask.title} onChange={(e) => setEditTask((p: any) => ({ ...p, title: e.target.value }))} /></div>
                   <div><Label>Beskrivelse</Label><Textarea value={editTask.description ?? ""} onChange={(e) => setEditTask((p: any) => ({ ...p, description: e.target.value }))} rows={3} /></div>
                   <div className="grid grid-cols-2 gap-3">

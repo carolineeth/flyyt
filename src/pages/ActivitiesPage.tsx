@@ -40,7 +40,7 @@ export default function ActivitiesPage() {
   const progressPct = Math.min((earned / 30) * 100, 100);
 
   return (
-    <div className="space-y-6 scroll-reveal">
+    <div className="space-y-8 scroll-reveal">
       <PageHeader
         title="Aktivitets-tracker"
         description={

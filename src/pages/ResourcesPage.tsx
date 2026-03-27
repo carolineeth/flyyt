@@ -186,7 +186,7 @@ export default function ResourcesPage() {
 
   return (
     <div
-      className="space-y-6 scroll-reveal relative"
+      className="space-y-8 scroll-reveal relative"
       onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
       onDragLeave={(e) => { if (e.currentTarget === e.target || !e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false); }}
       onDrop={handleDrop}
@@ -271,7 +271,7 @@ export default function ResourcesPage() {
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent>
           <DialogHeader><DialogTitle>Ny ressurs</DialogTitle></DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div><Label>Tittel</Label><Input value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} placeholder="Navn på ressursen" /></div>
             <div><Label>URL</Label><Input value={form.url} onChange={(e) => setForm((p) => ({ ...p, url: e.target.value }))} placeholder="https://..." /></div>
             <div>
@@ -309,7 +309,7 @@ export default function ResourcesPage() {
       <Dialog open={!!editingResource} onOpenChange={(open) => !open && setEditingResource(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Rediger ressurs</DialogTitle></DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div><Label>Tittel</Label><Input value={editForm.title} onChange={(e) => setEditForm((p) => ({ ...p, title: e.target.value }))} /></div>
             <div><Label>URL</Label><Input value={editForm.url} onChange={(e) => setEditForm((p) => ({ ...p, url: e.target.value }))} /></div>
             <div>
@@ -367,7 +367,7 @@ export default function ResourcesPage() {
           <DialogHeader>
             <DialogTitle>Last opp {pendingFiles?.length === 1 ? "fil" : `${pendingFiles?.length} filer`}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="text-sm text-muted-foreground">
               {pendingFiles?.map((f) => f.name).join(", ")}
             </div>

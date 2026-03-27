@@ -176,7 +176,7 @@ export default function MeetingCalendarPage() {
   };
 
   return (
-    <div className="space-y-6 scroll-reveal">
+    <div className="space-y-8 scroll-reveal">
       <PageHeader
         title="Møter"
         description="Planlegg, gjennomfør og dokumenter gruppemøter"
@@ -254,7 +254,7 @@ export default function MeetingCalendarPage() {
 
       {/* Ad-hoc / unlinked meetings */}
       {unlinkedMeetings.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <p className="text-xs font-medium text-muted-foreground">Andre møter denne uken</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {unlinkedMeetings.map((m: any) => {
@@ -333,7 +333,7 @@ export default function MeetingCalendarPage() {
           <DialogHeader>
             <DialogTitle>Legg til møte</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div>
               <Label>Tittel / beskrivelse</Label>
               <Input

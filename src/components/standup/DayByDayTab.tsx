@@ -173,7 +173,7 @@ export function DayByDayTab({ weekdays, entries, teamNotes, members, currentMemb
             )}
 
             {/* Day header */}
-            <div className="flex items-center gap-3 mb-3">
+            <div className="flex items-center gap-3 mb-4">
               {/* Timeline dot */}
               <div className={`relative z-10 w-[31px] h-[31px] rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
                 isToday(day)

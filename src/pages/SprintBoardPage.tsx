@@ -332,7 +332,7 @@ export default function SprintBoardPage() {
   const itemSubtasks = detailItem ? subtasks?.filter((s) => s.backlog_item_id === detailItem.backlog_item_id) ?? [] : [];
 
   return (
-    <div className="space-y-6 scroll-reveal">
+    <div className="space-y-8 scroll-reveal">
       <PageHeader
         title="Sprint Board"
         description="ScrumBan-board — dra kort mellom kolonner for å oppdatere status"
@@ -485,7 +485,7 @@ export default function SprintBoardPage() {
       <Dialog open={showCreateSprint} onOpenChange={setShowCreateSprint}>
         <DialogContent>
           <DialogHeader><DialogTitle>Ny sprint</DialogTitle></DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div><Label>Navn</Label><Input value={newSprint.name} onChange={(e) => setNewSprint((p) => ({ ...p, name: e.target.value }))} placeholder="Sprint 1" /></div>
             <div><Label>Sprint Goal</Label><Textarea value={newSprint.goal} onChange={(e) => setNewSprint((p) => ({ ...p, goal: e.target.value }))} placeholder="Hva skal oppnås?" rows={2} /></div>
             <div className="grid grid-cols-2 gap-3">
@@ -578,7 +578,7 @@ export default function SprintBoardPage() {
                   Rediger item
                 </DialogTitle>
               </DialogHeader>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div><Label>Tittel</Label><Input value={editForm.title} onChange={(e) => setEditForm((p: any) => ({ ...p, title: e.target.value }))} /></div>
                 <div><Label>Beskrivelse</Label><Textarea value={editForm.description} onChange={(e) => setEditForm((p: any) => ({ ...p, description: e.target.value }))} rows={3} /></div>
                 <div>

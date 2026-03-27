@@ -368,7 +368,7 @@ export default function ProfilePage() {
           <div className="space-y-1.5">
             {sprintItems.map((si) => (
               <Card key={si.id} className="rounded-lg border">
-                <CardContent className="py-2.5 px-3 flex items-center justify-between gap-3">
+                <CardContent className="py-3 px-4 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm text-foreground truncate">
                       {(si.backlog_item as any)?.item_id && (
@@ -401,7 +401,7 @@ export default function ProfilePage() {
             <p className="text-[11px] text-muted-foreground">Åpne aksjoner fra møter</p>
             {openAPs.map((ap) => (
               <Card key={ap.id} className="rounded-lg border">
-                <CardContent className="py-2.5 px-3 flex items-center justify-between gap-3">
+                <CardContent className="py-3 px-4 flex items-center justify-between gap-3">
                   <p className="text-sm text-foreground truncate">{ap.title}</p>
                   {ap.due_date && (
                     <span className="text-[10px] text-muted-foreground shrink-0">
@@ -428,7 +428,7 @@ export default function ProfilePage() {
           <div className="space-y-1.5">
             {weekUpdates.map((u) => (
               <Card key={u.id} className="rounded-lg border">
-                <CardContent className="py-2.5 px-3">
+                <CardContent className="py-3 px-4">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[11px] text-muted-foreground">
                       {format(parseISO(u.entry_date), "EEEE d. MMM", { locale: nb })}

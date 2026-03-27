@@ -610,7 +610,7 @@ export default function RequirementsPage() {
   const [linkSearch, setLinkSearch] = useState("");
 
   return (
-    <div className="space-y-5 scroll-reveal">
+    <div className="space-y-8 scroll-reveal">
       <PageHeader
         title="Kravspesifikasjon"
         description="Funksjonelle, ikke-funksjonelle og dokumentasjonskrav for prosjektet"
@@ -958,7 +958,7 @@ export default function RequirementsPage() {
             </div>
 
             {/* Panel body */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-5 space-y-5">
               {selectedReq.description && (
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   {selectedReq.description}

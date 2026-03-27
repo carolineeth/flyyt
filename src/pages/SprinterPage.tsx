@@ -730,7 +730,7 @@ export default function SprinterPage() {
       <Dialog open={showCreateSprint} onOpenChange={setShowCreateSprint}>
         <DialogContent>
           <DialogHeader><DialogTitle>Ny sprint</DialogTitle></DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div><Label>Navn</Label><Input value={newSprint.name} onChange={(e) => setNewSprint((p) => ({ ...p, name: e.target.value }))} placeholder="Sprint 2" /></div>
             <div><Label>Sprint Goal</Label><Textarea value={newSprint.goal} onChange={(e) => setNewSprint((p) => ({ ...p, goal: e.target.value }))} rows={2} /></div>
             <div className="grid grid-cols-2 gap-3">
@@ -756,7 +756,7 @@ export default function SprinterPage() {
                   Rediger item
                 </DialogTitle>
               </DialogHeader>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div><Label>Tittel</Label><Input value={editForm.title} onChange={(e) => setEditForm((p: any) => ({ ...p, title: e.target.value }))} /></div>
                 <div><Label>Beskrivelse</Label><Textarea value={editForm.description} onChange={(e) => setEditForm((p: any) => ({ ...p, description: e.target.value }))} rows={3}
                   placeholder={editForm.type === "user_story" ? "Som [rolle] ønsker jeg [mål] for å [effekt]" : ""} /></div>

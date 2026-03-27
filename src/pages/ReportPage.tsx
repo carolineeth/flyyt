@@ -141,7 +141,7 @@ export default function ReportPage() {
   if (isLoading) return <div className="p-8 text-muted-foreground">Laster rapport...</div>;
 
   return (
-    <div className="space-y-6 scroll-reveal">
+    <div className="space-y-8 scroll-reveal">
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -321,7 +321,7 @@ export default function ReportPage() {
                           key={sub.id}
                           className="border-b border-border/60 last:border-0 hover:bg-accent/20 transition-colors"
                         >
-                          <td className="px-4 py-2.5 pl-10">
+                          <td className="px-4 py-3 pl-10">
                             <div>
                               <div className="flex items-center gap-2">
                                 <span className="text-[13px] text-muted-foreground w-7 shrink-0 tabular-nums">
@@ -357,7 +357,7 @@ export default function ReportPage() {
                               )}
                             </div>
                           </td>
-                          <td className="px-4 py-2.5">
+                          <td className="px-4 py-3">
                             <Select
                               value={sub.assignee_id ?? "none"}
                               onValueChange={v => handleUpdate(sub.id, "assignee_id", v === "none" ? null : v)}
@@ -373,18 +373,18 @@ export default function ReportPage() {
                               </SelectContent>
                             </Select>
                           </td>
-                          <td className="px-4 py-2.5">
+                          <td className="px-4 py-3">
                             <StatusSelect
                               value={sub.status}
                               onChange={v => handleUpdate(sub.id, "status", v)}
                             />
                           </td>
-                          <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground text-xs">
+                          <td className="px-4 py-3 text-right tabular-nums text-muted-foreground text-xs">
                             {sub.word_count_target ?? sub.word_count_goal
                               ? (sub.word_count_target ?? sub.word_count_goal).toLocaleString("nb-NO")
                               : "—"}
                           </td>
-                          <td className="px-4 py-2.5">
+                          <td className="px-4 py-3">
                             <Input
                               key={sub.id}
                               defaultValue={sub.notes ?? ""}

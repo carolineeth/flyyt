@@ -499,7 +499,7 @@ function MilestoneList({ milestones, highlightId, onEdit, onDelete }: { mileston
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-8">
       {months.map(([monthLabel, items]) => (
         <div key={monthLabel}>
           <div className="flex items-center gap-2 mb-2">
@@ -563,7 +563,7 @@ function AddMilestoneModal({ open, onOpenChange }: { open: boolean; onOpenChange
         <DialogHeader>
           <DialogTitle>Legg til milepæl</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div>
             <Label className="text-xs">Tittel *</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Milepæl-tittel" />
@@ -673,7 +673,7 @@ function EditMilestoneModal({ milestone, onClose }: { milestone: Milestone | nul
         <DialogHeader>
           <DialogTitle>Rediger milepæl</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div>
             <Label className="text-xs">Tittel *</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -776,7 +776,7 @@ export default function MilestonesPage() {
   const sp = sprints ?? [];
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">

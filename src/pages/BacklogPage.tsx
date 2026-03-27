@@ -414,7 +414,7 @@ export default function BacklogPage() {
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Nytt backlog-item</DialogTitle></DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {/* Pre-fill from requirement */}
             {(unlinkedRequirements?.length ?? 0) > 0 && (
               <div className="rounded-md bg-muted/50 p-3 space-y-1.5">

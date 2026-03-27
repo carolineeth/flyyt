@@ -23,7 +23,7 @@ export default function StandupPage() {
   ];
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-8">
       <PageHeader title="Standup" description="Asynkrone daglige oppdateringer" />
 
       {/* Tabs */}

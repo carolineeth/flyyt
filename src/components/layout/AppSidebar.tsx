@@ -71,7 +71,7 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" className="border-r border-border">
       <SidebarContent className="pt-4">
         {!collapsed && (
-          <div className="px-4 pb-4 mb-2">
+          <div className="px-4 pb-6 mb-2">
             <span className="text-lg font-bold text-primary tracking-tight">Flyyt</span>
             <p className="text-xs text-muted-foreground mt-0.5">Prosjektstyring for Team 34</p>
           </div>

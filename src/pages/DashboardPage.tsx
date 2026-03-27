@@ -206,7 +206,7 @@ function WeeklyPlan({
 
   return (
     <Card className="rounded-xl border">
-      <CardContent className="pt-4 pb-4">
+      <CardContent className="pt-5 pb-5">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <button
@@ -531,7 +531,7 @@ export default function DashboardPage() {
       : `${doneCount} items levert denne sprinten`;
 
   return (
-    <div className="space-y-5 scroll-reveal">
+    <div className="space-y-8 scroll-reveal">
       {/* 1. Header + milestone badge */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
@@ -722,7 +722,7 @@ export default function DashboardPage() {
               return (
                 <Link key={member.id} to={`/profil/${member.id}`} className="block">
                   <Card className="rounded-xl border hover:shadow-sm transition-shadow cursor-pointer">
-                    <CardContent className="pt-4 pb-3 space-y-2">
+                    <CardContent className="pt-5 pb-4 space-y-2">
                       <div className="flex items-center gap-2">
                         <MemberAvatar member={member} size="md" />
                         <div className="min-w-0">
@@ -846,7 +846,7 @@ export default function DashboardPage() {
         ].map((link) => (
           <Link key={link.to} to={link.to}>
             <Card className="rounded-xl border hover:shadow-md transition-shadow cursor-pointer group">
-              <CardContent className="pt-4 pb-3 flex items-center justify-between">
+              <CardContent className="pt-5 pb-4 flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">{link.label}</p>
                   <p className="text-[11px] text-muted-foreground">{link.sub}</p>
