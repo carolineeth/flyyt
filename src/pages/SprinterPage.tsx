@@ -22,6 +22,7 @@ import type { Sprint, SprintItem, BacklogItem, Subtask } from "@/lib/types";
 import { syncRequirementFromSprint } from "@/hooks/useRequirementChangelog";
 import SprintHistory from "@/components/sprints/SprintHistory";
 import CloseSprintModal from "@/components/sprints/CloseSprintModal";
+import { LinkedRequirements } from "@/components/backlog/LinkedRequirements";
 
 const columns = [
   { key: "todo", label: "To Do", color: "bg-muted" },
@@ -358,6 +359,7 @@ export default function SprinterPage() {
       estimate: item.estimate,
       epic: item.epic ?? "", labels: (item.labels ?? []).join(", "),
       collaborator_ids: (item as any).collaborator_ids ?? [],
+      user_story: (item as any).user_story ?? "",
     });
   };
 
@@ -370,6 +372,7 @@ export default function SprinterPage() {
       epic: editForm.epic || null,
       labels: editForm.labels ? editForm.labels.split(",").map((l: string) => l.trim()).filter(Boolean) : [],
       collaborator_ids: editForm.collaborator_ids ?? [],
+      user_story: editForm.user_story || null,
     });
     setDetailItem(null);
   };
@@ -752,6 +755,12 @@ export default function SprinterPage() {
                 <div><Label>Tittel</Label><Input value={editForm.title} onChange={(e) => setEditForm((p: any) => ({ ...p, title: e.target.value }))} /></div>
                 <div><Label>Beskrivelse</Label><Textarea value={editForm.description} onChange={(e) => setEditForm((p: any) => ({ ...p, description: e.target.value }))} rows={3}
                   placeholder={editForm.type === "user_story" ? "Som [rolle] ønsker jeg [mål] for å [effekt]" : ""} /></div>
+                <div>
+                  <Label>Brukerhistorie</Label>
+                  <Textarea value={editForm.user_story} onChange={(e) => setEditForm((p: any) => ({ ...p, user_story: e.target.value }))}
+                    placeholder="Som en [brukergruppe] vil jeg [funksjon] slik at [nytte]" rows={2} className="text-xs" />
+                </div>
+                <LinkedRequirements backlogItemId={detailItem.id} />
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label>Type</Label>

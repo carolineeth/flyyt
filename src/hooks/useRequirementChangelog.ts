@@ -126,17 +126,65 @@ export async function syncRequirementFromSprint(
   columnName: string,
   backlogItemTitle?: string
 ) {
-  const { data: reqs, error } = await (supabase
-    .from("requirements" as any)
-    .select("id, status")
-    .eq("linked_backlog_item_id", backlogItemId) as any);
-  if (error || !reqs?.length) return;
+  // Find requirements linked via junction table
+  const { data: links, error: linkErr } = await supabase
+    .from("requirement_backlog_links")
+    .select("requirement_id")
+    .eq("backlog_item_id", backlogItemId);
 
-  for (const req of reqs as { id: string; status: string }[]) {
+  // Fallback: also check old column for backwards compatibility
+  const { data: oldReqs } = await (supabase
+    .from("requirements" as any)
+    .select("id")
+    .eq("linked_backlog_item_id", backlogItemId) as any);
+
+  const reqIds = new Set<string>();
+  (links ?? []).forEach((l) => reqIds.add(l.requirement_id));
+  ((oldReqs ?? []) as { id: string }[]).forEach((r) => reqIds.add(r.id));
+  if (reqIds.size === 0) return;
+
+  for (const reqId of reqIds) {
+    // Fetch current requirement status
+    const { data: reqData } = await (supabase
+      .from("requirements" as any)
+      .select("id, status")
+      .eq("id", reqId)
+      .maybeSingle() as any);
+    if (!reqData) continue;
+    const req = reqData as { id: string; status: string };
+
+    // For "done": check if ALL linked items are done before setting "implemented"
     let newStatus: string | null = null;
 
     if (columnName === "done" && req.status !== "implemented" && req.status !== "verified") {
-      newStatus = "implemented";
+      // Get ALL backlog items linked to this requirement
+      const { data: allLinks } = await supabase
+        .from("requirement_backlog_links")
+        .select("backlog_item_id")
+        .eq("requirement_id", reqId);
+      const allItemIds = (allLinks ?? []).map((l) => l.backlog_item_id);
+
+      if (allItemIds.length <= 1) {
+        // Single link — this item is done, so requirement is implemented
+        newStatus = "implemented";
+      } else {
+        // Multiple links — check if ALL are done
+        const { data: sprintItems } = await (supabase
+          .from("sprint_items" as any)
+          .select("backlog_item_id, column_name")
+          .in("backlog_item_id", allItemIds) as any);
+        const siMap = new Map<string, string>();
+        ((sprintItems ?? []) as { backlog_item_id: string; column_name: string }[]).forEach((si) => siMap.set(si.backlog_item_id, si.column_name));
+
+        const allDone = allItemIds.every((id) => siMap.get(id) === "done");
+        const someDone = allItemIds.some((id) => siMap.get(id) === "done");
+
+        if (allDone) {
+          newStatus = "implemented";
+        } else if (someDone && req.status === "not_started") {
+          newStatus = "in_progress";
+        }
+      }
     } else if (
       (columnName === "in_progress" || columnName === "review") &&
       req.status === "not_started"

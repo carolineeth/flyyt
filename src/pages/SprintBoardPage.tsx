@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { Columns3, Plus, StickyNote, GripVertical, PanelRightOpen, Search, X, Check, Trash2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import type { Sprint, SprintItem, BacklogItem } from "@/lib/types";
+import { LinkedRequirements } from "@/components/backlog/LinkedRequirements";
 
 const columns = [
   { key: "todo", label: "To Do" },
@@ -303,6 +304,7 @@ export default function SprintBoardPage() {
       estimate: item.backlog_item?.estimate,
       epic: item.backlog_item?.epic ?? "",
       collaborator_ids: (item.backlog_item as any)?.collaborator_ids ?? [],
+      user_story: (item.backlog_item as any)?.user_story ?? "",
     });
   };
 
@@ -317,6 +319,7 @@ export default function SprintBoardPage() {
       estimate: editForm.estimate,
       epic: editForm.epic || null,
       collaborator_ids: editForm.collaborator_ids ?? [],
+      user_story: editForm.user_story || null,
     } as any);
     setDetailItem(null);
   };
@@ -573,6 +576,12 @@ export default function SprintBoardPage() {
               <div className="space-y-3">
                 <div><Label>Tittel</Label><Input value={editForm.title} onChange={(e) => setEditForm((p: any) => ({ ...p, title: e.target.value }))} /></div>
                 <div><Label>Beskrivelse</Label><Textarea value={editForm.description} onChange={(e) => setEditForm((p: any) => ({ ...p, description: e.target.value }))} rows={3} /></div>
+                <div>
+                  <Label>Brukerhistorie</Label>
+                  <Textarea value={editForm.user_story} onChange={(e) => setEditForm((p: any) => ({ ...p, user_story: e.target.value }))}
+                    placeholder="Som en [brukergruppe] vil jeg [funksjon] slik at [nytte]" rows={2} className="text-xs" />
+                </div>
+                <LinkedRequirements backlogItemId={detailItem.backlog_item_id} />
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label>Type</Label>

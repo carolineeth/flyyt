@@ -87,13 +87,19 @@ export default function BacklogPage() {
   }[]>({
     queryKey: ["requirements_unlinked"],
     queryFn: async () => {
-      const { data, error } = await (supabase
+      // Fetch all requirements
+      const { data: allReqs, error: reqErr } = await (supabase
         .from("requirements" as any)
         .select("id, title, description, acceptance_criteria, type, priority")
-        .is("linked_backlog_item_id", null)
         .order("sort_order") as any);
-      if (error) throw error;
-      return data as any;
+      if (reqErr) throw reqErr;
+      // Fetch all junction links
+      const { data: links, error: linkErr } = await supabase
+        .from("requirement_backlog_links")
+        .select("requirement_id");
+      if (linkErr) throw linkErr;
+      const linkedIds = new Set((links ?? []).map((l) => l.requirement_id));
+      return ((allReqs ?? []) as any[]).filter((r) => !linkedIds.has(r.id));
     },
   });
   const REQ_TYPE_MAP: Record<string, string> = { functional: "user_story", non_functional: "technical", documentation: "technical" };

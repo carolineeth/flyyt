@@ -115,17 +115,82 @@ export default function RequirementsPage() {
   });
 
   const { data: backlogItems } = useQuery<
-    { id: string; item_id: string; title: string; status: string }[]
+    { id: string; item_id: string; title: string; status: string; type: string }[]
   >({
     queryKey: ["backlog_items_for_req"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("backlog_items")
-        .select("id, item_id, title, status")
+        .select("id, item_id, title, status, type")
         .order("sort_order");
       if (error) throw error;
-      return data as { id: string; item_id: string; title: string; status: string }[];
+      return data as { id: string; item_id: string; title: string; status: string; type: string }[];
     },
+  });
+
+  // Junction table: many-to-many links
+  const { data: reqLinks = [] } = useQuery<{ id: string; requirement_id: string; backlog_item_id: string }[]>({
+    queryKey: ["requirement_backlog_links"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("requirement_backlog_links")
+        .select("id, requirement_id, backlog_item_id");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const addLinkMutation = useMutation({
+    mutationFn: async ({ requirementId, backlogItemId }: { requirementId: string; backlogItemId: string }) => {
+      const { error } = await supabase.from("requirement_backlog_links").insert({
+        requirement_id: requirementId,
+        backlog_item_id: backlogItemId,
+      });
+      if (error) throw error;
+      // Double-write to old column as backup (first linked item)
+      await (supabase.from("requirements" as any).update({ linked_backlog_item_id: backlogItemId } as any).eq("id", requirementId) as any);
+    },
+    onSuccess: (_, { requirementId, backlogItemId }) => {
+      queryClient.invalidateQueries({ queryKey: ["requirement_backlog_links"] });
+      queryClient.invalidateQueries({ queryKey: ["requirements"] });
+      const item = backlogItems?.find((b) => b.id === backlogItemId);
+      logRequirementChange({
+        requirement_id: requirementId,
+        change_type: "added_to_backlog",
+        new_value: backlogItemId,
+        description: `Koblet til backlog-item: ${item?.title ?? backlogItemId}`,
+      });
+      toast.success("Kobling lagt til");
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const removeLinkMutation = useMutation({
+    mutationFn: async ({ requirementId, backlogItemId }: { requirementId: string; backlogItemId: string }) => {
+      const { error } = await supabase.from("requirement_backlog_links")
+        .delete()
+        .eq("requirement_id", requirementId)
+        .eq("backlog_item_id", backlogItemId);
+      if (error) throw error;
+      // Check if this was the last link; if so, clear old column
+      const remaining = reqLinks.filter((l) => l.requirement_id === requirementId && l.backlog_item_id !== backlogItemId);
+      if (remaining.length === 0) {
+        await (supabase.from("requirements" as any).update({ linked_backlog_item_id: null } as any).eq("id", requirementId) as any);
+      }
+    },
+    onSuccess: (_, { requirementId, backlogItemId }) => {
+      queryClient.invalidateQueries({ queryKey: ["requirement_backlog_links"] });
+      queryClient.invalidateQueries({ queryKey: ["requirements"] });
+      const item = backlogItems?.find((b) => b.id === backlogItemId);
+      logRequirementChange({
+        requirement_id: requirementId,
+        change_type: "removed_from_backlog",
+        old_value: backlogItemId,
+        description: `Fjernet kobling til backlog-item: ${item?.title ?? backlogItemId}`,
+      });
+      toast.success("Kobling fjernet");
+    },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   // ── Seed changelog once on first load ──
@@ -179,25 +244,6 @@ export default function RequirementsPage() {
               new_value: value,
               description: `Prioritet endret fra ${PRIORITY_DISPLAY[current.priority] ?? current.priority} til ${PRIORITY_DISPLAY[value] ?? value}`,
             });
-          } else if (field === "linked_backlog_item_id") {
-            const oldVal = current?.linked_backlog_item_id ?? null;
-            if (value && !oldVal) {
-              const item = backlogItems?.find((b) => b.id === value);
-              logRequirementChange({
-                requirement_id: id,
-                change_type: "added_to_backlog",
-                new_value: value,
-                description: `Koblet til backlog-item: ${item?.title ?? value}`,
-              });
-            } else if (!value && oldVal) {
-              const item = backlogItems?.find((b) => b.id === oldVal);
-              logRequirementChange({
-                requirement_id: id,
-                change_type: "removed_from_backlog",
-                old_value: oldVal,
-                description: `Fjernet kobling til backlog-item: ${item?.title ?? oldVal}`,
-              });
-            }
           }
         },
       }
@@ -302,12 +348,14 @@ export default function RequirementsPage() {
         .single();
       if (error) throw error;
 
-      // Link the requirement to the new backlog item
-      const { error: linkErr } = await (supabase
-        .from("requirements" as any)
-        .update({ linked_backlog_item_id: data.id } as any)
-        .eq("id", req.id) as any);
-      if (linkErr) throw linkErr;
+      // Link via junction table (new)
+      const { error: junctionErr } = await supabase.from("requirement_backlog_links").insert({
+        requirement_id: req.id,
+        backlog_item_id: data.id,
+      });
+      if (junctionErr) throw junctionErr;
+      // Double-write to old column as backup
+      await (supabase.from("requirements" as any).update({ linked_backlog_item_id: data.id } as any).eq("id", req.id) as any);
 
       // Log to both changelogs
       await logRequirementChange({
@@ -322,6 +370,7 @@ export default function RequirementsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["requirements"] });
+      queryClient.invalidateQueries({ queryKey: ["requirement_backlog_links"] });
       queryClient.invalidateQueries({ queryKey: ["backlog_items_for_req"] });
       queryClient.invalidateQueries({ queryKey: ["backlog_items"] });
       toast.success("Oppgave opprettet i backlog og koblet til kravet");
@@ -398,27 +447,31 @@ export default function RequirementsPage() {
       : 0;
 
   const unlinkedCount =
-    requirements?.filter((r) => !r.linked_backlog_item_id).length ?? 0;
+    requirements?.filter((r) => !reqLinks.some((l) => l.requirement_id === r.id)).length ?? 0;
 
   const selectedReq = requirements?.find((r) => r.id === selectedId) ?? null;
 
-  const { data: linkedSprintItems } = useQuery({
-    queryKey: ["sprint_items_for_req", selectedReq?.linked_backlog_item_id],
-    enabled: !!selectedReq?.linked_backlog_item_id,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("sprint_items" as any)
-        .select("*, sprints(name)")
-        .eq("backlog_item_id", selectedReq!.linked_backlog_item_id!);
-      if (error) throw error;
-      return data;
-    },
-  });
+  // Links for the selected requirement
+  const selectedReqLinks = useMemo(() => {
+    if (!selectedReq) return [];
+    return reqLinks.filter((l) => l.requirement_id === selectedReq.id);
+  }, [reqLinks, selectedReq]);
 
-  const isInDone =
-    (linkedSprintItems as any[])?.some(
-      (si: any) => si.column_name === "done"
-    ) ?? false;
+  const selectedLinkedItems = useMemo(() => {
+    if (!backlogItems) return [];
+    return selectedReqLinks
+      .map((l) => backlogItems.find((b) => b.id === l.backlog_item_id))
+      .filter(Boolean) as { id: string; item_id: string; title: string; status: string; type: string }[];
+  }, [selectedReqLinks, backlogItems]);
+
+  // Backlog items NOT yet linked to this requirement (for dropdown)
+  const availableBacklogItems = useMemo(() => {
+    if (!backlogItems || !selectedReq) return [];
+    const linkedIds = new Set(selectedReqLinks.map((l) => l.backlog_item_id));
+    return backlogItems.filter((b) => !linkedIds.has(b.id));
+  }, [backlogItems, selectedReq, selectedReqLinks]);
+
+  const someLinkedDone = selectedLinkedItems.some((b) => b.status === "done" || b.status === "in_progress");
 
   const exportMarkdown = () => {
     if (!requirements) return;
@@ -554,9 +607,7 @@ export default function RequirementsPage() {
     );
   }
 
-  const linkedBacklogItem = selectedReq?.linked_backlog_item_id
-    ? backlogItems?.find((b) => b.id === selectedReq.linked_backlog_item_id)
-    : null;
+  const [linkSearch, setLinkSearch] = useState("");
 
   return (
     <div className="space-y-5 scroll-reveal">
@@ -864,7 +915,7 @@ export default function RequirementsPage() {
                         {PRIORITY_LABELS[req.priority] ?? req.priority}
                       </span>
                       {statusBadgeContent(req)}
-                      {req.linked_backlog_item_id && (
+                      {reqLinks.some((l) => l.requirement_id === req.id) && (
                         <Link2 className="h-3 w-3 text-primary/60 shrink-0" />
                       )}
                     </div>
@@ -1000,70 +1051,91 @@ export default function RequirementsPage() {
                 />
               </div>
 
-              {/* Create backlog item from requirement */}
-              {!selectedReq.linked_backlog_item_id && (
-                <div className="pt-1 border-t border-border/50">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full text-xs"
-                    disabled={createBacklogItemMutation.isPending}
-                    onClick={() => createBacklogItemMutation.mutate(selectedReq)}
-                  >
-                    <Plus className="h-3.5 w-3.5 mr-1.5" />
-                    Opprett oppgave i backlog
-                  </Button>
-                  <p className="text-[11px] text-muted-foreground text-center mt-1">
-                    Oppretter og kobler automatisk
-                  </p>
-                </div>
-              )}
+              {/* Linked backlog items (many-to-many) */}
+              <div className="space-y-2 pt-1 border-t border-border/50">
+                <Label className="text-xs">Koblede backlog-items ({selectedLinkedItems.length})</Label>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs">Koble til backlog-item</Label>
-                <Select
-                  value={selectedReq.linked_backlog_item_id ?? "none"}
-                  onValueChange={(v) =>
-                    handleUpdate(
-                      selectedReq.id,
-                      "linked_backlog_item_id",
-                      v === "none" ? null : v
-                    )
-                  }
-                >
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Velg backlog-item" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Ingen kobling</SelectItem>
-                    {backlogItems?.map((b) => (
-                      <SelectItem key={b.id} value={b.id}>
-                        {b.item_id} – {b.title}
-                      </SelectItem>
+                {selectedLinkedItems.length > 0 && (
+                  <div className="space-y-1">
+                    {selectedLinkedItems.map((item) => (
+                      <div key={item.id} className="rounded-lg border border-border bg-muted/30 px-3 py-2 flex items-center gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate">{item.item_id} — {item.title}</p>
+                          <div className="flex gap-1.5 mt-0.5">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{item.type === "user_story" ? "Brukerhistorie" : item.type === "technical" ? "Teknisk" : item.type}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{item.status}</span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => removeLinkMutation.mutate({ requirementId: selectedReq.id, backlogItemId: item.id })}
+                          className="shrink-0 h-5 w-5 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          title="Fjern kobling"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
                     ))}
-                  </SelectContent>
-                </Select>
-
-                {linkedBacklogItem && (
-                  <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5 flex items-center justify-between gap-2 mt-2">
-                    <div>
-                      <p className="text-xs font-medium">
-                        {linkedBacklogItem.item_id} – {linkedBacklogItem.title}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        {linkedBacklogItem.status}
-                      </p>
-                    </div>
-                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                   </div>
                 )}
 
-                {isInDone && (
-                  <div className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 px-2 py-1.5 rounded mt-1">
+                {someLinkedDone && (
+                  <div className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 px-2 py-1.5 rounded">
                     <Check className="h-3 w-3" />
-                    Auto-status fra Sprint Board: item er i Ferdig-kolonnen
+                    Koblede oppgaver er i arbeid eller fullført
                   </div>
                 )}
+
+                {/* Add link dropdown */}
+                <div className="space-y-1">
+                  <Input
+                    value={linkSearch}
+                    onChange={(e) => setLinkSearch(e.target.value)}
+                    placeholder="Søk backlog-items..."
+                    className="h-7 text-xs"
+                  />
+                  {linkSearch.trim() && (
+                    <div className="max-h-32 overflow-y-auto rounded border border-border bg-background">
+                      {availableBacklogItems
+                        .filter((b) => {
+                          const q = linkSearch.toLowerCase();
+                          return b.title.toLowerCase().includes(q) || b.item_id.toLowerCase().includes(q);
+                        })
+                        .slice(0, 8)
+                        .map((b) => (
+                          <button
+                            key={b.id}
+                            className="w-full text-left px-2 py-1.5 text-xs hover:bg-accent transition-colors flex items-center gap-1.5"
+                            onClick={() => {
+                              addLinkMutation.mutate({ requirementId: selectedReq.id, backlogItemId: b.id });
+                              setLinkSearch("");
+                            }}
+                          >
+                            <Plus className="h-3 w-3 shrink-0 text-muted-foreground" />
+                            <span className="font-mono text-muted-foreground">{b.item_id}</span>
+                            <span className="truncate">{b.title}</span>
+                          </button>
+                        ))}
+                      {availableBacklogItems.filter((b) => {
+                        const q = linkSearch.toLowerCase();
+                        return b.title.toLowerCase().includes(q) || b.item_id.toLowerCase().includes(q);
+                      }).length === 0 && (
+                        <p className="text-xs text-muted-foreground px-2 py-1.5 italic">Ingen treff</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Create new backlog item from requirement */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs"
+                  disabled={createBacklogItemMutation.isPending}
+                  onClick={() => createBacklogItemMutation.mutate(selectedReq)}
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1.5" />
+                  Opprett nytt item fra dette kravet
+                </Button>
               </div>
 
               {/* Delete */}
