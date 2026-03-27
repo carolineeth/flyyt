@@ -13,7 +13,7 @@ import DashboardPage from "@/pages/DashboardPage";
 import ActivitiesPage from "@/pages/ActivitiesPage";
 import SprinterPage from "@/pages/SprinterPage";
 import RequirementsPage from "@/pages/RequirementsPage";
-import OppgaverPage from "@/pages/OppgaverPage";
+
 import StandupPage from "@/pages/StandupPage";
 import MeetingCalendarPage from "@/pages/MeetingCalendarPage";
 import ResourcesPage from "@/pages/ResourcesPage";
@@ -88,7 +88,7 @@ const App = () => (
                 <Route path="/standup" element={<StandupPage />} />
                 <Route path="/sprinter" element={<SprinterPage />} />
                 <Route path="/krav" element={<RequirementsPage />} />
-                <Route path="/oppgaver" element={<OppgaverPage />} />
+                
                 <Route path="/moter" element={<MeetingCalendarPage />} />
                 <Route path="/ressurser" element={<ResourcesPage />} />
                 <Route path="/prosesslogg" element={<ProcessLogExportPage />} />
