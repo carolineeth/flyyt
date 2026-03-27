@@ -415,6 +415,30 @@ export type Database = {
           },
         ]
       }
+      daily_team_notes: {
+        Row: {
+          content: string
+          created_at: string
+          entry_date: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          entry_date: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          entry_date?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       daily_updates: {
         Row: {
           backlog_item_id: string | null
