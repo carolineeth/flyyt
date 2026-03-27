@@ -232,7 +232,10 @@ export function useUpsertTeamNote() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["daily_team_notes"] });
     },
-    onError: () => toast.error("Kunne ikke lagre team-notat"),
+    onError: (e) => {
+      console.error("Team note save failed:", e);
+      toast.error(`Kunne ikke lagre team-notat: ${(e as Error).message}`);
+    },
   });
 }
 
