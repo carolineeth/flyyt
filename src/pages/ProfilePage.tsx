@@ -1,14 +1,17 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentMember } from "@/hooks/useDailyUpdates";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { useActivityCatalog, useActivityRegistrations } from "@/hooks/useActivityCatalog";
 import { calcTotalEarnedPoints } from "@/lib/calcTotalEarnedPoints";
+import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, CheckSquare, MessageSquare, Zap } from "lucide-react";
+import { ChevronDown, CheckSquare, MessageSquare, Zap, Camera, X } from "lucide-react";
+import { toast } from "sonner";
 import {
   format,
   startOfWeek,
@@ -142,6 +145,66 @@ export default function ProfilePage() {
   const { data: registrations = [] } = useActivityRegistrations();
 
   const [statsOpen, setStatsOpen] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const qc = useQueryClient();
+
+  const updateAvatarColor = useMutation({
+    mutationFn: async (color: string) => {
+      const { error } = await supabase.from("team_members").update({ avatar_color: color }).eq("id", memberId!);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["team_members"] });
+      toast.success("Farge oppdatert");
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const uploadAvatar = useMutation({
+    mutationFn: async (file: File) => {
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+      const path = `avatars/${memberId}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("attachments").upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(path);
+      const avatarUrl = urlData.publicUrl + `?t=${Date.now()}`;
+      const { error } = await supabase.from("team_members").update({ avatar_url: avatarUrl }).eq("id", memberId!);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["team_members"] });
+      toast.success("Profilbilde oppdatert");
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const removeAvatar = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("team_members").update({ avatar_url: null }).eq("id", memberId!);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["team_members"] });
+      toast.success("Profilbilde fjernet");
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Kun bildefiler"); return; }
+    if (file.size > 2 * 1024 * 1024) { toast.error("Maks 2 MB"); return; }
+    uploadAvatar.mutate(file);
+    e.target.value = "";
+  };
+
+  const presetColors = [
+    "#0F6E56", "#2563EB", "#7C3AED", "#DC2626",
+    "#EA580C", "#CA8A04", "#0891B2", "#4F46E5",
+    "#BE185D", "#059669", "#6D28D9", "#334155",
+  ];
 
   // Resolve which member to show
   const memberId = memberIdParam ?? currentMember?.id;
@@ -203,19 +266,59 @@ export default function ProfilePage() {
     <div className="space-y-6 scroll-reveal max-w-2xl">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <div
-          className="h-14 w-14 rounded-full flex items-center justify-center text-lg font-semibold text-white shrink-0"
-          style={{ backgroundColor: member.avatar_color }}
-        >
-          {getInitials(member.name)}
+        <div className="relative group">
+          <MemberAvatar member={member} size="xl" />
+          {isOwnProfile && (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <Camera className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+            </button>
+          )}
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
         </div>
-        <div>
+        <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold text-foreground">{member.name}</h1>
           <p className="text-sm text-muted-foreground">
             {isOwnProfile ? "Din profil" : "Teammedlem"} · Uke {weekNum}
           </p>
+          {isOwnProfile && (
+            <div className="flex items-center gap-2 mt-1.5">
+              <button
+                onClick={() => setShowColorPicker(!showColorPicker)}
+                className="h-5 w-5 rounded-full border-2 border-background ring-1 ring-border shrink-0"
+                style={{ backgroundColor: member.avatar_color }}
+                title="Velg farge"
+              />
+              <span className="text-[11px] text-muted-foreground">Velg farge</span>
+              {member.avatar_url && (
+                <button
+                  onClick={() => removeAvatar.mutate()}
+                  className="text-[11px] text-muted-foreground hover:text-destructive flex items-center gap-0.5 ml-2"
+                >
+                  <X className="h-3 w-3" /> Fjern bilde
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Color picker */}
+      {isOwnProfile && showColorPicker && (
+        <div className="flex gap-2 flex-wrap p-3 rounded-lg bg-muted/50 border border-border">
+          {presetColors.map((color) => (
+            <button
+              key={color}
+              onClick={() => { updateAvatarColor.mutate(color); setShowColorPicker(false); }}
+              className={`h-8 w-8 rounded-full border-2 transition-transform hover:scale-110 ${member.avatar_color === color ? "border-foreground scale-110" : "border-transparent"}`}
+              style={{ backgroundColor: color }}
+              title={color}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Key metrics line */}
       <div className="flex gap-6 text-sm">
