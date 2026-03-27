@@ -144,10 +144,11 @@ export default function SprintBoardPage() {
 
   const createSprintMutation = useMutation({
     mutationFn: async () => {
+      const hasActive = sprints?.some((s) => s.is_active && !s.completed_at);
       const { error } = await supabase.from("sprints").insert({
         name: newSprint.name, goal: newSprint.goal || null,
         start_date: newSprint.start_date, end_date: newSprint.end_date,
-        is_active: !sprints?.length,
+        is_active: !hasActive,
       });
       if (error) throw error;
     },
@@ -157,6 +158,7 @@ export default function SprintBoardPage() {
       setNewSprint({ name: "", goal: "", start_date: "", end_date: "" });
       toast.success("Sprint opprettet");
     },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const moveItemMutation = useMutation({
@@ -165,6 +167,7 @@ export default function SprintBoardPage() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["sprint_items"] }),
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const addToSprintMutation = useMutation({
@@ -183,6 +186,7 @@ export default function SprintBoardPage() {
       setSelectedBacklogIds(new Set());
       toast.success("Lagt til i sprint");
     },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const removeFromSprintMutation = useMutation({
@@ -195,6 +199,7 @@ export default function SprintBoardPage() {
       setDetailItem(null);
       toast.success("Fjernet fra sprint");
     },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const deleteBacklogItemMutation = useMutation({
@@ -233,6 +238,7 @@ export default function SprintBoardPage() {
       setInlineTitle("");
       toast.success("Item opprettet");
     },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const updateBacklogItemMutation = useMutation({
@@ -245,6 +251,7 @@ export default function SprintBoardPage() {
       qc.invalidateQueries({ queryKey: ["backlog_items"] });
       toast.success("Oppdatert");
     },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const addSubtaskMutation = useMutation({

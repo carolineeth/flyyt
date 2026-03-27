@@ -162,10 +162,11 @@ export default function SprinterPage() {
   // Mutations
   const createSprintMutation = useMutation({
     mutationFn: async () => {
+      const hasActive = sprints?.some((s) => s.is_active && !s.completed_at);
       const { error } = await supabase.from("sprints").insert({
         name: newSprint.name, goal: newSprint.goal || null,
         start_date: newSprint.start_date, end_date: newSprint.end_date,
-        is_active: !sprints?.length,
+        is_active: !hasActive,
       });
       if (error) throw error;
     },
@@ -175,6 +176,7 @@ export default function SprinterPage() {
       setNewSprint({ name: "", goal: "", start_date: "", end_date: "" });
       toast.success("Sprint opprettet");
     },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const addToSprintMutation = useMutation({
@@ -191,6 +193,7 @@ export default function SprinterPage() {
       setPlanningSelected(new Set());
       toast.success("Lagt til i sprint");
     },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const moveItemMutation = useMutation({
@@ -203,6 +206,7 @@ export default function SprinterPage() {
       }
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["sprint_items"] }); qc.invalidateQueries({ queryKey: ["all_sprint_backlog_ids"] }); qc.invalidateQueries({ queryKey: ["requirements"] }); },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const removeFromSprintMutation = useMutation({
@@ -216,6 +220,7 @@ export default function SprinterPage() {
       setDetailItem(null);
       toast.success("Fjernet fra sprint");
     },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const deleteBacklogItemMutation = useMutation({
@@ -241,7 +246,7 @@ export default function SprinterPage() {
   const inlineCreateMutation = useMutation({
     mutationFn: async ({ title, column }: { title: string; column?: string }) => {
       const { data, error } = await supabase.from("backlog_items").insert({
-        item_id: "TEMP", title, type: "user_story", priority: "should_have",
+        item_id: "", title, type: "user_story", priority: "should_have",
       }).select().single();
       if (error) throw error;
       if (column && currentSprintId) {
@@ -257,7 +262,9 @@ export default function SprinterPage() {
       setInlineAddCol(null);
       setInlineTitle("");
       setBacklogInlineTitle("");
+      toast.success("Item opprettet");
     },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const updateBacklogItemMutation = useMutation({
@@ -271,6 +278,7 @@ export default function SprinterPage() {
       qc.invalidateQueries({ queryKey: ["backlog_items"] });
       toast.success("Oppdatert");
     },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const addSubtaskMutation = useMutation({
@@ -287,6 +295,20 @@ export default function SprinterPage() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["subtasks"] }),
+  });
+
+  const activateSprintMutation = useMutation({
+    mutationFn: async (sprintId: string) => {
+      // Deactivate all other sprints first
+      await supabase.from("sprints").update({ is_active: false }).eq("is_active", true);
+      const { error } = await supabase.from("sprints").update({ is_active: true }).eq("id", sprintId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["sprints"] });
+      toast.success("Sprint startet");
+    },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   // Drag handlers
@@ -491,6 +513,13 @@ export default function SprinterPage() {
             onClick={() => { setPlanningMode(!planningMode); setPlanningSelected(new Set()); }}>
             {planningMode ? "Avslutt planning" : "Sprint Planning"}
           </Button>
+          {currentSprint && !currentSprint.is_active && !currentSprint.completed_at && !planningMode && (
+            <Button size="sm" variant="outline" className="h-7 text-xs text-green-700 border-green-300 hover:bg-green-50"
+              onClick={() => activateSprintMutation.mutate(currentSprint.id)}
+              disabled={activateSprintMutation.isPending}>
+              Start sprint
+            </Button>
+          )}
           {currentSprint?.is_active && !planningMode && (
             <Button size="sm" variant="outline" className="h-7 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
               onClick={() => setShowCloseSprint(true)}>
