@@ -36,7 +36,7 @@ const navItems = [
   { title: "Aktiviteter", url: "/aktiviteter", icon: Target },
   { title: "Sprinter", url: "/sprinter", icon: Layers },
   { title: "Krav", url: "/krav", icon: ClipboardList },
-  { title: "Oppgaver", url: "/oppgaver", icon: CheckSquare },
+  
   { title: "Møter", url: "/moter", icon: Calendar },
   { title: "Ressurser", url: "/ressurser", icon: Link2 },
   { title: "Prosesslogg", url: "/prosesslogg", icon: ClipboardCheck },
