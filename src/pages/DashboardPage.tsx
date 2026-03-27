@@ -259,7 +259,6 @@ function WeeklyPlan({
 
             return (
               <div key={dateStr} className={`px-3 first:pl-0 last:pr-0 min-w-0 ${todayHighlight ? "bg-primary/[0.04] rounded-lg py-2 -my-2" : ""}`}>
-                {/* Day header */}
                 <div
                   className={`text-sm font-medium mb-3 pb-2 truncate ${
                     todayHighlight
@@ -270,62 +269,43 @@ function WeeklyPlan({
                   {format(day, "EEE d.", { locale: nb })}
                 </div>
 
-                {/* Events */}
                 <div className="space-y-2">
                   {visible.map((ev, i) => {
                     if (ev.type === "meeting") {
+                      const subsText = ev.subs.length > 0
+                        ? ev.subs.map((ss: any) => SUB_SESSION_LABELS[ss.type] ?? ss.type).join(" · ")
+                        : null;
                       return (
-                        <div key={ev.id + i} className={ev.status === "completed" ? "opacity-50" : ""}>
-                          <Link to="/moter" className="block group">
-                            <div className="bg-primary/[0.07] text-primary border-l-[3px] border-l-primary rounded-lg px-3 py-2 text-sm font-medium flex items-center gap-1 min-w-0">
-                              {ev.status === "completed" && (
-                                <Check className="h-3 w-3 shrink-0" aria-hidden="true" />
-                              )}
-                              <span className="truncate">{ev.label}</span>
-                              {ev.time && (
-                                <span className="text-xs opacity-60 shrink-0">{ev.time}</span>
-                              )}
+                        <Link key={ev.id + i} to="/moter" className="block">
+                          <div className="bg-[#E1F5EE] text-[#085041] rounded-lg py-1.5 px-3 text-sm font-medium min-w-0">
+                            <div className="flex items-center gap-1">
+                              <span className="truncate max-w-[25ch]">{ev.label}</span>
+                              {ev.time && <span className="text-xs shrink-0">{ev.time}</span>}
                             </div>
-                          </Link>
-                          {ev.subs.map((ss: any) => (
-                            <div
-                              key={ss.id}
-                              className={`mt-1 ml-2 rounded-lg px-2.5 py-1.5 text-xs font-medium truncate ${
-                                SUB_SESSION_COLORS[ss.type] ?? "bg-muted text-muted-foreground"
-                              }`}
-                            >
-                              {SUB_SESSION_LABELS[ss.type] ?? ss.type}
-                            </div>
-                          ))}
-                        </div>
+                            {subsText && (
+                              <p className="text-xs text-[#085041]/60 mt-0.5 truncate">{subsText}</p>
+                            )}
+                          </div>
+                        </Link>
                       );
                     }
                     if (ev.type === "activity_done") {
                       return (
-                        <div
-                          key={ev.id + i}
-                          className="bg-green-50 text-green-700 rounded-lg px-3 py-2 text-sm font-medium flex items-center gap-1 min-w-0"
-                        >
+                        <div key={ev.id + i} className="bg-green-50 text-green-700 rounded-lg py-1.5 px-3 text-sm font-medium flex items-center gap-1 min-w-0">
                           <Check className="h-3 w-3 shrink-0" aria-hidden="true" />
-                          <span className="truncate">{ev.label}</span>
+                          <span className="truncate max-w-[25ch]">{ev.label}</span>
                         </div>
                       );
                     }
                     return null;
                   })}
                   {hiddenCount > 0 && (
-                    <button
-                      onClick={() => setExpandedDay(dateStr)}
-                      className="text-sm text-muted-foreground hover:text-foreground block mt-1"
-                    >
+                    <button onClick={() => setExpandedDay(dateStr)} className="text-sm text-muted-foreground hover:text-foreground block mt-1">
                       +{hiddenCount} til
                     </button>
                   )}
                   {expandedDay === dateStr && events.length > 3 && (
-                    <button
-                      onClick={() => setExpandedDay(null)}
-                      className="text-sm text-muted-foreground hover:text-foreground block mt-1"
-                    >
+                    <button onClick={() => setExpandedDay(null)} className="text-sm text-muted-foreground hover:text-foreground block mt-1">
                       Vis færre
                     </button>
                   )}
@@ -335,39 +315,35 @@ function WeeklyPlan({
           })}
         </div>
 
-        {/* Mobile: vertical list — only days with events */}
+        {/* Mobile: vertical list */}
         <div className="sm:hidden space-y-2">
           {days.map((day) => {
             const dateStr = format(day, "yyyy-MM-dd");
             const todayHighlight = isToday(day);
             const events = eventsByDay[dateStr] ?? [];
             if (events.length === 0) return null;
-
             return (
               <div key={dateStr} className="flex gap-3 items-start">
-                <div
-                  className={`text-xs font-medium w-12 shrink-0 pt-0.5 ${
-                    todayHighlight ? "text-primary" : "text-muted-foreground"
-                  }`}
-                >
+                <div className={`text-xs font-medium w-12 shrink-0 pt-0.5 ${todayHighlight ? "text-primary" : "text-muted-foreground"}`}>
                   {format(day, "EEE d.", { locale: nb })}
                 </div>
-                <div className="flex flex-wrap gap-1">
+                <div className="flex flex-wrap gap-1.5">
                   {events.map((ev, i) => {
-                    const cls =
-                      ev.type === "meeting"
-                        ? "bg-primary/10 text-primary"
-                        : ev.type === "activity_done"
-                        ? "bg-green-50 text-green-700"
-                        : "bg-amber-50 text-amber-700";
-                    return (
-                      <span
-                        key={i}
-                        className={`${cls} rounded-md px-2 py-1 text-xs font-medium`}
-                      >
-                        {ev.label}
-                      </span>
-                    );
+                    if (ev.type === "meeting") {
+                      return (
+                        <span key={i} className="bg-[#E1F5EE] text-[#085041] rounded-lg py-1 px-2.5 text-xs font-medium">
+                          {ev.label}{ev.time ? ` ${ev.time}` : ""}
+                        </span>
+                      );
+                    }
+                    if (ev.type === "activity_done") {
+                      return (
+                        <span key={i} className="bg-green-50 text-green-700 rounded-lg py-1 px-2.5 text-xs font-medium flex items-center gap-1">
+                          <Check className="h-2.5 w-2.5" />{ev.label}
+                        </span>
+                      );
+                    }
+                    return null;
                   })}
                 </div>
               </div>
