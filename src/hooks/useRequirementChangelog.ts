@@ -193,10 +193,11 @@ export async function syncRequirementFromSprint(
     }
 
     if (newStatus) {
-      await (supabase
+      const { error: updErr } = await (supabase
         .from("requirements" as any)
         .update({ status: newStatus } as any)
         .eq("id", req.id) as any);
+      if (updErr) { console.error("Failed to sync requirement status:", updErr); continue; }
 
       await logRequirementChange({
         requirement_id: req.id,

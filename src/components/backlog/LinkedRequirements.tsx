@@ -62,8 +62,8 @@ export function LinkedRequirements({ backlogItemId }: Props) {
         backlog_item_id: backlogItemId,
       });
       if (error) throw error;
-      // Double-write backup
-      await (supabase.from("requirements" as any).update({ linked_backlog_item_id: backlogItemId } as any).eq("id", reqId) as any);
+      // Double-write backup (fail silently)
+      try { await (supabase.from("requirements" as any).update({ linked_backlog_item_id: backlogItemId } as any).eq("id", reqId) as any); } catch {}
     },
     onSuccess: (_, reqId) => {
       qc.invalidateQueries({ queryKey: ["req_links_for_item", backlogItemId] });

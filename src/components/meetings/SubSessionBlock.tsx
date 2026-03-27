@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trash2, Plus, CheckCircle2, FileText } from "lucide-react";
+import { toast } from "sonner";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -79,12 +80,13 @@ function MiniActionPoints({
   const { data: aps } = useSubSessionActionPoints(subSessionId);
 
   const addAP = async () => {
-    await supabase.from("meeting_action_points").insert({
+    const { error } = await (supabase.from("meeting_action_points").insert({
       meeting_id: meetingId,
       source_sub_session_id: subSessionId,
       title: "",
       is_completed: false,
-    } as any);
+    } as any) as any);
+    if (error) { toast.error("Kunne ikke opprette action point"); return; }
     qc.invalidateQueries({ queryKey: ["sub_session_action_points", subSessionId] });
     qc.invalidateQueries({ queryKey: ["meeting_action_points", meetingId] });
   };
@@ -128,21 +130,24 @@ function MiniAPRow({
   useEffect(() => {
     if (!dirty.current) return;
     const t = setTimeout(async () => {
-      await supabase.from("meeting_action_points").update({ title } as any).eq("id", ap.id);
+      const { error } = await (supabase.from("meeting_action_points").update({ title } as any).eq("id", ap.id) as any);
+      if (error) { toast.error("Kunne ikke lagre action point"); return; }
       qc.invalidateQueries({ queryKey: ["sub_session_action_points", subSessionId] });
       qc.invalidateQueries({ queryKey: ["meeting_action_points", meetingId] });
     }, 300);
     return () => clearTimeout(t);
-  }, [title]);
+  }, [title]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const update = async (updates: any) => {
-    await supabase.from("meeting_action_points").update(updates).eq("id", ap.id);
+    const { error } = await (supabase.from("meeting_action_points").update(updates).eq("id", ap.id) as any);
+    if (error) { toast.error("Kunne ikke oppdatere action point"); return; }
     qc.invalidateQueries({ queryKey: ["sub_session_action_points", subSessionId] });
     qc.invalidateQueries({ queryKey: ["meeting_action_points", meetingId] });
   };
 
   const remove = async () => {
-    await supabase.from("meeting_action_points").delete().eq("id", ap.id);
+    const { error } = await (supabase.from("meeting_action_points").delete().eq("id", ap.id) as any);
+    if (error) { toast.error("Kunne ikke slette action point"); return; }
     qc.invalidateQueries({ queryKey: ["sub_session_action_points", subSessionId] });
     qc.invalidateQueries({ queryKey: ["meeting_action_points", meetingId] });
   };

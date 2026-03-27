@@ -147,8 +147,8 @@ export default function RequirementsPage() {
         backlog_item_id: backlogItemId,
       });
       if (error) throw error;
-      // Double-write to old column as backup (first linked item)
-      await (supabase.from("requirements" as any).update({ linked_backlog_item_id: backlogItemId } as any).eq("id", requirementId) as any);
+      // Double-write to old column as backup (fail silently)
+      try { await (supabase.from("requirements" as any).update({ linked_backlog_item_id: backlogItemId } as any).eq("id", requirementId) as any); } catch {}
     },
     onSuccess: (_, { requirementId, backlogItemId }) => {
       queryClient.invalidateQueries({ queryKey: ["requirement_backlog_links"] });
@@ -172,10 +172,10 @@ export default function RequirementsPage() {
         .eq("requirement_id", requirementId)
         .eq("backlog_item_id", backlogItemId);
       if (error) throw error;
-      // Check if this was the last link; if so, clear old column
+      // Check if this was the last link; if so, clear old column (fail silently)
       const remaining = reqLinks.filter((l) => l.requirement_id === requirementId && l.backlog_item_id !== backlogItemId);
       if (remaining.length === 0) {
-        await (supabase.from("requirements" as any).update({ linked_backlog_item_id: null } as any).eq("id", requirementId) as any);
+        try { await (supabase.from("requirements" as any).update({ linked_backlog_item_id: null } as any).eq("id", requirementId) as any); } catch {}
       }
     },
     onSuccess: (_, { requirementId, backlogItemId }) => {
@@ -354,8 +354,8 @@ export default function RequirementsPage() {
         backlog_item_id: data.id,
       });
       if (junctionErr) throw junctionErr;
-      // Double-write to old column as backup
-      await (supabase.from("requirements" as any).update({ linked_backlog_item_id: data.id } as any).eq("id", req.id) as any);
+      // Double-write to old column as backup (fail silently)
+      try { await (supabase.from("requirements" as any).update({ linked_backlog_item_id: data.id } as any).eq("id", req.id) as any); } catch {}
 
       // Log to both changelogs
       await logRequirementChange({

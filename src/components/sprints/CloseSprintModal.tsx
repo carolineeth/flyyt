@@ -122,16 +122,19 @@ export default function CloseSprintModal({ open, onOpenChange, sprint, sprintIte
       // Handle incomplete items
       if (incompleteAction === "next_sprint" && targetSprintId) {
         for (const item of incompleteItems) {
-          await supabase.from("sprint_items").update({
+          const { error: moveErr } = await supabase.from("sprint_items").update({
             sprint_id: targetSprintId,
             column_name: "todo",
           }).eq("id", item.id);
+          if (moveErr) throw new Error("Kunne ikke flytte ufullført item");
         }
         // Activate target sprint
-        await supabase.from("sprints").update({ is_active: true }).eq("id", targetSprintId);
+        const { error: actErr } = await supabase.from("sprints").update({ is_active: true }).eq("id", targetSprintId);
+        if (actErr) throw new Error("Kunne ikke aktivere neste sprint");
       } else {
         for (const item of incompleteItems) {
-          await supabase.from("sprint_items").delete().eq("id", item.id);
+          const { error: delErr } = await supabase.from("sprint_items").delete().eq("id", item.id);
+          if (delErr) throw new Error("Kunne ikke fjerne ufullført item");
         }
       }
     },

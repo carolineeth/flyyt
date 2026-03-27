@@ -156,11 +156,12 @@ export default function BacklogPage() {
       }
       // If sprint selected, add to sprint_items
       if (newItem.sprint_id && data) {
-        await supabase.from("sprint_items").insert({
+        const { error: sprintErr } = await supabase.from("sprint_items").insert({
           sprint_id: newItem.sprint_id,
           backlog_item_id: data.id,
           column_name: "todo",
         });
+        if (sprintErr) throw sprintErr;
         await logBacklogChange({ backlogItemId: data.id, changeType: "added_to_sprint", newValue: newItem.sprint_id });
       }
       return data;
@@ -195,12 +196,14 @@ export default function BacklogPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      // Remove from sprints first
-      await supabase.from("sprint_items").delete().eq("backlog_item_id", id);
-      // Delete related data
-      await supabase.from("daily_updates").update({ backlog_item_id: null }).eq("backlog_item_id", id);
-      await supabase.from("subtasks").delete().eq("backlog_item_id", id);
-      await supabase.from("backlog_changelog").delete().eq("backlog_item_id", id);
+      const { error: e1 } = await supabase.from("sprint_items").delete().eq("backlog_item_id", id);
+      if (e1) throw new Error("Kunne ikke fjerne fra sprint");
+      const { error: e2 } = await supabase.from("daily_updates").update({ backlog_item_id: null }).eq("backlog_item_id", id);
+      if (e2) throw new Error("Kunne ikke oppdatere daglige oppdateringer");
+      const { error: e3 } = await supabase.from("subtasks").delete().eq("backlog_item_id", id);
+      if (e3) throw new Error("Kunne ikke slette deloppgaver");
+      const { error: e4 } = await supabase.from("backlog_changelog").delete().eq("backlog_item_id", id);
+      if (e4) throw new Error("Kunne ikke slette endringslogg");
       const { error } = await supabase.from("backlog_items").delete().eq("id", id);
       if (error) throw error;
     },

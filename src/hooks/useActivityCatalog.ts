@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export interface CatalogItem {
   id: string;
@@ -99,7 +100,8 @@ export function useDeleteRegistration() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      await (supabase.from("activity_registration_participants" as any).delete().eq("registration_id", id) as any);
+      const { error: partErr } = await (supabase.from("activity_registration_participants" as any).delete().eq("registration_id", id) as any);
+      if (partErr) throw new Error("Kunne ikke slette deltakere");
       const { error } = await (supabase.from("activity_registrations" as any).delete().eq("id", id) as any);
       if (error) throw error;
     },
@@ -107,6 +109,7 @@ export function useDeleteRegistration() {
       qc.invalidateQueries({ queryKey: ["activity_registrations"] });
       qc.invalidateQueries({ queryKey: ["activity_registration_participants"] });
     },
+    onError: (e) => toast.error((e as Error).message),
   });
 }
 
@@ -115,13 +118,16 @@ export function useToggleRegistrationParticipant() {
   return useMutation({
     mutationFn: async ({ registrationId, memberId, isParticipant }: { registrationId: string; memberId: string; isParticipant: boolean }) => {
       if (isParticipant) {
-        await (supabase.from("activity_registration_participants" as any).delete().eq("registration_id", registrationId).eq("member_id", memberId) as any);
+        const { error } = await (supabase.from("activity_registration_participants" as any).delete().eq("registration_id", registrationId).eq("member_id", memberId) as any);
+        if (error) throw error;
       } else {
-        await (supabase.from("activity_registration_participants" as any).insert({ registration_id: registrationId, member_id: memberId } as any) as any);
+        const { error } = await (supabase.from("activity_registration_participants" as any).insert({ registration_id: registrationId, member_id: memberId } as any) as any);
+        if (error) throw error;
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["activity_registration_participants"] });
     },
+    onError: (e) => toast.error("Kunne ikke oppdatere deltaker"),
   });
 }
