@@ -215,6 +215,7 @@ export default function RequirementsPage() {
     },
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["requirements"] }),
+    onError: () => toast.error("Kunne ikke oppdatere krav"),
   });
 
   const handleUpdate = (id: string, field: string, value: any) => {

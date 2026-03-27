@@ -114,6 +114,7 @@ export default function OppgaverPage() {
       setInlineTitle("");
       toast.success("Oppgave opprettet");
     },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const toggleMutation = useMutation({
@@ -125,6 +126,7 @@ export default function OppgaverPage() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["tasks"] }),
+    onError: () => toast.error("Kunne ikke oppdatere oppgave"),
   });
 
   const updateMutation = useMutation({
@@ -137,6 +139,7 @@ export default function OppgaverPage() {
       setShowDetail(false);
       toast.success("Oppdatert");
     },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const addTaskSubtask = useMutation({
@@ -145,6 +148,7 @@ export default function OppgaverPage() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["task_subtasks"] }),
+    onError: () => toast.error("Kunne ikke legge til deloppgave"),
   });
 
   const toggleTaskSubtask = useMutation({
@@ -153,6 +157,7 @@ export default function OppgaverPage() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["task_subtasks"] }),
+    onError: () => toast.error("Kunne ikke oppdatere deloppgave"),
   });
 
   const deleteTaskSubtask = useMutation({
@@ -161,6 +166,7 @@ export default function OppgaverPage() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["task_subtasks"] }),
+    onError: () => toast.error("Kunne ikke slette deloppgave"),
   });
 
   const deleteMutation = useMutation({
@@ -172,6 +178,7 @@ export default function OppgaverPage() {
       qc.invalidateQueries({ queryKey: ["tasks"] });
       toast.success("Slettet");
     },
+    onError: (e) => toast.error((e as Error).message),
   });
 
   const openEdit = (task: Task) => {

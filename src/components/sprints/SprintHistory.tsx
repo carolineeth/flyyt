@@ -108,6 +108,7 @@ export default function SprintHistory() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["completed_sprints"] }),
+    onError: () => toast.error("Kunne ikke lagre"),
   });
 
   const copyText = (text: string, label: string) => {

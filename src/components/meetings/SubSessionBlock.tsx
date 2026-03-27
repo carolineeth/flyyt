@@ -444,7 +444,8 @@ export function SubSessionBlock({
   useEffect(() => { setNotes(subSession.notes || ""); }, [subSession.notes]);
 
   const saveNotes = useCallback(async (val: string) => {
-    await supabase.from("meeting_sub_sessions" as any).update({ notes: val } as any).eq("id", subSession.id);
+    const { error } = await (supabase.from("meeting_sub_sessions" as any).update({ notes: val } as any).eq("id", subSession.id) as any);
+    if (error) toast.error("Kunne ikke lagre notater");
   }, [subSession.id]);
 
   useEffect(() => {
@@ -472,10 +473,11 @@ export function SubSessionBlock({
   useEffect(() => {
     if (!typeDataDirty.current) return;
     const t = setTimeout(async () => {
-      await supabase
+      const { error } = await (supabase
         .from("meeting_sub_sessions" as any)
         .update({ type_specific_data: typeData } as any)
-        .eq("id", subSession.id);
+        .eq("id", subSession.id) as any);
+      if (error) toast.error("Kunne ikke lagre data");
     }, 600);
     return () => clearTimeout(t);
   }, [typeData, subSession.id]);
@@ -539,11 +541,12 @@ export function SubSessionBlock({
   // ── Agenda items ──
   const addItem = async () => {
     if (!newItem.trim()) return;
-    await supabase.from("meeting_sub_session_items" as any).insert({
+    const { error } = await (supabase.from("meeting_sub_session_items" as any).insert({
       sub_session_id: subSession.id,
       content: newItem.trim(),
       sort_order: items?.length ?? 0,
-    } as any);
+    } as any) as any);
+    if (error) { toast.error("Kunne ikke legge til punkt"); return; }
     setNewItem("");
     qc.invalidateQueries({ queryKey: ["meeting_sub_session_items", subSession.id] });
   };

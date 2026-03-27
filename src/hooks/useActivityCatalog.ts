@@ -80,6 +80,7 @@ export function useCreateRegistration() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["activity_registrations"] });
     },
+    onError: () => toast.error("Kunne ikke registrere aktivitet"),
   });
 }
 
@@ -93,6 +94,7 @@ export function useUpdateRegistration() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["activity_registrations"] });
     },
+    onError: () => toast.error("Kunne ikke oppdatere registrering"),
   });
 }
 

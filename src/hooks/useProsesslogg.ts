@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export interface ProsessloggNote {
   id: string;
@@ -34,6 +35,7 @@ export function useCreateProsessloggNote() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["prosesslogg_notes"] }),
+    onError: () => toast.error("Kunne ikke opprette notat"),
   });
 }
 
@@ -45,6 +47,7 @@ export function useUpdateProsessloggNote() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["prosesslogg_notes"] }),
+    onError: () => toast.error("Kunne ikke oppdatere notat"),
   });
 }
 
@@ -56,6 +59,7 @@ export function useDeleteProsessloggNote() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["prosesslogg_notes"] }),
+    onError: () => toast.error("Kunne ikke slette notat"),
   });
 }
 

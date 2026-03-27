@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import type { Activity, ActivityParticipant } from "@/lib/types";
 
 export function useActivities() {
@@ -32,6 +33,7 @@ export function useUpdateActivity() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["activities"] }),
+    onError: () => toast.error("Kunne ikke oppdatere aktivitet"),
   });
 }
 
@@ -48,5 +50,6 @@ export function useToggleParticipant() {
       }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["activity_participants"] }),
+    onError: () => toast.error("Kunne ikke oppdatere deltaker"),
   });
 }

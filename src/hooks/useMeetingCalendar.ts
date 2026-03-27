@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTeamMembers } from "./useTeamMembers";
+import { toast } from "sonner";
 
 // Week helpers
 export function getWeekNumber(d: Date): number {
@@ -252,5 +253,6 @@ export function useAutoGenerateMeetings() {
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["week_meetings", vars.year, vars.week] });
     },
+    onError: () => toast.error("Kunne ikke opprette møter"),
   });
 }

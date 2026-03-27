@@ -5,6 +5,7 @@ import { useCurrentTeamMember } from "./useCurrentTeamMember";
 import { useState, useEffect, useMemo } from "react";
 import { startOfWeek, endOfWeek, format, addWeeks, subWeeks, getISOWeek, eachDayOfInterval, isWeekend, isBefore, isAfter, startOfDay } from "date-fns";
 import { nb } from "date-fns/locale";
+import { toast } from "sonner";
 
 const PROJECT_START = new Date(2026, 2, 9); // March 9, 2026 (week 11)
 
@@ -129,6 +130,7 @@ export function useUpsertDailyUpdate() {
       qc.invalidateQueries({ queryKey: ["daily_updates"] });
       qc.invalidateQueries({ queryKey: ["daily_updates_all"] });
     },
+    onError: () => toast.error("Kunne ikke lagre standup-oppdatering"),
   });
 }
 
@@ -230,6 +232,7 @@ export function useUpsertTeamNote() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["daily_team_notes"] });
     },
+    onError: () => toast.error("Kunne ikke lagre team-notat"),
   });
 }
 

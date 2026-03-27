@@ -277,13 +277,14 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
 
     const templateItems = subSessionTemplates[type];
     if (templateItems && ss) {
-      await supabase.from("meeting_sub_session_items" as any).insert(
+      const { error: tplErr } = await (supabase.from("meeting_sub_session_items" as any).insert(
         templateItems.map((content, i) => ({
           sub_session_id: (ss as any).id,
           content,
           sort_order: i,
         })) as any
-      );
+      ) as any);
+      if (tplErr) console.error("Failed to insert template items", tplErr);
     }
 
     // Auto-link to activity plan
@@ -298,12 +299,14 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
 
   const deleteSubSession = async (ssId: string) => {
     // Remove action points referencing this sub session
-    await supabase.from("meeting_action_points").delete().eq("source_sub_session_id", ssId);
+    const { error: apErr } = await supabase.from("meeting_action_points").delete().eq("source_sub_session_id", ssId);
+    if (apErr) { toast.error("Kunne ikke fjerne action points"); return; }
     // Remove sub session items
     const { error: itemsErr } = await supabase.from("meeting_sub_session_items").delete().eq("sub_session_id", ssId);
-    if (itemsErr) { console.error("Failed to delete sub session items", itemsErr); toast.error("Kunne ikke slette delmøte-innhold"); return; }
+    if (itemsErr) { toast.error("Kunne ikke slette delmøte-innhold"); return; }
     // Remove activity registration links
-    await supabase.from("activity_registrations").update({ linked_sub_session_id: null }).eq("linked_sub_session_id", ssId);
+    const { error: regErr } = await (supabase.from("activity_registrations").update({ linked_sub_session_id: null }).eq("linked_sub_session_id", ssId) as any);
+    if (regErr) console.error("Failed to unlink registrations", regErr);
     // Remove the sub session itself
     const { error: ssErr } = await supabase.from("meeting_sub_sessions").delete().eq("id", ssId);
     if (ssErr) { console.error("Failed to delete sub session", ssErr); toast.error("Kunne ikke slette delmøte"); return; }
