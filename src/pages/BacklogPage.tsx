@@ -94,11 +94,11 @@ export default function BacklogPage() {
         .order("sort_order") as any);
       if (reqErr) throw reqErr;
       // Fetch all junction links
-      const { data: links, error: linkErr } = await supabase
-        .from("requirement_backlog_links")
-        .select("requirement_id");
+      const { data: links, error: linkErr } = await (supabase
+        .from("requirement_backlog_links" as any)
+        .select("requirement_id") as any);
       if (linkErr) throw linkErr;
-      const linkedIds = new Set((links ?? []).map((l) => l.requirement_id));
+      const linkedIds = new Set(((links ?? []) as any[]).map((l: any) => l.requirement_id));
       return ((allReqs ?? []) as any[]).filter((r) => !linkedIds.has(r.id));
     },
   });

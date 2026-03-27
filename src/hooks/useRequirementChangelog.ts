@@ -127,10 +127,10 @@ export async function syncRequirementFromSprint(
   backlogItemTitle?: string
 ) {
   // Find requirements linked via junction table
-  const { data: links, error: linkErr } = await supabase
-    .from("requirement_backlog_links")
+  const { data: links, error: linkErr } = await (supabase
+    .from("requirement_backlog_links" as any)
     .select("requirement_id")
-    .eq("backlog_item_id", backlogItemId);
+    .eq("backlog_item_id", backlogItemId) as any);
 
   // Fallback: also check old column for backwards compatibility
   const { data: oldReqs } = await (supabase
@@ -158,10 +158,10 @@ export async function syncRequirementFromSprint(
 
     if (columnName === "done" && req.status !== "implemented" && req.status !== "verified") {
       // Get ALL backlog items linked to this requirement
-      const { data: allLinks } = await supabase
-        .from("requirement_backlog_links")
+      const { data: allLinks } = await (supabase
+        .from("requirement_backlog_links" as any)
         .select("backlog_item_id")
-        .eq("requirement_id", reqId);
+        .eq("requirement_id", reqId) as any);
       const allItemIds = (allLinks ?? []).map((l) => l.backlog_item_id);
 
       if (allItemIds.length <= 1) {

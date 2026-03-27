@@ -132,20 +132,20 @@ export default function RequirementsPage() {
   const { data: reqLinks = [] } = useQuery<{ id: string; requirement_id: string; backlog_item_id: string }[]>({
     queryKey: ["requirement_backlog_links"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("requirement_backlog_links")
-        .select("id, requirement_id, backlog_item_id");
+      const { data, error } = await (supabase
+        .from("requirement_backlog_links" as any)
+        .select("id, requirement_id, backlog_item_id") as any);
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
   });
 
   const addLinkMutation = useMutation({
     mutationFn: async ({ requirementId, backlogItemId }: { requirementId: string; backlogItemId: string }) => {
-      const { error } = await supabase.from("requirement_backlog_links").insert({
+      const { error } = await (supabase.from("requirement_backlog_links" as any).insert({
         requirement_id: requirementId,
         backlog_item_id: backlogItemId,
-      });
+      } as any) as any);
       if (error) throw error;
       // Double-write to old column as backup (fail silently)
       try { await (supabase.from("requirements" as any).update({ linked_backlog_item_id: backlogItemId } as any).eq("id", requirementId) as any); } catch {}
@@ -167,10 +167,10 @@ export default function RequirementsPage() {
 
   const removeLinkMutation = useMutation({
     mutationFn: async ({ requirementId, backlogItemId }: { requirementId: string; backlogItemId: string }) => {
-      const { error } = await supabase.from("requirement_backlog_links")
+      const { error } = await (supabase.from("requirement_backlog_links" as any)
         .delete()
         .eq("requirement_id", requirementId)
-        .eq("backlog_item_id", backlogItemId);
+        .eq("backlog_item_id", backlogItemId) as any);
       if (error) throw error;
       // Check if this was the last link; if so, clear old column (fail silently)
       const remaining = reqLinks.filter((l) => l.requirement_id === requirementId && l.backlog_item_id !== backlogItemId);
@@ -350,10 +350,10 @@ export default function RequirementsPage() {
       if (error) throw error;
 
       // Link via junction table (new)
-      const { error: junctionErr } = await supabase.from("requirement_backlog_links").insert({
+      const { error: junctionErr } = await (supabase.from("requirement_backlog_links" as any).insert({
         requirement_id: req.id,
         backlog_item_id: data.id,
-      });
+      } as any) as any);
       if (junctionErr) throw junctionErr;
       // Double-write to old column as backup (fail silently)
       try { await (supabase.from("requirements" as any).update({ linked_backlog_item_id: data.id } as any).eq("id", req.id) as any); } catch {}
@@ -600,6 +600,8 @@ export default function RequirementsPage() {
       ? "border-green-300"
       : "border-border";
 
+  const [linkSearch, setLinkSearch] = useState("");
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-40">
@@ -607,8 +609,6 @@ export default function RequirementsPage() {
       </div>
     );
   }
-
-  const [linkSearch, setLinkSearch] = useState("");
 
   return (
     <div className="space-y-8 scroll-reveal">
