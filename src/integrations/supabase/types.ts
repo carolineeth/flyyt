@@ -370,7 +370,6 @@ export type Database = {
           title: string
           type: string
           updated_at: string
-          user_story: string | null
         }
         Insert: {
           assignee_id?: string | null
@@ -388,7 +387,6 @@ export type Database = {
           title: string
           type?: string
           updated_at?: string
-          user_story?: string | null
         }
         Update: {
           assignee_id?: string | null
@@ -406,7 +404,6 @@ export type Database = {
           title?: string
           type?: string
           updated_at?: string
-          user_story?: string | null
         }
         Relationships: [
           {
@@ -417,30 +414,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      daily_team_notes: {
-        Row: {
-          id: string
-          entry_date: string
-          content: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          entry_date: string
-          content?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          entry_date?: string
-          content?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
       }
       daily_updates: {
         Row: {
@@ -1058,42 +1031,6 @@ export type Database = {
           },
         ]
       }
-      requirement_backlog_links: {
-        Row: {
-          id: string
-          requirement_id: string
-          backlog_item_id: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          requirement_id: string
-          backlog_item_id: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          requirement_id?: string
-          backlog_item_id?: string
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "requirement_backlog_links_requirement_id_fkey"
-            columns: ["requirement_id"]
-            isOneToOne: false
-            referencedRelation: "requirements"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "requirement_backlog_links_backlog_item_id_fkey"
-            columns: ["backlog_item_id"]
-            isOneToOne: false
-            referencedRelation: "backlog_items"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       requirements: {
         Row: {
           acceptance_criteria: string | null
@@ -1564,7 +1501,6 @@ export type Database = {
         Row: {
           auth_user_id: string | null
           avatar_color: string
-          avatar_url: string | null
           created_at: string
           email: string
           id: string
@@ -1573,7 +1509,6 @@ export type Database = {
         Insert: {
           auth_user_id?: string | null
           avatar_color?: string
-          avatar_url?: string | null
           created_at?: string
           email: string
           id?: string
@@ -1582,7 +1517,6 @@ export type Database = {
         Update: {
           auth_user_id?: string | null
           avatar_color?: string
-          avatar_url?: string | null
           created_at?: string
           email?: string
           id?: string
