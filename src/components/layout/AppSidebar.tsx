@@ -72,7 +72,7 @@ export function AppSidebar() {
       <SidebarContent className="pt-4">
         {!collapsed && (
           <div className="px-4 pb-6 mb-2">
-            <span className="text-lg font-bold text-primary tracking-tight">Flyyt</span>
+            <span className="text-xl font-bold text-primary tracking-tight">Flyyt</span>
             <p className="text-xs text-muted-foreground mt-0.5">Prosjektstyring for Team 34</p>
           </div>
         )}
@@ -91,12 +91,12 @@ export function AppSidebar() {
                       <NavLink
                         to={item.url}
                         end={item.url === "/"}
-                        className="hover:bg-accent/60 transition-colors duration-150"
-                        activeClassName="bg-accent text-accent-foreground font-medium"
+                        className="hover:bg-accent/60 transition-colors duration-150 py-2.5 px-4"
+                        activeClassName="bg-primary/10 text-primary font-medium rounded-[10px]"
                         aria-label={collapsed ? item.title : undefined}
                       >
                         <span className="relative shrink-0">
-                          <item.icon className="h-4 w-4" aria-hidden="true" />
+                          <item.icon className="h-[18px] w-[18px]" aria-hidden="true" />
                           {item.hasNotification && showDot && (
                             <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-destructive" aria-label="Standup mangler" />
                           )}

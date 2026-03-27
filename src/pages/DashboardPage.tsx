@@ -5,7 +5,6 @@ import { useActivityCatalog, useActivityRegistrations, type Registration, type C
 import { calcTotalEarnedPoints } from "@/lib/calcTotalEarnedPoints";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { useAllDailyUpdates, useCurrentMember } from "@/hooks/useDailyUpdates";
-import { Card, CardContent } from "@/components/ui/card";
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { ArrowRight, ChevronLeft, ChevronRight, Check, Clock } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -209,10 +208,9 @@ function WeeklyPlan({
   const weekLabel = `Uke ${weekNum} — ${format(weekStart, "d.", { locale: nb })}–${format(weekEnd, "d. MMMM", { locale: nb })}`;
 
   return (
-    <Card className="rounded-xl border">
-      <CardContent className="p-5">
+    <div className="card-elevated p-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-5">
           <button
             onClick={() => !isCurrentWeek && setWeekOffset(0)}
             className={`text-xs uppercase tracking-wider font-medium transition-colors ${
@@ -250,7 +248,7 @@ function WeeklyPlan({
         </div>
 
         {/* Desktop: 5 columns */}
-        <div className="hidden sm:grid grid-cols-5 divide-x divide-border/40 min-h-[200px]">
+        <div className="hidden sm:grid grid-cols-5 divide-x divide-border/30 min-h-[160px]">
           {days.map((day) => {
             const dateStr = format(day, "yyyy-MM-dd");
             const todayHighlight = isToday(day);
@@ -260,10 +258,10 @@ function WeeklyPlan({
             const hiddenCount = events.length - maxVisible;
 
             return (
-              <div key={dateStr} className={`px-2.5 first:pl-0 last:pr-0 min-w-0 ${todayHighlight ? "bg-primary/[0.03] -mx-px px-[11px]" : ""}`}>
+              <div key={dateStr} className={`px-3 first:pl-0 last:pr-0 min-w-0 ${todayHighlight ? "bg-primary/[0.04] rounded-lg py-2 -my-2" : ""}`}>
                 {/* Day header */}
                 <div
-                  className={`text-sm font-medium mb-2 pb-1.5 truncate ${
+                  className={`text-sm font-medium mb-3 pb-2 truncate ${
                     todayHighlight
                       ? "text-primary border-b-2 border-primary"
                       : "text-muted-foreground"
@@ -273,13 +271,13 @@ function WeeklyPlan({
                 </div>
 
                 {/* Events */}
-                <div className="space-y-1">
+                <div className="space-y-2">
                   {visible.map((ev, i) => {
                     if (ev.type === "meeting") {
                       return (
                         <div key={ev.id + i} className={ev.status === "completed" ? "opacity-50" : ""}>
                           <Link to="/moter" className="block group">
-                            <div className="bg-primary/10 text-primary rounded-md px-2.5 py-1.5 text-sm font-medium flex items-center gap-1 min-w-0">
+                            <div className="bg-primary/[0.07] text-primary border-l-[3px] border-l-primary rounded-lg px-3 py-2 text-sm font-medium flex items-center gap-1 min-w-0">
                               {ev.status === "completed" && (
                                 <Check className="h-3 w-3 shrink-0" aria-hidden="true" />
                               )}
@@ -292,7 +290,7 @@ function WeeklyPlan({
                           {ev.subs.map((ss: any) => (
                             <div
                               key={ss.id}
-                              className={`mt-0.5 ml-2 rounded-md px-2 py-1 text-xs font-medium truncate ${
+                              className={`mt-1 ml-2 rounded-lg px-2.5 py-1.5 text-xs font-medium truncate ${
                                 SUB_SESSION_COLORS[ss.type] ?? "bg-muted text-muted-foreground"
                               }`}
                             >
@@ -306,20 +304,9 @@ function WeeklyPlan({
                       return (
                         <div
                           key={ev.id + i}
-                          className="bg-green-50 text-green-700 rounded-md px-2.5 py-1.5 text-sm font-medium flex items-center gap-1 min-w-0"
+                          className="bg-green-50 text-green-700 rounded-lg px-3 py-2 text-sm font-medium flex items-center gap-1 min-w-0"
                         >
                           <Check className="h-3 w-3 shrink-0" aria-hidden="true" />
-                          <span className="truncate">{ev.label}</span>
-                        </div>
-                      );
-                    }
-                    if (ev.type === "activity_planned") {
-                      return (
-                        <div
-                          key={ev.id + i}
-                          className="bg-amber-50 text-amber-700 rounded-md px-2.5 py-1.5 text-sm font-medium flex items-center gap-1 min-w-0"
-                        >
-                          <Clock className="h-3 w-3 shrink-0" aria-hidden="true" />
                           <span className="truncate">{ev.label}</span>
                         </div>
                       );
@@ -329,7 +316,7 @@ function WeeklyPlan({
                   {hiddenCount > 0 && (
                     <button
                       onClick={() => setExpandedDay(dateStr)}
-                      className="text-xs text-muted-foreground hover:text-foreground block"
+                      className="text-sm text-muted-foreground hover:text-foreground block mt-1"
                     >
                       +{hiddenCount} til
                     </button>
@@ -337,7 +324,7 @@ function WeeklyPlan({
                   {expandedDay === dateStr && events.length > 3 && (
                     <button
                       onClick={() => setExpandedDay(null)}
-                      className="text-xs text-muted-foreground hover:text-foreground block"
+                      className="text-sm text-muted-foreground hover:text-foreground block mt-1"
                     >
                       Vis færre
                     </button>
@@ -408,8 +395,7 @@ function WeeklyPlan({
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+    </div>
   );
 }
 
@@ -559,12 +545,12 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8 scroll-reveal">
       {/* 1. Greeting + deadline badge */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-8">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground tracking-tight">
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">
             {getGreeting()}{firstName ? `, ${firstName}` : ""}
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">{weekLabel}</p>
+          <p className="text-base text-muted-foreground mt-1.5">{weekLabel}</p>
         </div>
         {nextDeadline && nextDeadlineDate && (
           <div
@@ -583,138 +569,95 @@ export default function DashboardPage() {
       {/* 2. Sprint + Activities */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Sprint (3/5) */}
-        <Card className="lg:col-span-3 rounded-xl border-l-4 border-l-teal-500">
-          <CardContent className="p-5 space-y-4">
-            {activeSprint ? (
-              <>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">
-                    Nåværende sprint
+        <div className="lg:col-span-3 card-elevated border-l-4 border-l-teal-500 p-6">
+          {activeSprint ? (
+            <div className="space-y-5">
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">
+                  Nåværende sprint
+                </p>
+                <p className="text-xl font-semibold text-foreground">
+                  {activeSprint.name} —{" "}
+                  {format(parseISO(activeSprint.start_date), "d.", { locale: nb })}–
+                  {format(parseISO(activeSprint.end_date), "d. MMM", { locale: nb })}
+                </p>
+                {activeSprint.goal && (
+                  <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                    {activeSprint.goal}
                   </p>
-                  <p className="text-base font-semibold text-foreground">
-                    {activeSprint.name} —{" "}
-                    {format(parseISO(activeSprint.start_date), "d.", { locale: nb })}–
-                    {format(parseISO(activeSprint.end_date), "d. MMM", { locale: nb })}
-                  </p>
-                  {activeSprint.goal && (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {activeSprint.goal}
-                    </p>
-                  )}
-                </div>
-                {sprintStats && (
-                  <>
-                    <div className="grid grid-cols-4 gap-2">
-                      {[
-                        { label: "To Do", count: sprintStats.todo, color: "bg-gray-400" },
-                        { label: "In Progress", count: sprintStats.inProgress, color: "bg-blue-500" },
-                        { label: "Review", count: sprintStats.review, color: "bg-amber-500" },
-                        { label: "Done", count: sprintStats.done, color: "bg-green-500" },
-                      ].map((c) => (
-                        <div key={c.label} className="text-center">
-                          <p className="text-3xl font-bold text-foreground tabular-nums">
-                            {c.count}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{c.label}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="h-2 rounded-full bg-muted overflow-hidden flex">
-                      {sprintStats.totalSp > 0 && (
-                        <>
-                          <div
-                            className="bg-gray-400 origin-left animate-grow-bar"
-                            style={{
-                              width: `${(sprintStats.todoSp / sprintStats.totalSp) * 100}%`,
-                              animationDuration: "0.8s",
-                            }}
-                          />
-                          <div
-                            className="bg-blue-500 origin-left animate-grow-bar"
-                            style={{
-                              width: `${(sprintStats.ipSp / sprintStats.totalSp) * 100}%`,
-                              animationDuration: "0.8s",
-                              animationDelay: "0.1s",
-                              animationFillMode: "both",
-                            }}
-                          />
-                          <div
-                            className="bg-amber-500 origin-left animate-grow-bar"
-                            style={{
-                              width: `${(sprintStats.reviewSp / sprintStats.totalSp) * 100}%`,
-                              animationDuration: "0.8s",
-                              animationDelay: "0.2s",
-                              animationFillMode: "both",
-                            }}
-                          />
-                          <div
-                            className="bg-green-500 origin-left animate-grow-bar"
-                            style={{
-                              width: `${(sprintStats.doneSp / sprintStats.totalSp) * 100}%`,
-                              animationDuration: "0.8s",
-                              animationDelay: "0.3s",
-                              animationFillMode: "both",
-                            }}
-                          />
-                        </>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-end">
-                      <Link
-                        to="/sprinter"
-                        className="text-sm text-primary font-medium hover:underline flex items-center gap-1 shrink-0"
-                      >
-                        Sprint Board <ArrowRight className="h-3.5 w-3.5" />
-                      </Link>
-                    </div>
-                  </>
                 )}
-              </>
-            ) : (
-              <div className="py-6 text-center">
-                <p className="text-sm text-muted-foreground">Ingen aktiv sprint</p>
-                <Link
-                  to="/sprinter"
-                  className="text-sm text-primary font-medium hover:underline mt-1 inline-block"
-                >
-                  Opprett en i Sprinter →
-                </Link>
               </div>
-            )}
-          </CardContent>
-        </Card>
+              {sprintStats && (
+                <>
+                  <div className="grid grid-cols-4 gap-2 mt-6">
+                    {[
+                      { label: "TO DO", count: sprintStats.todo },
+                      { label: "IN PROGRESS", count: sprintStats.inProgress },
+                      { label: "REVIEW", count: sprintStats.review },
+                      { label: "DONE", count: sprintStats.done },
+                    ].map((c) => (
+                      <div key={c.label} className="text-center">
+                        <p className="text-4xl font-bold text-foreground tabular-nums mb-1">
+                          {c.count}
+                        </p>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">{c.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="h-2.5 rounded-full bg-muted overflow-hidden flex mt-6">
+                    {sprintStats.totalSp > 0 && (
+                      <>
+                        <div className="bg-gray-400 origin-left animate-grow-bar" style={{ width: `${(sprintStats.todoSp / sprintStats.totalSp) * 100}%`, animationDuration: "0.8s" }} />
+                        <div className="bg-blue-500 origin-left animate-grow-bar" style={{ width: `${(sprintStats.ipSp / sprintStats.totalSp) * 100}%`, animationDuration: "0.8s", animationDelay: "0.1s", animationFillMode: "both" }} />
+                        <div className="bg-amber-500 origin-left animate-grow-bar" style={{ width: `${(sprintStats.reviewSp / sprintStats.totalSp) * 100}%`, animationDuration: "0.8s", animationDelay: "0.2s", animationFillMode: "both" }} />
+                        <div className="bg-green-500 origin-left animate-grow-bar" style={{ width: `${(sprintStats.doneSp / sprintStats.totalSp) * 100}%`, animationDuration: "0.8s", animationDelay: "0.3s", animationFillMode: "both" }} />
+                      </>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-end mt-4">
+                    <Link to="/sprinter" className="text-sm text-primary font-medium hover:underline flex items-center gap-1 shrink-0">
+                      Sprint Board <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="py-8 text-center">
+              <p className="text-sm text-muted-foreground">Ingen aktiv sprint</p>
+              <Link to="/sprinter" className="text-sm text-primary font-medium hover:underline mt-1 inline-block">
+                Opprett en i Sprinter →
+              </Link>
+            </div>
+          )}
+        </div>
 
         {/* Activities (2/5) */}
-        <Card className="lg:col-span-2 rounded-xl border">
-          <CardContent className="p-5 space-y-4">
+        <div className="lg:col-span-2 card-elevated p-6">
+          <div className="space-y-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">
               Aktivitetspoeng
             </p>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-4xl font-bold text-foreground tabular-nums">{totalEarned}</span>
-              <span className="text-sm text-muted-foreground">/ {maxPossible} poeng</span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-5xl font-bold text-foreground tabular-nums">{totalEarned}</span>
+              <span className="text-lg text-muted-foreground">/ {maxPossible} poeng</span>
             </div>
-            <div className="h-2 rounded-full bg-muted overflow-hidden">
+            <div className="h-2.5 rounded-full bg-muted overflow-hidden mt-4">
               <div
                 className="h-full rounded-full bg-teal-500 transition-all"
                 style={{ width: `${Math.min((totalEarned / maxPossible) * 100, 100)}%` }}
               />
             </div>
-            <div className="flex gap-4">
-              {mandatoryRemaining.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  {mandatoryRemaining.length} obligatoriske gjenstår
-                </p>
-              )}
-            </div>
-            <Link
-              to="/aktiviteter"
-              className="text-sm text-primary font-medium hover:underline flex items-center gap-1"
-            >
+            {mandatoryRemaining.length > 0 && (
+              <p className="text-xs text-muted-foreground mt-2">
+                {mandatoryRemaining.length} obligatoriske gjenstår
+              </p>
+            )}
+            <Link to="/aktiviteter" className="text-sm text-primary font-medium hover:underline flex items-center gap-1 mt-4">
               Åpne Aktiviteter <ArrowRight className="h-3.5 w-3.5" />
             </Link>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* 3. Team overview — 2 columns */}
@@ -733,44 +676,39 @@ export default function DashboardPage() {
               latestUpdate,
             }) => (
               <Link key={member.id} to={`/profil/${member.id}`} className="block">
-                <Card className="rounded-xl border hover:shadow-sm transition-shadow cursor-pointer">
-                  <CardContent className="p-4 space-y-2.5">
+                <div className="card-elevated card-elevated-hover p-5 cursor-pointer">
+                  <div className="space-y-3">
                     <div className="flex items-center gap-3">
-                      <MemberAvatar member={member} size="md" />
+                      <MemberAvatar member={member} size="lg" />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium truncate">
+                        <p className="text-base font-semibold truncate">
                           {member.name.split(" ")[0]}
                         </p>
-                        {totalItems > 0 ? (
-                          <p className="text-xs text-muted-foreground">
-                            {activeCount} oppgaver i sprint
-                          </p>
-                        ) : (
-                          <p className="text-xs text-muted-foreground">
-                            Ingen tildelte oppgaver
-                          </p>
-                        )}
+                        <p className="text-sm text-muted-foreground">
+                          {totalItems > 0 ? `${activeCount} oppgaver i sprint` : "Ingen tildelte oppgaver"}
+                        </p>
                       </div>
                     </div>
                     {totalSp > 0 && (
-                      <div className="h-1 rounded-full bg-muted overflow-hidden flex">
+                      <div className="h-1.5 rounded-full bg-muted overflow-hidden flex">
                         <div className="bg-gray-400" style={{ width: `${(todo / totalSp) * 100}%` }} />
                         <div className="bg-blue-500" style={{ width: `${(ip / totalSp) * 100}%` }} />
                         <div className="bg-amber-500" style={{ width: `${(rv / totalSp) * 100}%` }} />
                         <div className="bg-green-500" style={{ width: `${(dn / totalSp) * 100}%` }} />
                       </div>
                     )}
-                    {/* Sparkline hidden — data still available */}
                     {latestUpdate && (
-                      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                        <span className="text-foreground/60">
-                          {format(parseISO(latestUpdate.entry_date), "d. MMM", { locale: nb })}:
-                        </span>{" "}
-                        {latestUpdate.content}
-                      </p>
+                      <div className="mt-3">
+                        <p className="text-xs text-muted-foreground">
+                          {format(parseISO(latestUpdate.entry_date), "d. MMM", { locale: nb })}
+                        </p>
+                        <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed mt-0.5">
+                          {latestUpdate.content}
+                        </p>
+                      </div>
                     )}
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               </Link>
             )
           )}
@@ -781,46 +719,40 @@ export default function DashboardPage() {
       <WeeklyPlan registrations={regs} catalog={cat} />
 
       {/* 5. Viktige frister */}
-      <Card className="rounded-xl border">
-        <CardContent className="p-5">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">
-            Viktige frister
-          </p>
-          {viktigeFrister
-            .filter((f) => !f.passed)
-            .map((f, i, arr) => {
-              const dateLabel = f.dateEnd
-                ? `${format(f.parsedDate, "d.", { locale: nb })}–${format(
-                    parseISO(f.dateEnd),
-                    "d. MMMM",
-                    { locale: nb }
-                  )}`
-                : format(f.parsedDate, "d. MMMM", { locale: nb });
-              const countdownClass =
-                f.days < 7
-                  ? "text-red-600 font-bold"
-                  : f.days < 14
-                  ? "text-amber-600 font-medium"
-                  : "text-muted-foreground";
-              return (
-                <div
-                  key={f.title}
-                  className={`flex items-center justify-between py-3 ${
-                    i < arr.length - 1 ? "border-b border-border/50" : ""
-                  }`}
-                >
-                  <span className="text-sm text-foreground">{f.title}</span>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="text-sm text-muted-foreground">{dateLabel}</span>
-                    <span className={`text-sm ${countdownClass}`}>
-                      {f.days === 0 ? "i dag" : f.days === 1 ? "i morgen" : `${f.days} dager`}
-                    </span>
-                  </div>
+      <div className="card-elevated p-6">
+        <p className="text-xs text-muted-foreground uppercase tracking-wider mb-4">
+          Viktige frister
+        </p>
+        {viktigeFrister
+          .filter((f) => !f.passed)
+          .map((f, i, arr) => {
+            const dateLabel = f.dateEnd
+              ? `${format(f.parsedDate, "d.", { locale: nb })}–${format(parseISO(f.dateEnd), "d. MMMM", { locale: nb })}`
+              : format(f.parsedDate, "d. MMMM", { locale: nb });
+            const countdownClass =
+              f.days < 7
+                ? "text-red-600 font-bold"
+                : f.days < 14
+                ? "text-amber-600 font-medium"
+                : "text-muted-foreground";
+            return (
+              <div
+                key={f.title}
+                className={`flex items-center justify-between py-4 ${
+                  i < arr.length - 1 ? "border-b border-neutral-100" : ""
+                }`}
+              >
+                <span className="text-base text-foreground">{f.title}</span>
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className="text-sm text-muted-foreground">{dateLabel}</span>
+                  <span className={`text-sm font-medium ${countdownClass}`}>
+                    {f.days === 0 ? "i dag" : f.days === 1 ? "i morgen" : `${f.days} dager`}
+                  </span>
                 </div>
-              );
-            })}
-        </CardContent>
-      </Card>
+              </div>
+            );
+          })}
+      </div>
 
       {/* Hurtiglenker fjernet — tilgjengelig via sidebar */}
     </div>

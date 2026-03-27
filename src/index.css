@@ -5,8 +5,8 @@
 @layer base {
   :root {
     /* ── Bakgrunn og tekst ──────────────────────────────── */
-    /* Varm grå nøytral (#FAFAF8 → HSL 40 20% 98%) */
-    --background: 40 20% 98%;
+    /* Varm lys grå bakgrunn (#F8F7F5) */
+    --background: 40 14% 97%;
     /* Varm mørk (#2E2C28 → HSL 38 10% 18%) */
     --foreground: 38 10% 18%;
 
@@ -46,12 +46,12 @@
     --input: 38 10% 84%;
     --ring: 160 76% 24%;
 
-    /* ── Border radius: 12px for cards ─────────────────── */
-    --radius: 0.75rem;
+    /* ── Border radius: 16px for cards ─────────────────── */
+    --radius: 1rem;
 
     /* ── Sidebar ────────────────────────────────────────── */
-    /* neutral-50 (#FAFAF8) */
-    --sidebar-background: 40 20% 98%;
+    /* White sidebar for contrast against warm grey page bg */
+    --sidebar-background: 0 0% 100%;
     /* neutral-600 (#6B675F → HSL 38 7% 39%) */
     --sidebar-foreground: 38 7% 39%;
     --sidebar-primary: 160 76% 24%;
@@ -167,6 +167,22 @@
   code, kbd, .font-mono {
     font-family: 'JetBrains Mono', 'Fira Code', monospace;
     font-size: 0.875em;
+  }
+}
+
+@layer components {
+  /* Reusable elevated card style — white bg, subtle shadow, no border */
+  .card-elevated {
+    background: hsl(var(--card));
+    border-radius: 1rem;
+    border: none;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
+  }
+  .card-elevated-hover {
+    transition: box-shadow 200ms ease;
+  }
+  .card-elevated-hover:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.04);
   }
 }
 
