@@ -32,9 +32,9 @@ export default function StandupPage() {
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`pb-2 text-sm transition-colors border-b-2 -mb-px ${
+            className={`py-2 px-1 text-sm transition-colors border-b-2 -mb-px ${
               activeTab === tab.key
-                ? "font-medium text-foreground border-primary"
+                ? "font-semibold text-foreground border-primary"
                 : "text-muted-foreground border-transparent hover:text-foreground"
             }`}
           >

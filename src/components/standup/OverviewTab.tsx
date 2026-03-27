@@ -170,7 +170,7 @@ export function OverviewTab({ members, weekStart, weekEnd, onNavigateToWeek, onS
       </div>
 
       {/* Metric cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard label="Totalt entries" value={totalEntries} sub={`av ${possible} (${participationPct}%)`} />
         <MetricCard label="Deltakelse" value={`${participationPct}%`} sub="teamgjennomsnitt" />
         <MetricCard label="Mest aktiv" value={mostActive?.member.name.split(" ")[0] ?? "–"} sub={`${mostActive?.count ?? 0} av ${periodDays.length} dager`} small />
@@ -178,13 +178,13 @@ export function OverviewTab({ members, weekStart, weekEnd, onNavigateToWeek, onS
       </div>
 
       {/* Heatmap */}
-      <div>
-        <h4 className="text-sm font-medium text-foreground mb-3">Aktivitetskart — oppdateringer per person per dag</h4>
+      <div className="card-elevated p-6">
+        <h4 className="text-lg font-semibold text-foreground mb-4">Aktivitetskart</h4>
         <div className="overflow-x-auto">
           <table className="border-separate" style={{ borderSpacing: 2 }}>
             <thead>
               <tr>
-                <th className="w-[60px] sticky left-0 z-10 bg-background" />
+                <th className="w-20 sticky left-0 z-10 bg-card" />
                 {heatmapWeeks.map((w) => (
                   <th key={w.weekNum} colSpan={w.days.length} className="text-[10px] text-muted-foreground text-center font-normal">
                     Uke {w.weekNum}
@@ -192,7 +192,7 @@ export function OverviewTab({ members, weekStart, weekEnd, onNavigateToWeek, onS
                 ))}
               </tr>
               <tr>
-                <th className="sticky left-0 z-10 bg-background" />
+                <th className="sticky left-0 z-10 bg-card" />
                 {periodDays.map((d) => (
                   <th key={format(d, "yyyy-MM-dd")} className="text-[9px] text-muted-foreground font-normal w-[18px]">
                     {format(d, "EEEEE", { locale: nb }).toUpperCase()}
@@ -203,7 +203,7 @@ export function OverviewTab({ members, weekStart, weekEnd, onNavigateToWeek, onS
             <tbody>
               {members.map((m) => (
                 <tr key={m.id}>
-                  <td className="text-[11px] text-muted-foreground text-right pr-2 sticky left-0 z-10 bg-background whitespace-nowrap">
+                  <td className="text-sm font-medium text-muted-foreground text-right pr-3 sticky left-0 z-10 bg-card whitespace-nowrap w-20">
                     {m.name.split(" ")[0]}
                   </td>
                   {periodDays.map((d) => {
@@ -218,7 +218,7 @@ export function OverviewTab({ members, weekStart, weekEnd, onNavigateToWeek, onS
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button
-                              className="block w-4 h-4 rounded-sm cursor-pointer"
+                              className="block w-3.5 h-3.5 rounded cursor-pointer"
                               style={{ backgroundColor: bg }}
                               onClick={() => {
                                 onNavigateToWeek(startOfWeek(d, { weekStartsOn: 1 }));
@@ -250,16 +250,16 @@ export function OverviewTab({ members, weekStart, weekEnd, onNavigateToWeek, onS
 
       {/* Category distribution */}
       {catDist.length > 0 && (
-        <div>
-          <h4 className="text-sm font-medium text-foreground mb-3">Kategorifordeling</h4>
-          <div className="w-full h-2 rounded-full overflow-hidden flex">
+        <div className="card-elevated p-6">
+          <h4 className="text-lg font-semibold text-foreground mb-4">Kategorifordeling</h4>
+          <div className="w-full h-4 rounded-full overflow-hidden flex">
             {catDist.filter((c) => c.pct > 0).map((c) => (
               <div key={c.key} style={{ width: `${c.pct}%`, backgroundColor: catBarColors[c.key] }} />
             ))}
           </div>
-          <div className="flex justify-between mt-1">
+          <div className="flex justify-between mt-2">
             {catDist.map((c) => (
-              <span key={c.key} className="text-[10px] text-muted-foreground">{c.label} {c.pct}%</span>
+              <span key={c.key} className="text-sm text-muted-foreground">{c.label} {c.pct}%</span>
             ))}
           </div>
         </div>
@@ -267,8 +267,8 @@ export function OverviewTab({ members, weekStart, weekEnd, onNavigateToWeek, onS
 
       {/* Per person */}
       <div>
-        <h4 className="text-sm font-medium text-foreground mb-3">Per person</h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <h4 className="text-lg font-semibold text-foreground mb-4">Per person</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {members.map((m) => {
             const count = filteredUpdates.filter((u) => u.member_id === m.id).length;
             const pct = periodDays.length > 0 ? Math.round((count / periodDays.length) * 100) : 0;
@@ -285,17 +285,17 @@ export function OverviewTab({ members, weekStart, weekEnd, onNavigateToWeek, onS
             else if (pct >= 50) fillColor = "#C0DD97";
 
             return (
-              <div key={m.id} className="rounded-xl border border-border bg-card p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <MemberAvatar member={m} size="sm" />
-                  <span className="text-[13px] font-medium">{m.name.split(" ")[0]}</span>
+              <div key={m.id} className="card-elevated p-5">
+                <div className="flex items-center gap-3 mb-2">
+                  <MemberAvatar member={m} size="md" />
+                  <span className="text-base font-semibold">{m.name.split(" ")[0]}</span>
                 </div>
-                <p className="text-xs text-muted-foreground">{count}/{periodDays.length} dager ({pct}%)</p>
-                <div className="w-full h-1 rounded-full bg-muted mt-1.5">
+                <p className="text-sm text-muted-foreground">{count}/{periodDays.length} dager ({pct}%)</p>
+                <div className="w-full h-2 rounded-full bg-muted mt-2">
                   <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: fillColor }} />
                 </div>
                 {topCat && topCat.label && (
-                  <p className="text-xs text-muted-foreground mt-1.5">Mest: {topCat.label} ({topCatPct}%)</p>
+                  <p className="text-sm text-muted-foreground mt-2">Mest: {topCat.label} ({topCatPct}%)</p>
                 )}
               </div>
             );
@@ -304,16 +304,16 @@ export function OverviewTab({ members, weekStart, weekEnd, onNavigateToWeek, onS
       </div>
 
       {/* Export section */}
-      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-        <h4 className="text-sm font-medium text-foreground">Eksporter til prosesslogg</h4>
-        <p className="text-xs text-muted-foreground">
+      <div className="card-elevated p-6 space-y-4">
+        <h4 className="text-lg font-semibold text-foreground">Eksporter til prosesslogg</h4>
+        <p className="text-sm text-muted-foreground">
           Genererer et ferdig avsnitt om teamets daglige kommunikasjon for prosessloggen.
         </p>
         <Textarea
           value={reflection}
           onChange={(e) => setReflection(e.target.value)}
           placeholder="Skriv en refleksjon…"
-          className="text-xs min-h-[60px]"
+          className="text-sm min-h-[60px] rounded-xl p-4"
         />
         <div className="flex gap-2">
           <Button size="sm" onClick={() => { navigator.clipboard.writeText(buildExportText(false)); toast.success("Kopiert som ren tekst!"); }}>
@@ -330,10 +330,10 @@ export function OverviewTab({ members, weekStart, weekEnd, onNavigateToWeek, onS
 
 function MetricCard({ label, value, sub, small }: { label: string; value: string | number; sub: string; small?: boolean }) {
   return (
-    <div className="rounded-lg bg-muted/50 p-3">
-      <p className="text-[11px] text-muted-foreground">{label}</p>
-      <p className={`font-medium tabular-nums ${small ? "text-base" : "text-xl"}`}>{value}</p>
-      <p className="text-[11px] text-muted-foreground">{sub}</p>
+    <div className="card-elevated p-5">
+      <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className={`font-bold tabular-nums mt-1 ${small ? "text-xl" : "text-3xl"}`}>{value}</p>
+      <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
     </div>
   );
 }
@@ -341,8 +341,8 @@ function MetricCard({ label, value, sub, small }: { label: string; value: string
 function LegendItem({ color, label }: { color: string; label: string }) {
   return (
     <div className="flex items-center gap-1.5">
-      <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: color }} />
-      <span className="text-[11px] text-muted-foreground">{label}</span>
+      <div className="w-3 h-3 rounded" style={{ backgroundColor: color }} />
+      <span className="text-xs text-muted-foreground">{label}</span>
     </div>
   );
 }

@@ -169,17 +169,17 @@ export function DayByDayTab({ weekdays, entries, teamNotes, members, currentMemb
           <div key={dayStr} className={`relative ${!isLast ? "pb-8" : "pb-2"}`}>
             {/* Timeline connector */}
             {!isLast && (
-              <div className="absolute left-[15px] top-[36px] bottom-0 w-px bg-border" />
+              <div className="absolute left-[19px] top-[44px] bottom-0 w-px bg-border" />
             )}
 
             {/* Day header */}
             <div className="flex items-center gap-3 mb-4">
-              {/* Timeline dot */}
-              <div className={`relative z-10 w-[31px] h-[31px] rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+              {/* Date circle */}
+              <div className={`relative z-10 w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
                 isToday(day)
                   ? "bg-primary text-primary-foreground"
                   : entryCount > 0
-                    ? "bg-muted-foreground/15 text-foreground"
+                    ? "bg-primary/10 text-primary"
                     : "bg-muted text-muted-foreground"
               }`}>
                 {format(day, "d")}
@@ -187,14 +187,14 @@ export function DayByDayTab({ weekdays, entries, teamNotes, members, currentMemb
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-2">
-                  <h3 className={`text-sm font-semibold capitalize ${
+                  <h3 className={`text-lg font-semibold capitalize ${
                     isToday(day) ? "text-primary" : isFuture ? "text-muted-foreground" : "text-foreground"
                   }`}>
                     {dayLabel}
                   </h3>
-                  <span className="text-xs text-muted-foreground">{dateLabel}</span>
+                  <span className="text-sm text-muted-foreground">{dateLabel}</span>
                   {entryCount > 0 && (
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-sm text-muted-foreground">
                       {entryCount}/{members.length}
                     </span>
                   )}
@@ -215,7 +215,7 @@ export function DayByDayTab({ weekdays, entries, teamNotes, members, currentMemb
             </div>
 
             {/* Day content */}
-            <div className="ml-[46px]">
+            <div className="ml-[52px]">
               {showInput && (
                 <div className="mb-3">
                   <StandupInput
@@ -235,7 +235,7 @@ export function DayByDayTab({ weekdays, entries, teamNotes, members, currentMemb
               />
 
               {membersWithEntry.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className={`grid gap-4 ${membersWithEntry.length === 1 ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>
                   {membersWithEntry.map((m) => {
                     const entry = dayEntries.find((e) => e.member_id === m.id) ?? null;
                     return (
@@ -253,13 +253,13 @@ export function DayByDayTab({ weekdays, entries, teamNotes, members, currentMemb
 
               {/* Members without entry */}
               {membersWithoutEntry.length > 0 && membersWithEntry.length > 0 && (
-                <div className="flex items-center gap-2 mt-2 px-1">
-                  <span className="text-[11px] text-muted-foreground">Ikke oppdatert:</span>
-                  <div className="flex -space-x-1">
+                <div className="flex items-center gap-2 mt-3 px-1">
+                  <span className="text-xs text-muted-foreground">Ikke oppdatert:</span>
+                  <div className="flex -space-x-0.5">
                     {membersWithoutEntry.map((m) => (
                       <div
                         key={m.id}
-                        className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-medium text-white border border-background"
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-medium text-white border-2 border-background"
                         style={{ backgroundColor: m.avatar_color }}
                         title={m.name}
                       >

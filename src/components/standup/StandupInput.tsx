@@ -49,12 +49,11 @@ export function StandupInput({ memberId, existingEntry, date, dayLabel, onSaved,
     }
   }, [existingEntry]);
 
-  // Auto-resize textarea
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 96) + "px"; // max ~3 lines
+    el.style.height = Math.min(el.scrollHeight, 128) + "px";
   }, [content]);
 
   const toggleCategory = (key: string) => {
@@ -88,8 +87,7 @@ export function StandupInput({ memberId, existingEntry, date, dayLabel, onSaved,
   const selectedBacklog = backlogItems?.find((b) => b.id === backlogItemId);
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4 space-y-2">
-      {/* Only show heading in non-compact mode */}
+    <div className="card-elevated p-6 space-y-3">
       {!compact && dayLabel && (
         <div>
           <h3 className="text-sm font-medium text-foreground capitalize">{dayLabel}</h3>
@@ -106,8 +104,8 @@ export function StandupInput({ memberId, existingEntry, date, dayLabel, onSaved,
         placeholder="Hva har du gjort/jobbet med?"
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        className="w-full bg-transparent text-sm resize-none border border-input rounded-md px-3 py-2 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        style={{ minHeight: "40px", maxHeight: "96px" }}
+        className="w-full bg-transparent text-base resize-none border border-input rounded-xl px-4 py-3 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        style={{ minHeight: "48px", maxHeight: "128px" }}
         rows={1}
       />
 
@@ -122,25 +120,27 @@ export function StandupInput({ memberId, existingEntry, date, dayLabel, onSaved,
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-1.5">
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat.key}
-            onClick={() => toggleCategory(cat.key)}
-            className="px-2.5 py-0.5 rounded-md text-[11px] font-medium transition-opacity"
-            style={{
-              backgroundColor: cat.bg,
-              color: cat.fg,
-              opacity: categories.includes(cat.key) ? 1 : 0.5,
-            }}
-          >
-            {cat.label}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center gap-2">
+        {CATEGORIES.map((cat) => {
+          const selected = categories.includes(cat.key);
+          return (
+            <button
+              key={cat.key}
+              onClick={() => toggleCategory(cat.key)}
+              className="py-1.5 px-3 rounded-lg text-sm font-medium transition-all"
+              style={{
+                backgroundColor: selected ? cat.bg : "hsl(var(--muted))",
+                color: selected ? cat.fg : "hsl(var(--muted-foreground))",
+              }}
+            >
+              {cat.label}
+            </button>
+          );
+        })}
         <Popover open={backlogOpen} onOpenChange={setBacklogOpen}>
           <PopoverTrigger asChild>
-            <button className="text-xs text-primary hover:underline flex items-center gap-1 ml-1">
-              <Link2 className="h-3 w-3" />
+            <button className="text-sm text-muted-foreground hover:text-primary flex items-center gap-1 ml-1">
+              <Link2 className="h-3.5 w-3.5" />
               Koble til oppgave
             </button>
           </PopoverTrigger>
@@ -168,12 +168,11 @@ export function StandupInput({ memberId, existingEntry, date, dayLabel, onSaved,
         </Popover>
         <div className="ml-auto">
           <Button
-            size="sm"
-            className="h-7 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+            className="py-2.5 px-6 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 rounded-[10px]"
             onClick={handlePublish}
             disabled={upsert.isPending}
           >
-            {existingEntry ? "Oppdater" : "Publiser"}
+            {upsert.isPending ? "Lagrer..." : existingEntry ? "Oppdater" : "Publiser"}
           </Button>
         </div>
       </div>

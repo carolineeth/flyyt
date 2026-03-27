@@ -39,18 +39,18 @@ export function HeatmapStripe({ weekdays, entries, memberCount }: Props) {
           return (
             <div
               key={dayStr}
-              className="w-4 h-4 rounded-sm"
+              className="w-3 h-3 rounded-sm"
               style={{ backgroundColor: bg }}
               title={weekend ? "Helg" : `${count} oppdateringer`}
             />
           );
         })}
       </div>
-      <span className="text-xs text-muted-foreground">
+      <span className="text-sm text-muted-foreground">
         {totalEntries} av {possible || "–"} denne uken
       </span>
       {possible > 0 && (
-        <span className={`text-xs font-medium ${pctColor}`}>
+        <span className={`text-sm font-semibold ${pctColor}`}>
           {pct}%
         </span>
       )}

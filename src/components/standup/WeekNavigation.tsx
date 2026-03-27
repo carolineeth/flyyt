@@ -26,7 +26,7 @@ export function WeekNavigation({ weekLabel, isCurrentWeek, onPrev, onNext, onTod
           Denne uken
         </Button>
       )}
-      <span className="text-sm font-medium text-foreground">{weekLabel}</span>
+      <span className="text-base font-medium text-foreground">{weekLabel}</span>
       {children}
     </div>
   );
