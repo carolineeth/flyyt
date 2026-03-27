@@ -77,7 +77,8 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
 
   return (
     <div className="space-y-6">
-      {/* Mandatory first half */}
+      {/* Mandatory + Optional first half in one card */}
+      <div className="card-elevated p-6 space-y-0">
       <Section title="Obligatoriske — første halvdel" subtitle="Frist 5. april" variant="mandatory">
         {mandatoryFirstHalf
           .sort((a, b) => (isCompleted(a.id) ? 1 : 0) - (isCompleted(b.id) ? 1 : 0))
@@ -92,8 +93,9 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
           ))}
       </Section>
 
-      {/* Optional first half */}
+      {/* Optional first half — same card, with separator */}
       {optionalFirstHalf.length > 0 && (
+        <><div className="border-t border-neutral-200 mt-6 pt-6" />
         <Section title="Valgfrie — første halvdel">
           {optionalFirstHalf.map((item) => (
             <CatalogRow key={item.id} item={item} onClick={() => openModal(item)}>
@@ -104,18 +106,19 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
             </CatalogRow>
           ))}
         </Section>
+        </>
       )}
+      </div>
 
       {/* Meetings: Veileder */}
-      <div>
-        <div className="mb-2">
-          <h3 className="text-base font-medium">Møter med veileder</h3>
-          <p className="text-xs text-muted-foreground">Kobles automatisk fra møtekalenderen</p>
+      <div className="card-elevated p-6">
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold">Møter med veileder</h3>
+          <p className="text-sm text-muted-foreground">Kobles automatisk fra møtekalenderen</p>
         </div>
-        <div className="space-y-1">
+        <div className="space-y-2">
           {advisorMeeting && (
-            <Card className="overflow-hidden">
-              <CardContent className="py-3 space-y-2">
+            <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">{advisorMeeting.name}</span>
@@ -165,8 +168,8 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
                     return (
                       <div
                         key={i}
-                        className={`w-5 h-5 rounded-full border-2 ${
-                          i < completed ? "bg-primary border-primary" : "border-muted-foreground/30"
+                        className={`w-4 h-4 rounded-full border-2 ${
+                          i < completed ? "bg-green-500 border-green-500" : "border-neutral-200"
                         }`}
                       />
                     );
@@ -175,22 +178,18 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
                 <p className="text-xs text-muted-foreground">
                   {getRegistrationsFor(advisorMeeting.id).filter((r) => r.status === "completed").length} av 4 gjennomført
                 </p>
-              </CardContent>
-            </Card>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Separator */}
-      <Separator className="opacity-50" />
-
       {/* Meetings: Smidige */}
-      <div>
-        <div className="mb-2">
-          <h3 className="text-base font-medium">Smidige møter</h3>
-          <p className="text-xs text-muted-foreground">1p per type per uke · Maks 3p totalt · Ulike typer ikke i samme uke</p>
+      <div className="card-elevated p-6">
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold">Smidige møter</h3>
+          <p className="text-sm text-muted-foreground">1p per type per uke · Maks 3p totalt · Ulike typer ikke i samme uke</p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {agileMeetings.map((item) => {
             const regs = getRegistrationsFor(item.id);
             const totalAgileCompleted = agileMeetings.reduce((sum, m) =>
@@ -198,8 +197,7 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
             );
             const canAddMore = totalAgileCompleted < 3;
             return (
-              <Card key={item.id} className="overflow-hidden">
-                <CardContent className="py-3 space-y-2">
+              <div key={item.id} className="bg-neutral-50 rounded-xl p-4 space-y-2">
                   <div className="text-center">
                     <p className="text-sm font-medium">{item.name.replace("Smidige møter: ", "")}</p>
                     <Badge variant="secondary" className="text-[10px]">{item.points}p</Badge>
@@ -245,16 +243,14 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
                       + Registrer ny
                     </Button>
                   )}
-                </CardContent>
-              </Card>
+              </div>
             );
           })}
           {/* Custom activity as 4th card */}
           {custom.map((item) => {
             const regs = getRegistrationsFor(item.id);
             return (
-              <Card key={item.id} className="overflow-hidden">
-                <CardContent className="py-3 space-y-2">
+              <div key={item.id} className="bg-neutral-50 rounded-xl p-4 space-y-2">
                   <div className="text-center">
                     <p className="text-sm font-medium">Egendefinert</p>
                     <Badge variant="secondary" className="text-[10px]">{item.points}p</Badge>
@@ -281,8 +277,7 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
                   <Button variant="outline" size="sm" className="w-full h-7 text-xs" onClick={() => openModal(item)}>
                     {regs.length > 0 ? "Se detaljer" : "+ Registrer"}
                   </Button>
-                </CardContent>
-              </Card>
+              </div>
             );
           })}
         </div>
@@ -353,12 +348,12 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
 
 function Section({ title, subtitle, variant, children }: { title: string; subtitle?: string; variant?: "mandatory" | "dimmed"; children: React.ReactNode }) {
   return (
-    <div className={variant === "dimmed" ? "opacity-60" : ""}>
-      <div className="mb-2">
-        <h3 className="text-sm font-semibold">{title}</h3>
-        {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+    <div className={variant === "dimmed" ? "opacity-60 mt-6" : ""}>
+      <div className="mb-1">
+        <h3 className="text-lg font-semibold">{title}</h3>
+        {subtitle && <p className="text-sm text-muted-foreground mb-4">{subtitle}</p>}
       </div>
-      <div className={`space-y-1 ${variant === "mandatory" ? "border-l-2 border-destructive/40 pl-3" : ""}`}>
+      <div className="space-y-0">
         {children}
       </div>
     </div>
@@ -368,7 +363,7 @@ function Section({ title, subtitle, variant, children }: { title: string; subtit
 function CatalogRow({ item: _item, onClick, children }: { item: CatalogItem; onClick: () => void; children: React.ReactNode }) {
   return (
     <div
-      className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-accent/30 cursor-pointer transition-colors"
+      className="flex items-center gap-3 px-3 py-4 border-b border-neutral-100 last:border-b-0 hover:bg-accent/30 cursor-pointer transition-colors"
       onClick={onClick}
     >
       {children}

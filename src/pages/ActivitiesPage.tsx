@@ -6,8 +6,6 @@ import { CatalogView } from "@/components/activities/CatalogView";
 import { RegistrationsView } from "@/components/activities/RegistrationsView";
 import { RegistrationModal } from "@/components/activities/RegistrationModal";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Info } from "lucide-react";
 import { useMemo } from "react";
@@ -15,7 +13,7 @@ import { useMemo } from "react";
 export default function ActivitiesPage() {
   const { data: catalog, isLoading: loadingCatalog } = useActivityCatalog();
   const { data: registrations, isLoading: loadingRegs } = useActivityRegistrations();
-  const [tab, setTab] = useState("catalog");
+  const [tab, setTab] = useState<"catalog" | "registrations">("catalog");
 
   // Modal state for planner clicks
   const [plannerModalOpen, setPlannerModalOpen] = useState(false);
@@ -36,11 +34,16 @@ export default function ActivitiesPage() {
   const regs = registrations || [];
 
   const earned = calcTotalEarnedPoints(regs, cat);
-
   const progressPct = Math.min((earned / 30) * 100, 100);
+  const regCount = regs.filter((r) => r.status === "completed" || r.status === "in_progress").length;
+
+  const tabs = [
+    { key: "catalog" as const, label: "Katalog" },
+    { key: "registrations" as const, label: "Gjennomføringer", count: regCount },
+  ];
 
   return (
-    <div className="space-y-8 scroll-reveal">
+    <div className="space-y-6 scroll-reveal">
       <PageHeader
         title="Aktivitets-tracker"
         description={
@@ -58,38 +61,52 @@ export default function ActivitiesPage() {
         }
       />
 
-      {/* Points overview */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Opptjent: <strong className="text-foreground">{earned}p</strong> av 30p</span>
-          <span className="text-muted-foreground tabular-nums">{Math.round(progressPct)}%</span>
+      {/* Progress card */}
+      <div className="card-elevated p-6 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-lg font-semibold text-foreground">Opptjent: {earned}p av 30p</span>
+          <span className="text-lg font-semibold text-primary tabular-nums">{Math.round(progressPct)}%</span>
         </div>
-        <Progress value={progressPct} className="h-2" />
+        <div className="h-3 rounded-full bg-muted overflow-hidden">
+          <div
+            className="h-full rounded-full bg-primary transition-all"
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
       </div>
 
       {/* Points Planner */}
       <PointsPlanner catalog={cat} registrations={regs} onClickRegistration={handlePlannerClick} />
 
-      {/* Catalog / Registrations tabs */}
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
-          <TabsTrigger value="catalog">Katalog</TabsTrigger>
-          <TabsTrigger value="registrations">
-            Gjennomføringer
-            {regs.filter((r) => r.status === "completed" || r.status === "in_progress").length > 0 && (
-              <span className="ml-1.5 bg-primary/10 text-primary text-[10px] px-1.5 py-0.5 rounded-full tabular-nums">
-                {regs.filter((r) => r.status === "completed" || r.status === "in_progress").length}
+      {/* Tabs */}
+      <div className="flex gap-6 border-b border-border">
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`py-2.5 px-1 text-sm font-medium transition-colors border-b-2 -mb-px flex items-center gap-1.5 ${
+              tab === t.key
+                ? "font-semibold text-foreground border-primary"
+                : "text-muted-foreground border-transparent hover:text-foreground"
+            }`}
+          >
+            {t.label}
+            {t.count != null && t.count > 0 && (
+              <span className="bg-primary/10 text-primary text-xs font-medium px-2 py-0.5 rounded-full tabular-nums">
+                {t.count}
               </span>
             )}
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="catalog" className="mt-4">
-          <CatalogView catalog={cat} registrations={regs} />
-        </TabsContent>
-        <TabsContent value="registrations" className="mt-4">
-          <RegistrationsView catalog={cat} registrations={regs} />
-        </TabsContent>
-      </Tabs>
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      {tab === "catalog" && (
+        <CatalogView catalog={cat} registrations={regs} />
+      )}
+      {tab === "registrations" && (
+        <RegistrationsView catalog={cat} registrations={regs} />
+      )}
 
       {/* Modal for planner clicks */}
       {plannerCatalog && (

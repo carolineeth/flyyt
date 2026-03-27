@@ -191,11 +191,8 @@ export function PointsPlanner({ catalog, registrations, onClickRegistration }: P
         </p>
       )}
 
-      <Card id="points-planner-card">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Poengplanlegger — dra aktiviteter inn i ukene</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div id="points-planner-card" className="card-elevated p-6 space-y-4">
+        <p className="text-base font-semibold text-foreground">Poengplanlegger — dra aktiviteter inn i ukene</p>
           <div className="flex gap-2 overflow-x-auto pb-2">
             <div
               className="shrink-0 w-36 rounded-lg border-2 border-dashed border-muted p-2 min-h-[180px] bg-muted/30"
@@ -219,15 +216,15 @@ export function PointsPlanner({ catalog, registrations, onClickRegistration }: P
                 <div key={w.week} className="flex">
                   {isDeadlineBorder && (
                     <div className="flex flex-col items-center mx-1 shrink-0 relative">
-                      <div className="w-0 h-full border-l-2 border-dashed border-destructive" />
-                      <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground text-[9px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap shadow-sm">
+                      <div className="w-0 h-full border-l-2 border-dashed border-amber-500" />
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap shadow-sm">
                         Frist 5. apr
                       </div>
                     </div>
                   )}
                   <div
-                    className={`shrink-0 w-28 rounded-lg border-2 p-2 min-h-[180px] transition-colors ${
-                      isCurrentWeek ? "border-info bg-info/5" : draggedId ? "border-dashed border-primary/30 bg-primary/5" : "border-border bg-card"
+                    className={`shrink-0 w-28 rounded-xl border-2 p-3 min-h-[180px] transition-colors ${
+                      isCurrentWeek ? "border-primary bg-primary/5" : draggedId ? "border-dashed border-primary/30 bg-primary/5" : "border-border bg-neutral-50"
                     }`}
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, w.week)}
@@ -251,31 +248,28 @@ export function PointsPlanner({ catalog, registrations, onClickRegistration }: P
               );
             })}
           </div>
-        </CardContent>
-      </Card>
+      </div>
 
-      <Card>
-        <CardContent className="pt-5">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-            <SummaryItem label="Opptjent" value={`${summary.earned}p`} color="text-primary" />
-            <SummaryItem label="Planlagt (ikke fullført)" value={`${summary.planned}p`} color="text-info" />
-            <SummaryItem label="Gjenstående" value={`${summary.remaining}p`} color="text-muted-foreground" />
-            <SummaryItem label="Maks mulig" value="30p" color="text-foreground" />
-          </div>
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} barSize={24}>
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} domain={[0, 6]} />
-                <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid hsl(var(--border))" }} labelStyle={{ fontWeight: 600 }} />
-                <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="Valgfrie" stackId="a" fill="hsl(var(--primary))" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="Obligatoriske" stackId="a" fill="#E07A5F" radius={[2, 2, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="card-elevated p-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+          <SummaryItem label="Opptjent" value={`${summary.earned}p`} color="text-primary" />
+          <SummaryItem label="Planlagt" value={`${summary.planned}p`} color="text-amber-600" />
+          <SummaryItem label="Gjenstående" value={`${summary.remaining}p`} color="text-muted-foreground" />
+          <SummaryItem label="Maks mulig" value="30p" color="text-foreground/40" />
+        </div>
+        <div className="h-48">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} barSize={24}>
+              <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+              <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} domain={[0, 6]} />
+              <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid hsl(var(--border))" }} labelStyle={{ fontWeight: 600 }} />
+              <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
+              <Bar dataKey="Valgfrie" stackId="a" fill="hsl(var(--primary))" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="Obligatoriske" stackId="a" fill="#E07A5F" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
     </div>
   );
 }
@@ -309,8 +303,8 @@ function RegBlock({ reg, cat, onDragStart, isDragging, onClick }: { reg: Registr
 function SummaryItem({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={`text-xl font-bold tabular-nums ${color}`}>{value}</p>
+      <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className={`text-3xl font-bold tabular-nums ${color}`}>{value}</p>
     </div>
   );
 }
