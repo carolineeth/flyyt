@@ -176,67 +176,69 @@ export default function MeetingCalendarPage() {
   };
 
   return (
-    <div className="space-y-8 scroll-reveal">
-      <PageHeader
-        title="Møter"
-        description="Planlegg, gjennomfør og dokumenter gruppemøter"
-      />
-
-      <Tabs defaultValue="calendar">
-        <TabsList>
-          <TabsTrigger value="calendar"><Calendar className="h-3.5 w-3.5 mr-1.5" />Kalender</TabsTrigger>
-          <TabsTrigger value="minutes"><FileText className="h-3.5 w-3.5 mr-1.5" />Møtereferater</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="calendar" className="mt-4 space-y-6">
-          <div className="flex justify-end gap-2">
-            {isPastWeek && !hasRecurringMeetings && recurringMeetings && rotation && (
-              <Button variant="outline" size="sm" onClick={generateForPastWeek} disabled={autoGenerate.isPending}>
-                <RefreshCw className={`h-4 w-4 mr-1 ${autoGenerate.isPending ? "animate-spin" : ""}`} />
-                Generer faste møter
-              </Button>
-            )}
-            <Button size="sm" onClick={openAddMeeting}>
-              <Plus className="h-4 w-4 mr-1" /> Legg til møte
-            </Button>
-          </div>
-
-      {/* Week navigation */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={prevWeek}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <div className="text-center">
-            <p className="text-sm font-semibold">
-              Uke {week} — {formatDateNb(weekStart)}–{formatDateNb(weekEnd)} {year}
-            </p>
-          </div>
-          <Button variant="outline" size="sm" onClick={nextWeek}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="flex items-center gap-2">
-          {!isCurrentWeek && (
-            <Button size="sm" onClick={goToday}>
-              <Calendar className="h-4 w-4 mr-1" /> Denne uken
+    <div className="space-y-6 scroll-reveal">
+      <div className="flex items-start justify-between gap-4">
+        <PageHeader
+          title="Møter"
+          description="Planlegg, gjennomfør og dokumenter gruppemøter"
+        />
+        <div className="flex gap-2 shrink-0 mt-1">
+          {isPastWeek && !hasRecurringMeetings && recurringMeetings && rotation && (
+            <Button variant="outline" size="sm" className="rounded-[10px]" onClick={generateForPastWeek} disabled={autoGenerate.isPending}>
+              <RefreshCw className={`h-4 w-4 mr-1 ${autoGenerate.isPending ? "animate-spin" : ""}`} />
+              Generer faste møter
             </Button>
           )}
+          <button className="py-2.5 px-5 rounded-[10px] bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors flex items-center gap-1.5" onClick={openAddMeeting}>
+            <Plus className="h-4 w-4" /> Legg til møte
+          </button>
         </div>
       </div>
 
-      {/* Rotation info */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <span>Rotasjon posisjon {position}:</span>
-        <Badge className="bg-teal-600 text-white text-[10px]">Leder: {leaderName}</Badge>
-        <Badge className="bg-purple-600 text-white text-[10px]">Referent: {notetakerName}</Badge>
+      <Tabs defaultValue="calendar">
+        <TabsList className="flex gap-6 border-b border-border mb-6 bg-transparent h-auto p-0 rounded-none">
+          <TabsTrigger value="calendar" className="py-2 px-1 text-sm font-medium transition-colors border-b-2 -mb-px data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:border-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:border-transparent !bg-transparent shadow-none rounded-none">
+            <Calendar className="h-3.5 w-3.5 mr-1.5" />Kalender
+          </TabsTrigger>
+          <TabsTrigger value="minutes" className="py-2 px-1 text-sm font-medium transition-colors border-b-2 -mb-px data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:border-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:border-transparent !bg-transparent shadow-none rounded-none">
+            <FileText className="h-3.5 w-3.5 mr-1.5" />Møtereferater
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="calendar" className="mt-0 space-y-6">
+
+      {/* Week navigation + rotation info */}
+      <div className="card-elevated p-5">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="rounded-[10px]" onClick={prevWeek}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <p className="text-base font-medium">
+              Uke {week} — {formatDateNb(weekStart)}–{formatDateNb(weekEnd)} {year}
+            </p>
+            <Button variant="outline" size="sm" className="rounded-[10px]" onClick={nextWeek}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            {!isCurrentWeek && (
+              <Button size="sm" className="rounded-[10px] ml-2" onClick={goToday}>
+                <Calendar className="h-3.5 w-3.5 mr-1" /> Denne uken
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <span>Rotasjon {position}:</span>
+            <span className="bg-primary text-white py-1 px-3 rounded-lg text-sm font-medium">Leder: {leaderName}</span>
+            <span className="bg-amber-500 text-white py-1 px-3 rounded-lg text-sm font-medium">Referent: {notetakerName}</span>
+          </div>
+        </div>
       </div>
 
       {/* Meeting cards */}
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Laster...</p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {meetingsByRecurring.map(({ rm, meeting, isToday: isTodayMeeting, leaderName: ln, notetakerName: nn }) => (
             <MeetingCard
               key={rm.id}
@@ -255,8 +257,8 @@ export default function MeetingCalendarPage() {
       {/* Ad-hoc / unlinked meetings */}
       {unlinkedMeetings.length > 0 && (
         <div className="space-y-4">
-          <p className="text-xs font-medium text-muted-foreground">Andre møter denne uken</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Andre møter denne uken</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {unlinkedMeetings.map((m: any) => {
               const mDate = new Date(m.date);
               const mDateStr = mDate.toISOString().split("T")[0];
@@ -292,27 +294,27 @@ export default function MeetingCalendarPage() {
 
       {/* Rotation indicator */}
       {rotation && members && (
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">Rotasjonsordning</p>
-          <div className="flex flex-wrap gap-2">
+        <div className="card-elevated p-5">
+          <p className="text-sm font-semibold mb-3">Rotasjonsordning</p>
+          <div className="flex flex-wrap gap-3">
             {rotation.map((r: any) => {
               const leader = members.find((m) => m.id === r.leader_id);
               const notetaker = members.find((m) => m.id === r.notetaker_id);
               const isCurrent = r.position === position;
-              const isPast = r.position < position;
+              const isPastRot = r.position < position;
               return (
                 <div
                   key={r.position}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                  className={`py-2 px-4 rounded-[10px] text-sm transition-colors ${
                     isCurrent
-                      ? "bg-primary text-primary-foreground"
-                      : isPast
-                        ? "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200"
-                        : "border border-border text-muted-foreground"
+                      ? "bg-primary/10 border border-primary/30 font-medium text-primary"
+                      : isPastRot
+                        ? "bg-neutral-50 text-foreground"
+                        : "bg-neutral-50 text-muted-foreground"
                   }`}
                 >
                   {leader?.name.split(" ")[0]} / {notetaker?.name.split(" ")[0]}
-                  {isCurrent && <span className="ml-1 text-[10px]">← nå</span>}
+                  {isCurrent && <span className="ml-1.5 text-xs text-primary font-medium">nå</span>}
                 </div>
               );
             })}
@@ -322,7 +324,7 @@ export default function MeetingCalendarPage() {
 
         </TabsContent>
 
-        <TabsContent value="minutes" className="mt-4">
+        <TabsContent value="minutes" className="mt-0">
           <MeetingMinutesView />
         </TabsContent>
       </Tabs>
