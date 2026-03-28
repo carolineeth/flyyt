@@ -444,7 +444,7 @@ export default function InsightsPage() {
       />
 
       {/* TOP METRICS */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <MetricCard
           icon={<Calendar className="h-4 w-4" />}
           label="Prosjektvarighet"
@@ -537,17 +537,17 @@ export default function InsightsPage() {
             <h4 className="text-sm font-medium mb-2 text-muted-foreground">Estimerings-nøyaktighet</h4>
             <div className="flex flex-wrap gap-3">
               {estimationAccuracy.map((e) => (
-                <div key={e.name} className="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-sm">
+                <div key={e.name} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+                  e.accuracy >= 80 ? "bg-green-50 text-green-700" : e.accuracy >= 50 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
+                }`}>
                   <span className="font-medium">{e.name}:</span>
-                  <span className={e.accuracy >= 80 ? "text-primary" : e.accuracy >= 60 ? "text-amber-600" : "text-destructive"}>
-                    {e.accuracy}%
-                  </span>
+                  <span className="font-semibold">{e.accuracy}%</span>
                   {e.accuracy >= 80 ? (
-                    <TrendingUp className="h-3 w-3 text-primary" />
-                  ) : e.accuracy >= 60 ? (
-                    <Minus className="h-3 w-3 text-amber-600" />
+                    <TrendingUp className="h-3.5 w-3.5" />
+                  ) : e.accuracy >= 50 ? (
+                    <Minus className="h-3.5 w-3.5" />
                   ) : (
-                    <TrendingDown className="h-3 w-3 text-destructive" />
+                    <TrendingDown className="h-3.5 w-3.5" />
                   )}
                 </div>
               ))}
@@ -751,27 +751,11 @@ export default function InsightsPage() {
         onCopy={() => copy(generateRequirementsReport())}
       >
         {/* Summary cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-          <div className="rounded-md border bg-muted/30 p-3">
-            <p className="text-xs text-muted-foreground">Funksjonelle krav</p>
-            <p className="text-lg font-bold">{requirements.filter((r) => r.category === "functional").length}</p>
-          </div>
-          <div className="rounded-md border bg-muted/30 p-3">
-            <p className="text-xs text-muted-foreground">Ikke-funksjonelle</p>
-            <p className="text-lg font-bold">{requirements.filter((r) => r.category === "non_functional").length}</p>
-          </div>
-          <div className="rounded-md border bg-muted/30 p-3">
-            <p className="text-xs text-muted-foreground">Totale endringer</p>
-            <p className="text-lg font-bold">{reqChanges.length}</p>
-          </div>
-          <div className="rounded-md border bg-muted/30 p-3">
-            <p className="text-xs text-muted-foreground">Siste endring</p>
-            <p className="text-sm font-semibold">
-              {reqChanges[0]
-                ? format(parseISO(reqChanges[0].created_at), "d. MMM", { locale: nb })
-                : "—"}
-            </p>
-          </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          <StatBox label="Funksjonelle krav" value={requirements.filter((r) => r.category === "functional").length} />
+          <StatBox label="Ikke-funksjonelle" value={requirements.filter((r) => r.category === "non_functional").length} />
+          <StatBox label="Totale endringer" value={reqChanges.length} />
+          <StatBox label="Siste endring" value={reqChanges[0] ? format(parseISO(reqChanges[0].created_at), "d. MMM", { locale: nb }) : "—"} />
         </div>
 
         {/* Implemented progress */}
@@ -794,26 +778,24 @@ export default function InsightsPage() {
         {/* Change timeline */}
         {reqChanges.length > 0 ? (
           <div>
-            <h4 className="text-sm font-medium mb-2 text-muted-foreground">Endringslogg (siste 20)</h4>
-            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-              {reqChanges.slice(0, 20).map((c) => {
-                const colorMap: Record<string, string> = {
-                  created: "bg-green-500",
-                  updated: "bg-blue-500",
-                  deleted: "bg-red-500",
-                  status_changed: "bg-amber-500",
-                  priority_changed: "bg-purple-500",
-                  added_to_backlog: "bg-cyan-500",
-                  removed_from_backlog: "bg-orange-500",
+            <h4 className="text-sm font-medium mb-3 text-muted-foreground">Endringslogg (siste 10)</h4>
+            <div className="space-y-0 max-h-72 overflow-y-auto">
+              {reqChanges.slice(0, 10).map((c) => {
+                const borderMap: Record<string, string> = {
+                  created: "border-l-teal-500",
+                  updated: "border-l-blue-500",
+                  deleted: "border-l-red-500",
+                  status_changed: "border-l-blue-500",
+                  priority_changed: "border-l-amber-500",
+                  added_to_backlog: "border-l-teal-500",
+                  removed_from_backlog: "border-l-red-500",
                 };
-                const dot = colorMap[c.change_type] ?? "bg-muted-foreground";
+                const border = borderMap[c.change_type] ?? "border-l-neutral-300";
                 return (
-                  <div key={c.id} className="flex gap-3 items-start text-xs">
-                    <span className={`mt-1.5 h-2 w-2 rounded-full flex-shrink-0 ${dot}`} />
-                    <div className="flex-1">
-                      <span className="text-muted-foreground">{format(parseISO(c.created_at), "d. MMM HH:mm", { locale: nb })}</span>
-                      {" · "}
-                      <span>{c.description ?? c.change_type}</span>
+                  <div key={c.id} className={`flex gap-3 items-start py-2.5 border-l-[3px] pl-3 ${border}`}>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-xs text-muted-foreground">{format(parseISO(c.created_at), "d. MMM HH:mm", { locale: nb })}</span>
+                      <p className="text-sm mt-0.5">{c.description ?? c.change_type}</p>
                     </div>
                   </div>
                 );
@@ -832,24 +814,20 @@ export default function InsightsPage() {
       </SectionCard>
 
       {/* EXPORT */}
-      <Card>
-        <CardContent className="p-4 flex flex-wrap gap-3 items-center justify-between">
-          <div>
-            <h3 className="text-sm font-semibold">Eksporter komplett rapport-statistikk</h3>
-            <p className="text-xs text-muted-foreground">Inkluderer alle seksjoner og refleksjoner</p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => copy(generateFullReport().replace(/[#|*-]/g, ""))}>
-              <Copy className="h-3 w-3 mr-1" />
-              Ren tekst
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => copy(generateFullReport())}>
-              <Copy className="h-3 w-3 mr-1" />
-              Markdown
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="card-elevated p-6 flex flex-wrap gap-4 items-center justify-between">
+        <div>
+          <h3 className="text-base font-semibold">Eksporter komplett rapport-statistikk</h3>
+          <p className="text-sm text-muted-foreground">Inkluderer alle seksjoner og refleksjoner</p>
+        </div>
+        <div className="flex gap-2">
+          <button className="py-2.5 px-5 rounded-[10px] bg-white border border-neutral-200 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5" onClick={() => copy(generateFullReport().replace(/[#|*-]/g, ""))}>
+            <Copy className="h-3.5 w-3.5" /> Ren tekst
+          </button>
+          <button className="py-2.5 px-5 rounded-[10px] bg-white border border-neutral-200 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5" onClick={() => copy(generateFullReport())}>
+            <Copy className="h-3.5 w-3.5" /> Markdown
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -868,16 +846,14 @@ function MetricCard({
   sub?: string;
 }) {
   return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 text-muted-foreground mb-1">
-          {icon}
-          <span className="text-xs">{label}</span>
-        </div>
-        <p className="text-lg font-bold">{value}</p>
-        {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
-      </CardContent>
-    </Card>
+    <div className="card-elevated p-5">
+      <div className="flex items-center gap-2 text-muted-foreground mb-1">
+        {icon}
+        <span className="text-xs uppercase tracking-wider">{label}</span>
+      </div>
+      <p className="text-3xl font-bold">{value}</p>
+      {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+    </div>
   );
 }
 
@@ -893,21 +869,21 @@ function SectionCard({
   onCopy?: () => void;
 }) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-base flex items-center gap-2">
+    <div className="card-elevated p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold flex items-center gap-2">
           {icon}
           {title}
-        </CardTitle>
+        </h3>
         {onCopy && (
-          <Button variant="outline" size="sm" onClick={onCopy}>
-            <Copy className="h-3 w-3 mr-1" />
+          <button onClick={onCopy} className="text-xs text-primary font-medium hover:underline flex items-center gap-1">
+            <Copy className="h-3 w-3" />
             Kopier til rapport
-          </Button>
+          </button>
         )}
-      </CardHeader>
-      <CardContent className="space-y-4">{children}</CardContent>
-    </Card>
+      </div>
+      <div className="space-y-4">{children}</div>
+    </div>
   );
 }
 
@@ -921,12 +897,13 @@ function ReflectionField({
   placeholder: string;
 }) {
   return (
-    <div className="mt-3">
+    <div className="mt-4">
+      <p className="text-xs text-muted-foreground italic mb-2">{placeholder}</p>
       <Textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="bg-muted/50 text-sm min-h-[60px]"
+        placeholder="Skriv refleksjon..."
+        className="rounded-[10px] border-neutral-200 p-4 text-sm min-h-[80px] leading-relaxed"
       />
     </div>
   );
@@ -942,10 +919,10 @@ function StatBox({
   sub?: string;
 }) {
   return (
-    <div className="rounded-md bg-muted/50 p-3">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-lg font-bold">{value}</p>
-      {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
+    <div className="bg-neutral-50 rounded-[10px] p-4">
+      <p className="text-xs text-muted-foreground uppercase tracking-wider">{label}</p>
+      <p className="text-2xl font-bold mt-1">{value}</p>
+      {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
     </div>
   );
 }
