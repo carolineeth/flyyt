@@ -190,34 +190,31 @@ export default function ReportPage() {
 
       {/* ── Metrics ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-5">
-            <p className="text-xs text-muted-foreground mb-1">Seksjoner ferdig</p>
-            <p className="text-lg font-bold tabular-nums">{subsectionsDone}/{totalSubsections}</p>
-            <Progress value={progressPct} className="mt-2 h-1.5" />
+        <Card className="card-elevated">
+          <CardContent className="p-5">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Seksjoner ferdig</p>
+            <p className="text-3xl font-bold tabular-nums mt-1">{subsectionsDone}<span className="text-lg font-normal text-muted-foreground">/{totalSubsections}</span></p>
+            <Progress value={progressPct} className="mt-3 h-2" />
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-5">
-            <p className="text-xs text-muted-foreground mb-1">Estimert ordtelling</p>
-            <p className="text-lg font-bold tabular-nums">{totalWordTarget.toLocaleString("nb-NO")} ord</p>
+        <Card className="card-elevated">
+          <CardContent className="p-5">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Estimert ordtelling</p>
+            <p className="text-3xl font-bold tabular-nums mt-1">{totalWordTarget.toLocaleString("nb-NO")}</p>
             <p className="text-xs text-muted-foreground mt-1">Mål: ~7 500 ord (≈25 s.)</p>
           </CardContent>
         </Card>
-        <Card className={daysLeft <= 14 ? "border-amber-300 dark:border-amber-700" : ""}>
-          <CardContent className="pt-5">
-            <div className="flex items-center gap-1.5 mb-1">
-              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-              <p className="text-xs text-muted-foreground">Innlevering 15. mai</p>
-            </div>
-            <p className={`text-lg font-bold tabular-nums ${daysLeft <= 7 ? "text-destructive" : ""}`}>
-              {daysLeft} dager igjen
+        <Card className="card-elevated">
+          <CardContent className="p-5">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Innlevering 15. mai</p>
+            <p className={`text-3xl font-bold tabular-nums mt-1 ${daysLeft <= 7 ? "text-destructive" : ""}`}>
+              {daysLeft} <span className="text-lg font-normal text-muted-foreground">dager igjen</span>
             </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-5">
-            <p className="text-xs text-muted-foreground mb-1">Neste å skrive</p>
+        <Card className="card-elevated">
+          <CardContent className="p-5">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Neste å skrive</p>
             {nextToWrite ? (
               <>
                 <p className="text-sm font-semibold leading-tight">
@@ -235,17 +232,17 @@ export default function ReportPage() {
       </div>
 
       {/* ── Table ── */}
-      <Card>
+      <Card className="card-elevated">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Seksjon</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground w-36">Ansvarlig</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground w-40">Status</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground w-20">Ordmål</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground w-52">Notater</th>
+                <tr className="border-b border-neutral-200 bg-neutral-50">
+                  <th className="text-left px-5 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Seksjon</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider w-36">Ansvarlig</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider w-40">Status</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider w-20">Ordmål</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider w-52">Notater</th>
                 </tr>
               </thead>
               <tbody>
@@ -257,10 +254,10 @@ export default function ReportPage() {
                       {/* ── Main section row ── */}
                       <tr
                         key={main.id}
-                        className="border-b border-border bg-muted/20 hover:bg-muted/30 transition-colors cursor-pointer"
+                        className="border-b border-neutral-200 bg-neutral-50 hover:bg-neutral-100 transition-colors cursor-pointer"
                         onClick={() => toggle(main.section_number)}
                       >
-                        <td className="px-4 py-3">
+                        <td className="px-5 py-4">
                           <div className="flex items-center gap-2">
                             <button className="text-muted-foreground shrink-0">
                               {isCollapsed
@@ -268,10 +265,10 @@ export default function ReportPage() {
                                 : <ChevronDown className="h-4 w-4" />
                               }
                             </button>
-                            <span className="font-[500] text-[14px]">
+                            <span className="text-base font-semibold">
                               {main.section_number}. {main.title}
                             </span>
-                            <span className="text-xs text-muted-foreground ml-1">
+                            <span className="text-sm text-muted-foreground ml-2">
                               ({children.filter(c => c.status === "ferdig").length}/{children.length})
                             </span>
                           </div>
@@ -319,7 +316,7 @@ export default function ReportPage() {
                       {!isCollapsed && children.map(sub => (
                         <tr
                           key={sub.id}
-                          className="border-b border-border/60 last:border-0 hover:bg-accent/20 transition-colors"
+                          className="border-b border-neutral-100 last:border-0 hover:bg-neutral-50 transition-colors"
                         >
                           <td className="px-4 py-3 pl-10">
                             <div>

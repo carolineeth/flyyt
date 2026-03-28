@@ -205,31 +205,29 @@ export default function ResourcesPage() {
         description="Samlet lenkesamling og filer for alle prosjektressurser"
         action={
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-              <Upload className="h-4 w-4 mr-1" /> {uploading ? "Laster opp…" : "Last opp fil"}
-            </Button>
-            <Button size="sm" onClick={() => setShowCreate(true)}>
-              <Plus className="h-4 w-4 mr-1" /> Legg til lenke
-            </Button>
+            <button className="py-2.5 px-5 rounded-[10px] bg-white border border-neutral-200 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+              <Upload className="h-4 w-4" /> {uploading ? "Laster opp…" : "Last opp fil"}
+            </button>
+            <button className="py-2.5 px-5 rounded-[10px] bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors flex items-center gap-1.5" onClick={() => setShowCreate(true)}>
+              <Plus className="h-4 w-4" /> Legg til lenke
+            </button>
             <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileSelect} />
           </div>
         }
       />
 
       {isLoading ? <p className="text-sm text-muted-foreground">Laster...</p> : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           {Object.entries(grouped).map(([category, items]) => (
-            <Card key={category}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">{category}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1.5">
+            <div key={category} className="card-elevated p-5">
+              <h3 className="text-base font-semibold mb-3">{category}</h3>
+              <div className="space-y-0">
                 {items.map((r) => {
                   const isFile = isFileUrl(r.url);
                   return (
                     <div
                       key={r.id}
-                      className="flex items-start gap-2 p-2 -mx-2 rounded-md hover:bg-accent/50 transition-colors group"
+                      className="flex items-start gap-3 py-3 border-b border-neutral-100 last:border-b-0 rounded-lg hover:bg-neutral-50 transition-colors group px-2 -mx-2"
                     >
                       <a href={r.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2 flex-1 min-w-0">
                         {isFile ? (
@@ -261,8 +259,8 @@ export default function ResourcesPage() {
                     </div>
                   );
                 })}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       )}
