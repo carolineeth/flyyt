@@ -389,28 +389,28 @@ export default function SprinterPage() {
   const isNarrow = typeof window !== "undefined" && window.innerWidth < 900;
 
   const backlogPanel = (
-    <div className="flex flex-col h-full min-h-0">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-        <h2 className="text-sm font-semibold">
+    <div className="card-elevated flex flex-col h-full min-h-0 m-2 mr-0">
+      <div className="flex items-center justify-between px-5 py-3">
+        <h2 className="text-lg font-semibold">
           {planningMode ? (
             <span className="text-green-700">Plukk items →</span>
           ) : (
-            <>Backlog <span className="text-muted-foreground font-normal">({backlogFiltered.length})</span></>
+            <>Backlog <span className="text-muted-foreground font-normal text-base">({backlogFiltered.length})</span></>
           )}
         </h2>
       </div>
 
       {/* Filters */}
-      <div className="flex gap-1.5 p-2 border-b border-border flex-wrap">
+      <div className="flex gap-3 px-5 pb-3 flex-wrap">
         <Select value={filterType} onValueChange={setFilterType}>
-          <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-28 h-8 text-xs rounded-[10px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Alle typer</SelectItem>
             {Object.entries(typeLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filterPriority} onValueChange={setFilterPriority}>
-          <SelectTrigger className="w-24 h-7 text-xs"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-24 h-8 text-xs rounded-[10px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Alle</SelectItem>
             {Object.entries(priorityLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
@@ -419,12 +419,12 @@ export default function SprinterPage() {
         <div className="relative flex-1 min-w-[100px]">
           <Search className="absolute left-2 top-1.5 h-3.5 w-3.5 text-muted-foreground" />
           <Input value={backlogSearch} onChange={(e) => setBacklogSearch(e.target.value)}
-            placeholder="Søk..." className="pl-7 h-7 text-xs" />
+            placeholder="Søk..." className="pl-7 h-8 text-xs rounded-[10px]" />
         </div>
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
+      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
         {backlogFiltered.map((item) => {
           const collaborators = ((item as any).collaborator_ids ?? [])
             .map((id: string) => members?.find((m) => m.id === id)).filter(Boolean);
@@ -441,7 +441,7 @@ export default function SprinterPage() {
                   })
                 : openDetail(item)
               }
-              className={`flex items-center gap-1.5 px-2 py-1.5 rounded-md text-sm cursor-pointer transition-colors hover:bg-accent/50 ${
+              className={`flex items-center gap-2 px-3 py-3 rounded-lg text-sm cursor-pointer transition-colors hover:bg-neutral-50 ${
                 draggedItemId === item.id ? "opacity-40" : ""
               } ${planningSelected.has(item.id) ? "bg-green-50 ring-1 ring-green-300" : ""}`}
             >
@@ -450,10 +450,10 @@ export default function SprinterPage() {
               ) : (
                 <GripVertical className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40 cursor-grab" />
               )}
-              <Badge className={`text-[8px] shrink-0 px-1 py-0 ${typeColors[item.type] ?? "bg-muted"}`}>
+              <Badge className={`text-[9px] shrink-0 px-1.5 py-0.5 rounded-md ${typeColors[item.type] ?? "bg-muted"}`}>
                 {(typeLabels[item.type] ?? item.type).slice(0, 3)}
               </Badge>
-              <span className="flex-1 min-w-0 truncate text-[13px] font-medium">{item.title}</span>
+              <span className="flex-1 min-w-0 line-clamp-2 text-sm font-medium">{item.title}</span>
               {item.estimate && (
                 <span className="h-5 w-5 rounded-full bg-muted text-[10px] font-medium flex items-center justify-center shrink-0 tabular-nums">{item.estimate}</span>
               )}
@@ -487,10 +487,10 @@ export default function SprinterPage() {
       )}
 
       {/* Inline add */}
-      <div className="p-2 border-t border-border">
+      <div className="px-4 py-3">
         <div className="flex gap-1">
           <Input value={backlogInlineTitle} onChange={(e) => setBacklogInlineTitle(e.target.value)}
-            placeholder="+ Ny oppgave..." className="h-7 text-xs"
+            placeholder="+ Ny oppgave..." className="h-8 text-xs rounded-[10px] border-dashed"
             onKeyDown={(e) => {
               if (e.key === "Enter" && backlogInlineTitle.trim()) {
                 inlineCreateMutation.mutate({ title: backlogInlineTitle.trim() });
@@ -504,59 +504,59 @@ export default function SprinterPage() {
   const sprintPanel = (
     <div className="flex flex-col h-full min-h-0">
       {/* Sprint header */}
-      <div className="px-3 py-2 border-b border-border space-y-2">
+      <div className="card-elevated mx-2 mt-2 mb-3 p-5 space-y-3">
         <div className="flex items-center gap-2 flex-wrap">
           <Select value={currentSprintId ?? ""} onValueChange={setSelectedSprintId}>
-            <SelectTrigger className="w-40 h-7 text-xs"><SelectValue placeholder="Velg sprint" /></SelectTrigger>
+            <SelectTrigger className="w-44 h-8 text-sm font-semibold rounded-[10px]"><SelectValue placeholder="Velg sprint" /></SelectTrigger>
             <SelectContent>
               {sprints?.map((s) => (
                 <SelectItem key={s.id} value={s.id}>{s.name}{s.is_active ? " ●" : ""}</SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowCreateSprint(true)}>
-            <Plus className="h-3 w-3 mr-1" /> Ny sprint
+          <Button size="sm" variant="outline" className="h-8 text-sm rounded-[10px]" onClick={() => setShowCreateSprint(true)}>
+            <Plus className="h-3.5 w-3.5 mr-1" /> Ny sprint
           </Button>
-          <Button size="sm" variant={planningMode ? "default" : "outline"} className="h-7 text-xs"
+          <Button size="sm" variant={planningMode ? "default" : "outline"} className="h-8 text-sm rounded-[10px]"
             onClick={() => { setPlanningMode(!planningMode); setPlanningSelected(new Set()); }}>
             {planningMode ? "Avslutt planning" : "Sprint Planning"}
           </Button>
           {currentSprint && !currentSprint.is_active && !currentSprint.completed_at && !planningMode && (
-            <Button size="sm" variant="outline" className="h-7 text-xs text-green-700 border-green-300 hover:bg-green-50"
+            <Button size="sm" variant="outline" className="h-8 text-sm rounded-[10px] text-green-700 border-green-300 hover:bg-green-50"
               onClick={() => activateSprintMutation.mutate(currentSprint.id)}
               disabled={activateSprintMutation.isPending}>
               Start sprint
             </Button>
           )}
           {currentSprint?.is_active && !planningMode && (
-            <Button size="sm" variant="outline" className="h-7 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
+            <button className="h-8 px-4 text-sm font-medium rounded-[10px] bg-red-50 text-red-700 hover:bg-red-100 transition-colors flex items-center gap-1.5"
               onClick={() => setShowCloseSprint(true)}>
-              <StopCircle className="h-3 w-3 mr-1" /> Avslutt sprint
-            </Button>
+              <StopCircle className="h-3.5 w-3.5" /> Avslutt sprint
+            </button>
           )}
         </div>
         {currentSprint?.goal && (
-          <p className="text-xs text-muted-foreground italic flex items-center gap-1">
-            <StickyNote className="h-3 w-3" /> {currentSprint.goal}
+          <p className="text-sm text-muted-foreground line-clamp-2 mt-2">
+            {currentSprint.goal}
           </p>
         )}
         {/* Sprint stats */}
         {sprintSummary && sprintSummary.total > 0 && (
-          <div className="space-y-1">
-            <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-              <span><strong className="text-foreground">{sprintSummary.total}</strong> items</span>
-              <span><strong className="text-foreground">{sprintSummary.doneSp}</strong> av <strong className="text-foreground">{sprintSummary.totalSp}</strong> SP</span>
-              <span className="text-muted-foreground/40">|</span>
-              {columns.map((c) => (
-                <span key={c.key}>{c.label}: <strong className="text-foreground">{sprintSummary.byCol[c.key]}</strong></span>
-              ))}
+          <div className="space-y-2">
+            <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
+              <span><strong className="text-foreground">{sprintSummary.total}</strong> items · <strong className="text-foreground">{sprintSummary.doneSp}</strong> av <strong className="text-foreground">{sprintSummary.totalSp}</strong> SP</span>
+              <span className="text-muted-foreground/30">|</span>
+              <span>To Do: <strong className="text-gray-500">{sprintSummary.byCol["todo"]}</strong></span>
+              <span>In Progress: <strong className="text-blue-600">{sprintSummary.byCol["in_progress"]}</strong></span>
+              <span>Review: <strong className="text-amber-600">{sprintSummary.byCol["review"]}</strong></span>
+              <span>Done: <strong className="text-green-600">{sprintSummary.byCol["done"]}</strong></span>
             </div>
             {sprintSummary.totalSp > 0 && (
-              <div className="flex h-2 rounded-full overflow-hidden bg-muted">
+              <div className="flex h-2.5 rounded-full overflow-hidden bg-muted">
                 {columns.map((c) => {
                   const colSp = sprintItems?.filter(i => i.column_name === c.key).reduce((s, i) => s + (i.backlog_item?.estimate ?? 0), 0) ?? 0;
                   const pct = (colSp / sprintSummary.totalSp) * 100;
-                  const colors: Record<string, string> = { todo: "bg-gray-300", in_progress: "bg-blue-400", review: "bg-amber-400", done: "bg-green-500" };
+                  const colors: Record<string, string> = { todo: "bg-gray-300", in_progress: "bg-blue-500", review: "bg-amber-500", done: "bg-green-500" };
                   return pct > 0 ? <div key={c.key} className={`${colors[c.key]} transition-all`} style={{ width: `${pct}%` }} /> : null;
                 })}
               </div>
@@ -578,8 +578,8 @@ export default function SprinterPage() {
           <EmptyState icon={Layers} title="Ingen sprinter" description="Opprett din første sprint" actionLabel="Ny sprint" onAction={() => setShowCreateSprint(true)} />
         </div>
       ) : (
-        <div className="flex-1 overflow-x-auto p-2">
-          <div className="grid grid-cols-4 gap-2 min-w-[600px] h-full">
+        <div className="flex-1 overflow-x-auto px-3 pb-3">
+          <div className="grid grid-cols-4 gap-3 min-w-[720px] h-full">
             {columns.map((col) => {
               const colItems = sprintItems?.filter((i) => i.column_name === col.key) ?? [];
               const isOverWip = col.key === "in_progress" && colItems.length > wipLimit * (members?.length ?? 6);
@@ -590,53 +590,49 @@ export default function SprinterPage() {
                   onDragLeave={() => setDragOverCol(null)}
                   onDrop={(e) => handleBoardDrop(e, col.key)}
                 >
-                  <div className={`flex items-center justify-between px-2 py-1 rounded-md text-xs font-medium transition-colors ${
+                  <div className={`flex items-center justify-between px-4 py-2 rounded-[10px] text-sm font-semibold uppercase tracking-wide transition-colors ${
                     isOverWip ? "bg-destructive/10 border border-destructive/30" :
-                    isDragTarget ? "bg-primary/10 border border-primary/30" : "bg-muted"
+                    isDragTarget ? "bg-primary/10 border border-primary/30" : "bg-neutral-50"
                   }`}>
                     {col.label}
-                    <Badge variant="secondary" className="text-[9px] tabular-nums h-4">{colItems.length}</Badge>
+                    <span className="w-6 h-6 rounded-full bg-neutral-200 text-neutral-700 text-xs font-medium flex items-center justify-center tabular-nums">{colItems.length}</span>
                   </div>
-                  {isOverWip && <p className="text-[9px] text-destructive px-1 mt-0.5">⚠️ WIP-limit</p>}
-                  <div className={`flex-1 overflow-y-auto space-y-1.5 mt-1 rounded-lg p-0.5 transition-colors ${
-                    isDragTarget ? "bg-primary/5 ring-1 ring-primary/20 ring-dashed" : ""
+                  {isOverWip && <p className="text-[10px] text-destructive px-1 mt-1">⚠️ WIP-limit</p>}
+                  <div className={`flex-1 overflow-y-auto space-y-3 pt-3 rounded-xl p-1 transition-colors min-h-[400px] ${
+                    isDragTarget ? "bg-primary/5 border-2 border-dashed border-primary/30" : ""
                   }`}>
                     {colItems.map((item) => {
                       const collaborators = ((item.backlog_item as any)?.collaborator_ids ?? [])
                         .map((id: string) => members?.find((m) => m.id === id)).filter(Boolean);
                       return (
-                        <Card key={item.id} draggable
+                        <div key={item.id} draggable
                           onDragStart={(e) => handleDragStartSprint(e, item.id)}
                           onDragEnd={() => { setDraggedItemId(null); setDragOverCol(null); setDragSource(null); }}
                           onClick={() => openDetail(item.backlog_item, item.id)}
-                          className={`shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing ${
-                            draggedItemId === item.id ? "opacity-40 scale-95" : ""
+                          className={`bg-white rounded-xl p-4 cursor-grab active:cursor-grabbing transition-all hover:shadow-md ${
+                            draggedItemId === item.id ? "opacity-50 scale-[0.97] rotate-1" : ""
                           }`}
+                          style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.03)" }}
                         >
-                          <CardContent className="p-2 space-y-1.5">
-                            <div className="flex items-start gap-1">
-                              <GripVertical className="h-3.5 w-3.5 shrink-0 mt-0.5 text-muted-foreground/40" />
-                              <span className="text-[13px] font-medium leading-snug flex-1 min-w-0 line-clamp-2">{item.backlog_item?.title}</span>
-                              {collaborators.length > 0 && (
-                                <div className="flex -space-x-1.5 shrink-0">
-                                  {collaborators.slice(0, 3).map((m: any) => <MemberAvatar key={m.id} member={m} />)}
-                                  {collaborators.length > 3 && (
-                                    <div className="h-5 w-5 rounded-full bg-muted text-[9px] font-medium flex items-center justify-center border border-background text-muted-foreground shrink-0">+{collaborators.length - 3}</div>
-                                  )}
-                                </div>
+                          <p className="text-sm font-medium leading-snug line-clamp-2 mb-2">{item.backlog_item?.title}</p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className={`h-2 w-2 rounded-full shrink-0 ${priorityDot[item.backlog_item?.priority] ?? "bg-gray-400"}`} />
+                            <Badge className={`text-xs py-0.5 px-2 rounded-md ${typeColors[item.backlog_item?.type] ?? ""}`}>
+                              {(typeLabels[item.backlog_item?.type] ?? "").slice(0, 3)}
+                            </Badge>
+                            {item.backlog_item?.estimate && (
+                              <span className="text-xs font-medium text-muted-foreground tabular-nums ml-auto">{item.backlog_item.estimate} SP</span>
+                            )}
+                          </div>
+                          {collaborators.length > 0 && (
+                            <div className="flex -space-x-1.5 mt-3 justify-end">
+                              {collaborators.slice(0, 3).map((m: any) => <MemberAvatar key={m.id} member={m} size="sm" />)}
+                              {collaborators.length > 3 && (
+                                <div className="h-6 w-6 rounded-full bg-muted text-[10px] font-medium flex items-center justify-center border border-background text-muted-foreground shrink-0">+{collaborators.length - 3}</div>
                               )}
                             </div>
-                            <div className="flex items-center gap-1 pl-4 flex-wrap">
-                              <span className={`h-2 w-2 rounded-full shrink-0 ${priorityDot[item.backlog_item?.priority] ?? "bg-gray-400"}`} />
-                              <Badge className={`text-[8px] px-1 py-0 ${typeColors[item.backlog_item?.type] ?? ""}`}>
-                                {(typeLabels[item.backlog_item?.type] ?? "").slice(0, 3)}
-                              </Badge>
-                              {item.backlog_item?.estimate && (
-                                <span className="h-4 w-4 rounded-full bg-muted text-[9px] font-medium flex items-center justify-center tabular-nums">{item.backlog_item.estimate}</span>
-                              )}
-                            </div>
-                          </CardContent>
-                        </Card>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
@@ -655,8 +651,8 @@ export default function SprinterPage() {
                     </div>
                   ) : (
                     <button onClick={() => setInlineAddCol(col.key)}
-                      className="w-full text-[11px] text-muted-foreground hover:text-foreground py-1 flex items-center justify-center gap-0.5 rounded hover:bg-accent/50 mt-1">
-                      <Plus className="h-3 w-3" /> Legg til
+                      className="w-full text-sm text-muted-foreground hover:text-primary py-2 flex items-center justify-center gap-1 rounded-lg hover:bg-accent/50 mt-1 transition-colors">
+                      <Plus className="h-3.5 w-3.5" /> Legg til
                     </button>
                   )}
                 </div>
@@ -672,17 +668,27 @@ export default function SprinterPage() {
 
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">
-      <div className="px-4 pt-4 pb-2 flex items-end justify-between gap-4 flex-wrap">
-        <PageHeader title="Sprinter" description="Product backlog og sprint board — dra items fra backlog til sprinten" />
-        <div className="flex gap-1.5 mb-1">
-          <Button size="sm" variant={pageView === "board" ? "default" : "outline"} className="h-7 text-xs"
-            onClick={() => setPageView("board")}>
-            <Layers className="h-3 w-3 mr-1" /> Board
-          </Button>
-          <Button size="sm" variant={pageView === "history" ? "default" : "outline"} className="h-7 text-xs"
-            onClick={() => setPageView("history")}>
-            <History className="h-3 w-3 mr-1" /> Historikk
-          </Button>
+      <div className="px-6 pt-5 pb-3 flex items-end justify-between gap-4 flex-wrap">
+        <PageHeader title="Sprinter" description="Product backlog og sprint board" />
+        <div className="flex gap-2 mb-1">
+          <button
+            onClick={() => setPageView("board")}
+            className={`py-2 px-4 rounded-[10px] text-sm font-medium transition-colors flex items-center gap-1.5 ${
+              pageView === "board"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "bg-white text-muted-foreground border border-neutral-200 hover:text-foreground"
+            }`}>
+            <Layers className="h-3.5 w-3.5" /> Board
+          </button>
+          <button
+            onClick={() => setPageView("history")}
+            className={`py-2 px-4 rounded-[10px] text-sm font-medium transition-colors flex items-center gap-1.5 ${
+              pageView === "history"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "bg-white text-muted-foreground border border-neutral-200 hover:text-foreground"
+            }`}>
+            <History className="h-3.5 w-3.5" /> Historikk
+          </button>
         </div>
       </div>
 
@@ -705,10 +711,10 @@ export default function SprinterPage() {
           </div>
 
           {/* Split view */}
-          <div className="flex-1 min-h-0 flex">
+          <div className="flex-1 min-h-0 flex gap-3 px-2">
             {!backlogCollapsed && (
-              <div className={`border-r border-border ${activeTab === "sprint" ? "hidden md:flex" : "flex"} md:flex flex-col transition-all`}
-                style={{ width: "40%", minWidth: 280 }}>
+              <div className={`${activeTab === "sprint" ? "hidden md:flex" : "flex"} md:flex flex-col transition-all`}
+                style={{ width: "35%", minWidth: 280 }}>
                 {backlogPanel}
               </div>
             )}
