@@ -617,14 +617,12 @@ export default function RequirementsPage() {
         description="Funksjonelle, ikke-funksjonelle og dokumentasjonskrav for prosjektet"
         action={
           <div className="flex gap-2">
-            <Button size="sm" onClick={() => setCreateOpen(true)}>
-              <Plus className="h-3.5 w-3.5 mr-1.5" />
-              Nytt krav
-            </Button>
-            <Button size="sm" variant="outline" onClick={exportMarkdown}>
-              <Download className="h-3.5 w-3.5 mr-1.5" />
-              Eksporter til rapport
-            </Button>
+            <button className="py-2.5 px-5 rounded-[10px] bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors flex items-center gap-1.5" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-3.5 w-3.5" /> Nytt krav
+            </button>
+            <button className="py-2.5 px-5 rounded-[10px] bg-white border border-neutral-200 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5" onClick={exportMarkdown}>
+              <Download className="h-3.5 w-3.5" /> Eksporter til rapport
+            </button>
           </div>
         }
       />
@@ -722,7 +720,7 @@ export default function RequirementsPage() {
 
       {/* Info banner */}
       {!bannerDismissed && unlinkedCount > 0 && (
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="flex items-center justify-between gap-3 rounded-xl bg-amber-50 p-4 text-sm text-amber-700">
           <span>
             {unlinkedCount} krav er ikke koblet til backlog-items.
           </span>
@@ -737,78 +735,31 @@ export default function RequirementsPage() {
       )}
 
       {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {/* Funksjonelle krav */}
-        <div className="rounded-xl border border-border bg-card p-4 space-y-2">
-          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-            Funksjonelle krav
-          </p>
-          <p className="text-2xl font-bold tabular-nums">
-            {implementedCount(fkItems)}{" "}
-            <span className="text-base font-normal text-muted-foreground">
-              / {fkItems.length}
-            </span>
-          </p>
-          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-            <div
-              className="h-full rounded-full bg-primary transition-all"
-              style={{
-                width: `${fkItems.length > 0 ? (implementedCount(fkItems) / fkItems.length) * 100 : 0}%`,
-              }}
-            />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {[
+          { label: "Funksjonelle krav", items: fkItems, color: "bg-primary" },
+          { label: "Ikke-funksjonelle krav", items: nfkItems, color: "bg-primary" },
+          { label: "Must-krav", items: mustItems, color: mustPct < 0.5 ? "bg-red-500" : mustPct > 0.8 ? "bg-green-500" : "bg-primary" },
+        ].map((metric) => (
+          <div key={metric.label} className="card-elevated p-5 space-y-2">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">{metric.label}</p>
+            <p className="text-3xl font-bold tabular-nums">
+              {implementedCount(metric.items)}{" "}
+              <span className="text-lg font-normal text-muted-foreground">/ {metric.items.length}</span>
+            </p>
+            <div className="h-2 rounded-full bg-muted overflow-hidden mt-3">
+              <div className={`h-full rounded-full transition-all ${metric.color}`}
+                style={{ width: `${metric.items.length > 0 ? (implementedCount(metric.items) / metric.items.length) * 100 : 0}%` }} />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">implementert</p>
           </div>
-          <p className="text-xs text-muted-foreground">implementert</p>
-        </div>
-
-        {/* Ikke-funksjonelle krav */}
-        <div className="rounded-xl border border-border bg-card p-4 space-y-2">
-          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-            Ikke-funksjonelle krav
-          </p>
-          <p className="text-2xl font-bold tabular-nums">
-            {implementedCount(nfkItems)}{" "}
-            <span className="text-base font-normal text-muted-foreground">
-              / {nfkItems.length}
-            </span>
-          </p>
-          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-            <div
-              className="h-full rounded-full bg-primary transition-all"
-              style={{
-                width: `${nfkItems.length > 0 ? (implementedCount(nfkItems) / nfkItems.length) * 100 : 0}%`,
-              }}
-            />
-          </div>
-          <p className="text-xs text-muted-foreground">implementert</p>
-        </div>
-
-        {/* Must-krav */}
-        <div
-          className={`rounded-xl border bg-card p-4 space-y-2 ${mustBorderClass}`}
-        >
-          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-            Must-krav
-          </p>
-          <p className="text-2xl font-bold tabular-nums">
-            {implementedCount(mustItems)}{" "}
-            <span className="text-base font-normal text-muted-foreground">
-              / {mustItems.length}
-            </span>
-          </p>
-          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all ${mustPct < 0.5 ? "bg-red-500" : mustPct > 0.8 ? "bg-green-500" : "bg-primary"}`}
-              style={{ width: `${mustPct * 100}%` }}
-            />
-          </div>
-          <p className="text-xs text-muted-foreground">implementert</p>
-        </div>
+        ))}
       </div>
 
       {/* Filter row */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-3">
         {/* Type tabs */}
-        <div className="flex rounded-md border border-border overflow-hidden">
+        <div className="flex gap-1.5">
           {[
             { value: "all", label: "Alle" },
             { value: "functional", label: "Funksjonelle" },
@@ -818,10 +769,10 @@ export default function RequirementsPage() {
             <button
               key={tab.value}
               onClick={() => setFilterType(tab.value)}
-              className={`px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
+              className={`py-2 px-4 rounded-[10px] text-sm font-medium transition-colors whitespace-nowrap ${
                 filterType === tab.value
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-accent text-muted-foreground"
+                  ? "bg-primary/10 text-primary font-semibold"
+                  : "bg-white text-muted-foreground border border-neutral-200 hover:bg-neutral-50"
               }`}
             >
               {tab.label}
@@ -830,7 +781,7 @@ export default function RequirementsPage() {
         </div>
 
         <Select value={filterPriority} onValueChange={setFilterPriority}>
-          <SelectTrigger className="w-32 h-8 text-xs">
+          <SelectTrigger className="w-32 h-9 text-sm rounded-[10px]">
             <SelectValue placeholder="Prioritet" />
           </SelectTrigger>
           <SelectContent>
@@ -842,7 +793,7 @@ export default function RequirementsPage() {
         </Select>
 
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-36 h-8 text-xs">
+          <SelectTrigger className="w-36 h-9 text-sm rounded-[10px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -858,12 +809,12 @@ export default function RequirementsPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Søk på ID, tittel, beskrivelse..."
-          className="h-8 text-xs w-56 ml-auto"
+          className="h-9 text-sm w-64 ml-auto rounded-[10px]"
         />
       </div>
 
       {/* Requirements list */}
-      <div className="rounded-xl border border-border overflow-hidden bg-card">
+      <div className="card-elevated overflow-hidden">
         {grouped.length === 0 ? (
           <div className="py-12 text-center text-sm text-muted-foreground">
             Ingen krav matcher filteret
@@ -881,7 +832,7 @@ export default function RequirementsPage() {
               <div key={cat}>
                 {/* Category heading */}
                 <div
-                  className="flex items-center gap-2 px-4 py-2.5 bg-muted/30 border-b border-border cursor-pointer select-none"
+                  className="flex items-center gap-2 px-5 py-3 bg-neutral-50 border-b border-neutral-100 cursor-pointer select-none"
                   onClick={() => toggleCategory(cat)}
                 >
                   {isCatCollapsed ? (
@@ -889,12 +840,11 @@ export default function RequirementsPage() {
                   ) : (
                     <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
                   )}
-                  <span className="text-[14px] font-[500]">
+                  <span className="text-base font-semibold">
                     {CATEGORY_LABELS[cat] ?? cat}
                   </span>
-                  <span className="text-xs text-muted-foreground ml-1">
-                    {items.length} krav · {mustCount} must · {implCount}{" "}
-                    implementert
+                  <span className="text-sm text-muted-foreground ml-3">
+                    {items.length} krav · {mustCount} must · {implCount} implementert
                   </span>
                 </div>
 
@@ -904,12 +854,12 @@ export default function RequirementsPage() {
                     <div
                       key={req.id}
                       onClick={() => setSelectedId(req.id)}
-                      className="hover:bg-secondary/60 cursor-pointer border-b border-border/50 px-4 py-3 flex items-center gap-3"
+                      className="hover:bg-neutral-50 cursor-pointer border-b border-neutral-100 px-5 py-4 flex items-center gap-3 transition-colors"
                     >
-                      <span className="font-mono text-[11px] px-2 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
+                      <span className="font-mono text-xs bg-neutral-100 text-neutral-600 py-1 px-2.5 rounded-md shrink-0 min-w-[4rem] text-center">
                         {req.id}
                       </span>
-                      <span className="text-[13px] font-[500] flex-1 min-w-0 truncate">
+                      <span className="text-sm font-medium flex-1 min-w-0 truncate ml-1">
                         {req.title}
                       </span>
                       <span style={priorityBadgeStyle(req.priority)}>
@@ -938,28 +888,29 @@ export default function RequirementsPage() {
       {/* Detail panel */}
       {selectedId && selectedReq && (
       <div
-        className="fixed top-0 right-0 h-full w-[450px] bg-background border-l border-border shadow-2xl z-50 flex flex-col"
+        className="fixed top-0 right-0 h-full w-[480px] bg-white border-l border-neutral-200 z-50 flex flex-col"
+        style={{ boxShadow: "-4px 0 24px rgba(0,0,0,0.06)" }}
       >
             {/* Panel header */}
-            <div className="flex items-start justify-between p-4 border-b border-border">
+            <div className="flex items-start justify-between p-6 border-b border-neutral-100">
               <div className="flex-1 min-w-0">
-                <span className="font-mono text-xs text-muted-foreground">
+                <span className="font-mono text-xs bg-neutral-100 text-neutral-600 py-1 px-2.5 rounded-md inline-block">
                   {selectedReq.id}
                 </span>
-                <h2 className="font-semibold text-base mt-0.5 leading-snug">
+                <h2 className="font-semibold text-xl mt-2 leading-snug">
                   {selectedReq.title}
                 </h2>
               </div>
               <button
                 onClick={() => setSelectedId(null)}
-                className="ml-3 shrink-0 rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                className="ml-3 shrink-0 rounded-[10px] w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-neutral-100 transition-colors"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             {/* Panel body */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-5">
+            <div className="flex-1 overflow-y-auto p-6 space-y-5">
               {selectedReq.description && (
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   {selectedReq.description}
@@ -984,7 +935,7 @@ export default function RequirementsPage() {
               )}
 
               <div className="space-y-1.5">
-                <Label className="text-xs">Prioritet</Label>
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Prioritet</Label>
                 <Select
                   value={selectedReq.priority}
                   onValueChange={(v) =>
@@ -1005,7 +956,7 @@ export default function RequirementsPage() {
 
               {selectedReq.source && (
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Kilde</Label>
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Kilde</Label>
                   <p className="text-xs text-muted-foreground px-3 py-2 rounded-md bg-muted">
                     {selectedReq.source}
                   </p>
@@ -1013,7 +964,7 @@ export default function RequirementsPage() {
               )}
 
               <div className="space-y-1.5">
-                <Label className="text-xs">Status</Label>
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Status</Label>
                 <Select
                   value={selectedReq.status}
                   onValueChange={(v) =>
@@ -1033,14 +984,14 @@ export default function RequirementsPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs">Type</Label>
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Type</Label>
                 <p className="text-xs text-muted-foreground px-3 py-2 rounded-md bg-muted">
                   {TYPE_LABELS[selectedReq.type] ?? selectedReq.type}
                 </p>
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs">Notater</Label>
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Notater</Label>
                 <Textarea
                   defaultValue={selectedReq.notes ?? ""}
                   onBlur={(e) =>
@@ -1054,7 +1005,7 @@ export default function RequirementsPage() {
 
               {/* Linked backlog items (many-to-many) */}
               <div className="space-y-2 pt-1 border-t border-border/50">
-                <Label className="text-xs">Koblede backlog-items ({selectedLinkedItems.length})</Label>
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Koblede backlog-items ({selectedLinkedItems.length})</Label>
 
                 {selectedLinkedItems.length > 0 && (
                   <div className="space-y-1">
