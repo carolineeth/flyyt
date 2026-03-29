@@ -324,6 +324,7 @@ export default function SprintBoardPage() {
       estimate: editForm.estimate,
       epic: editForm.epic || null,
       collaborator_ids: editForm.collaborator_ids ?? [],
+      user_story: editForm.user_story || null,
     } as any);
     setDetailItem(null);
   };
