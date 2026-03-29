@@ -370,6 +370,7 @@ export type Database = {
           title: string
           type: string
           updated_at: string
+          user_story: string | null
         }
         Insert: {
           assignee_id?: string | null
@@ -387,6 +388,7 @@ export type Database = {
           title: string
           type?: string
           updated_at?: string
+          user_story?: string | null
         }
         Update: {
           assignee_id?: string | null
@@ -404,6 +406,7 @@ export type Database = {
           title?: string
           type?: string
           updated_at?: string
+          user_story?: string | null
         }
         Relationships: [
           {
