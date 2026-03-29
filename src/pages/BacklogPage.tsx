@@ -20,6 +20,8 @@ import { nb } from "date-fns/locale";
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import type { BacklogItem, Sprint } from "@/lib/types";
 import { logBacklogChange } from "@/lib/backlogChangelog";
+import { EpicSelector, useEpics } from "@/components/backlog/EpicSelector";
+import { QualityTagSelector, QualityTagChips } from "@/components/backlog/QualityTags";
 
 const typeLabels: Record<string, string> = {
   user_story: "Brukerhistorie",
@@ -57,6 +59,7 @@ const storyPoints = [1, 2, 3, 5, 8, 13];
 export default function BacklogPage() {
   const qc = useQueryClient();
   const { data: members } = useTeamMembers();
+  const { data: epics = [] } = useEpics();
   const { data: items, isLoading } = useQuery<BacklogItem[]>({
     queryKey: ["backlog_items"],
     queryFn: async () => {
@@ -179,14 +182,29 @@ export default function BacklogPage() {
 
   const [newItem, setNewItem] = useState({
     title: "", description: "", type: "user_story", priority: "should_have",
-    estimate: null as number | null, epic: "",
-    sprint_id: null as string | null, labels: "" as string,
+    estimate: null as number | null, epic_id: null as string | null,
+    sprint_id: null as string | null, quality_tags: [] as string[],
     status: "backlog" as string, collaborator_ids: [] as string[],
   });
 
-  const existingEpics = useMemo(() => {
-    const epics = new Set(items?.map((i) => i.epic).filter(Boolean) as string[]);
-    return Array.from(epics);
+  const [filterQualityTag, setFilterQualityTag] = useState<string>("all");
+
+  // Sequential display numbers sorted by creation date (oldest = #1)
+  const displayNumbers = useMemo(() => {
+    if (!items) return {};
+    const sorted = [...items].sort((a, b) => a.created_at.localeCompare(b.created_at));
+    const map: Record<string, number> = {};
+    sorted.forEach((item, i) => { map[item.id] = i + 1; });
+    return map;
+  }, [items]);
+
+  const activeEpics = epics.filter(e => !e.is_archived);
+
+  // Collect unique quality tags for filter
+  const allQualityTags = useMemo(() => {
+    const tags = new Set<string>();
+    items?.forEach(i => ((i as any).quality_tags ?? []).forEach((t: string) => tags.add(t)));
+    return Array.from(tags).sort();
   }, [items]);
 
   // Map backlog_item_id -> sprint name
@@ -209,11 +227,11 @@ export default function BacklogPage() {
         priority: newItem.priority,
         status: newItem.status,
         estimate: newItem.estimate,
-        epic: newItem.epic || null,
+        epic_id: newItem.epic_id || null,
         assignee_id: null,
         collaborator_ids: newItem.collaborator_ids.length ? newItem.collaborator_ids : null,
-        labels: newItem.labels ? newItem.labels.split(",").map((l) => l.trim()).filter(Boolean) : [],
-      }).select().single();
+        quality_tags: newItem.quality_tags.length ? newItem.quality_tags : null,
+      } as any).select().single();
       if (error) throw error;
       if (data) {
         await logBacklogChange({ backlogItemId: data.id, changeType: "created", newValue: data.title });
@@ -235,7 +253,7 @@ export default function BacklogPage() {
       qc.invalidateQueries({ queryKey: ["sprint_items"] });
       qc.invalidateQueries({ queryKey: ["sprint_items_all"] });
       setShowCreate(false);
-      setNewItem({ title: "", description: "", type: "user_story", priority: "should_have", estimate: null, epic: "", sprint_id: null, labels: "", status: "backlog", collaborator_ids: [] });
+      setNewItem({ title: "", description: "", type: "user_story", priority: "should_have", estimate: null, epic_id: null, sprint_id: null, quality_tags: [], status: "backlog", collaborator_ids: [] });
       toast.success("Backlog-item opprettet");
     },
     onError: (e) => toast.error(e.message),
@@ -301,10 +319,10 @@ export default function BacklogPage() {
       type: item.type,
       priority: item.priority,
       estimate: item.estimate,
-      epic: item.epic ?? "",
+      epic_id: (item as any).epic_id ?? null,
       collaborator_ids: (item as any).collaborator_ids ?? [],
       user_story: (item as any).user_story ?? "",
-      labels: (item.labels ?? []).join(", "),
+      quality_tags: (item as any).quality_tags ?? [],
     });
   };
 
@@ -317,10 +335,10 @@ export default function BacklogPage() {
       type: editForm.type,
       priority: editForm.priority,
       estimate: editForm.estimate,
-      epic: editForm.epic || null,
+      epic_id: editForm.epic_id || null,
       collaborator_ids: editForm.collaborator_ids ?? [],
       user_story: editForm.user_story || null,
-      labels: editForm.labels ? editForm.labels.split(",").map((l: string) => l.trim()).filter(Boolean) : [],
+      quality_tags: editForm.quality_tags?.length ? editForm.quality_tags : null,
     });
   };
 
@@ -358,7 +376,8 @@ export default function BacklogPage() {
     if (filterType !== "all" && i.type !== filterType) return false;
     if (filterStatus !== "all" && i.status !== filterStatus) return false;
     if (filterPriority !== "all" && i.priority !== filterPriority) return false;
-    if (filterEpic !== "all" && i.epic !== filterEpic) return false;
+    if (filterEpic !== "all" && (i as any).epic_id !== filterEpic) return false;
+    if (filterQualityTag !== "all" && !((i as any).quality_tags ?? []).includes(filterQualityTag)) return false;
     return true;
   })?.sort((a, b) => {
     const pa = priorityOrder[a.priority] ?? 9;
@@ -385,7 +404,7 @@ export default function BacklogPage() {
       >
         <CardContent className={`${compact ? "p-2.5" : "py-3 px-4"} flex items-center gap-2`}>
           <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground/40" />
-          {!compact && <span className="text-xs text-muted-foreground font-mono w-14 shrink-0">{item.item_id}</span>}
+          {!compact && <span className="text-xs text-muted-foreground font-mono w-10 shrink-0">#{displayNumbers[item.id] ?? "–"}</span>}
           <span className={`h-2 w-2 rounded-full shrink-0 ${priorityDot[item.priority] ?? "bg-gray-400"}`} title={priorityLabels[item.priority]} />
           <Badge className={`text-[9px] shrink-0 ${typeColors[item.type] ?? ""}`}>
             {compact ? item.type.slice(0, 3) : typeLabels[item.type]}
@@ -407,6 +426,7 @@ export default function BacklogPage() {
               )}
             </div>
           )}
+          <QualityTagChips tags={(item as any).quality_tags ?? []} />
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <button
@@ -537,9 +557,18 @@ export default function BacklogPage() {
           <SelectTrigger className="w-40 h-8 text-sm"><SelectValue placeholder="Epic" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Alle epics</SelectItem>
-            {existingEpics.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
+            {activeEpics.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}
           </SelectContent>
         </Select>
+        {allQualityTags.length > 0 && (
+          <Select value={filterQualityTag} onValueChange={setFilterQualityTag}>
+            <SelectTrigger className="w-40 h-8 text-sm"><SelectValue placeholder="Kvalitetstag" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle tags</SelectItem>
+              {allQualityTags.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
         <div className="ml-auto flex rounded-md border border-border overflow-hidden">
           <button className={`px-3 py-1 text-xs font-medium transition-colors ${viewMode === "list" ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`} onClick={() => setViewMode("list")}>Liste</button>
           <button className={`px-3 py-1 text-xs font-medium transition-colors ${viewMode === "board" ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`} onClick={() => setViewMode("board")}>Board</button>
@@ -782,17 +811,13 @@ export default function BacklogPage() {
                 </div>
               </div>
               <div>
-                <Label>Epic/Kategori</Label>
-                <Input value={newItem.epic} onChange={(e) => setNewItem((p) => ({ ...p, epic: e.target.value }))}
-                  placeholder="f.eks. Kartvisning, UX Research" list="epic-suggestions" />
-                <datalist id="epic-suggestions">
-                  {existingEpics.map((e) => <option key={e} value={e} />)}
-                </datalist>
+                <Label>Epic</Label>
+                <EpicSelector value={newItem.epic_id} onChange={(id) => setNewItem((p) => ({ ...p, epic_id: id }))} />
               </div>
             </div>
             <div>
-              <Label>Labels (kommaseparert)</Label>
-              <Input value={newItem.labels} onChange={(e) => setNewItem((p) => ({ ...p, labels: e.target.value }))} placeholder="frontend, api, bug" />
+              <Label>Kvalitetstags</Label>
+              <QualityTagSelector value={newItem.quality_tags} onChange={(tags) => setNewItem((p) => ({ ...p, quality_tags: tags }))} />
             </div>
           </div>
           <DialogFooter>
@@ -809,7 +834,7 @@ export default function BacklogPage() {
             <>
               <DialogHeader>
                 <DialogTitle className="text-base">
-                  <span className="text-muted-foreground font-mono text-sm mr-2">{detailItem.item_id}</span>
+                  <span className="text-muted-foreground font-mono text-sm mr-2">#{displayNumbers[detailItem.id] ?? "–"}</span>
                   Rediger item
                 </DialogTitle>
               </DialogHeader>
@@ -877,11 +902,11 @@ export default function BacklogPage() {
                   <div className="space-y-3">
                     <div>
                       <Label>Epic</Label>
-                      <Input value={editForm.epic} onChange={(e) => setEditForm((p: any) => ({ ...p, epic: e.target.value }))} />
+                      <EpicSelector value={editForm.epic_id} onChange={(id) => setEditForm((p: any) => ({ ...p, epic_id: id }))} />
                     </div>
                     <div>
-                      <Label>Labels (kommaseparert)</Label>
-                      <Input value={editForm.labels} onChange={(e) => setEditForm((p: any) => ({ ...p, labels: e.target.value }))} />
+                      <Label>Kvalitetstags</Label>
+                      <QualityTagSelector value={editForm.quality_tags ?? []} onChange={(tags) => setEditForm((p: any) => ({ ...p, quality_tags: tags }))} />
                     </div>
                     <div>
                       <Label>Status</Label>

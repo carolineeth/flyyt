@@ -371,11 +371,6 @@ export default function ProfilePage() {
                 <CardContent className="py-3 px-4 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm text-foreground truncate">
-                      {(si.backlog_item as any)?.item_id && (
-                        <span className="text-muted-foreground mr-1.5 text-xs">
-                          {(si.backlog_item as any).item_id}
-                        </span>
-                      )}
                       {(si.backlog_item as any)?.title ?? "Ukjent"}
                     </p>
                     {(si.backlog_item as any)?.estimate && (

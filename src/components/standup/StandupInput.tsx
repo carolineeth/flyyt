@@ -112,7 +112,7 @@ export function StandupInput({ memberId, existingEntry, date, dayLabel, onSaved,
       {selectedBacklog && (
         <div className="flex items-center gap-1.5">
           <span className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded-md flex items-center gap-1">
-            {selectedBacklog.item_id}: {selectedBacklog.title}
+            {selectedBacklog.title}
             <button onClick={() => setBacklogItemId(null)} className="ml-1 hover:text-destructive">
               <X className="h-3 w-3" />
             </button>
@@ -156,7 +156,6 @@ export function StandupInput({ memberId, existingEntry, date, dayLabel, onSaved,
                       setBacklogOpen(false);
                     }}
                   >
-                    <span className="text-muted-foreground">{item.item_id}</span>{" "}
                     {item.title}
                   </button>
                 ))

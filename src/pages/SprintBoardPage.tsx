@@ -574,7 +574,6 @@ export default function SprintBoardPage() {
             <>
               <DialogHeader>
                 <DialogTitle className="text-base">
-                  <span className="text-muted-foreground font-mono text-sm mr-2">{detailItem.backlog_item?.item_id}</span>
                   Rediger item
                 </DialogTitle>
               </DialogHeader>

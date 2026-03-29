@@ -120,7 +120,6 @@ export function SprintPlanningTemplate({
                 onCheckedChange={() => toggleItem(item.id)}
                 disabled={readOnly}
               />
-              <span className="font-mono text-xs text-muted-foreground w-14">{item.item_id}</span>
               <span className="flex-1 min-w-0 truncate">{item.title}</span>
               {item.estimate && (
                 <Badge variant="outline" className="text-[10px] tabular-nums shrink-0">{item.estimate}sp</Badge>

@@ -1001,7 +1001,6 @@ export default function SprinterPage() {
             <>
               <DialogHeader>
                 <DialogTitle className="text-base">
-                  <span className="text-muted-foreground font-mono text-sm mr-2">{detailItem.item_id}</span>
                   Rediger item
                 </DialogTitle>
               </DialogHeader>

@@ -1025,7 +1025,7 @@ export default function RequirementsPage() {
                     {selectedLinkedItems.map((item) => (
                       <div key={item.id} className="rounded-lg border border-border bg-muted/30 px-3 py-2 flex items-center gap-2">
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium truncate">{item.item_id} — {item.title}</p>
+                          <p className="text-xs font-medium truncate">{item.title}</p>
                           <div className="flex gap-1.5 mt-0.5">
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{item.type === "user_story" ? "Brukerhistorie" : item.type === "technical" ? "Teknisk" : item.type}</span>
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{item.status}</span>
@@ -1076,7 +1076,7 @@ export default function RequirementsPage() {
                             }}
                           >
                             <Plus className="h-3 w-3 shrink-0 text-muted-foreground" />
-                            <span className="font-mono text-muted-foreground">{b.item_id}</span>
+                            <span className="text-muted-foreground">·</span>
                             <span className="truncate">{b.title}</span>
                           </button>
                         ))}

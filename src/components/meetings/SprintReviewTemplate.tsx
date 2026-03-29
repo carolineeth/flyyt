@@ -46,7 +46,6 @@ export function SprintReviewTemplate({ sprintId, members, feedback, onFeedbackCh
             {doneItems.map((item) => (
               <div key={item.id} className="flex items-center gap-2 px-2 py-1.5 rounded bg-primary/5 text-sm">
                 <Checkbox checked disabled />
-                <span className="font-mono text-xs text-muted-foreground">{item.backlog_item?.item_id}</span>
                 <span className="flex-1">{item.backlog_item?.title}</span>
                 {item.backlog_item?.estimate && (
                   <Badge variant="outline" className="text-[10px] tabular-nums">{item.backlog_item.estimate}sp</Badge>
@@ -72,7 +71,6 @@ export function SprintReviewTemplate({ sprintId, members, feedback, onFeedbackCh
             {notDoneItems.map((item) => (
               <div key={item.id} className="flex items-center gap-2 px-2 py-1.5 rounded bg-warning/5 text-sm">
                 <Checkbox checked={false} disabled />
-                <span className="font-mono text-xs text-muted-foreground">{item.backlog_item?.item_id}</span>
                 <span className="flex-1">{item.backlog_item?.title}</span>
                 <Badge variant="secondary" className="text-[10px]">{item.column_name}</Badge>
               </div>

@@ -360,6 +360,7 @@ export type Database = {
           created_at: string
           description: string | null
           epic: string | null
+          epic_id: string | null
           estimate: number | null
           id: string
           item_id: string
@@ -380,6 +381,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           epic?: string | null
+          epic_id?: string | null
           estimate?: number | null
           estimate_changelog?: any | null
           id?: string
@@ -400,6 +402,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           epic?: string | null
+          epic_id?: string | null
           estimate?: number | null
           estimate_changelog?: any | null
           id?: string
@@ -445,6 +448,30 @@ export type Database = {
           entry_date?: string
           id?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      epics: {
+        Row: {
+          id: string
+          name: string
+          color: string
+          is_archived: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          color?: string
+          is_archived?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          color?: string
+          is_archived?: boolean
+          created_at?: string
         }
         Relationships: []
       }
