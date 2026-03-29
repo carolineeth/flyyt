@@ -20,6 +20,8 @@ import { Columns3, Plus, StickyNote, GripVertical, PanelRightOpen, Search, X, Ch
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import type { Sprint, SprintItem, BacklogItem } from "@/lib/types";
 import { LinkedRequirements } from "@/components/backlog/LinkedRequirements";
+import { EpicSelector } from "@/components/backlog/EpicSelector";
+import { QualityTagSelector } from "@/components/backlog/QualityTags";
 
 const columns = [
   { key: "todo", label: "To Do" },
@@ -307,9 +309,10 @@ export default function SprintBoardPage() {
       type: item.backlog_item?.type ?? "technical",
       priority: item.backlog_item?.priority ?? "should_have",
       estimate: item.backlog_item?.estimate,
-      epic: item.backlog_item?.epic ?? "",
+      epic_id: (item.backlog_item as any)?.epic_id ?? null,
       collaborator_ids: (item.backlog_item as any)?.collaborator_ids ?? [],
       user_story: (item.backlog_item as any)?.user_story ?? "",
+      quality_tags: (item.backlog_item as any)?.quality_tags ?? [],
     });
   };
 
@@ -322,9 +325,10 @@ export default function SprintBoardPage() {
       type: editForm.type,
       priority: editForm.priority,
       estimate: editForm.estimate,
-      epic: editForm.epic || null,
+      epic_id: editForm.epic_id || null,
       collaborator_ids: editForm.collaborator_ids ?? [],
       user_story: editForm.user_story || null,
+      quality_tags: editForm.quality_tags?.length ? editForm.quality_tags : null,
     } as any);
     setDetailItem(null);
   };
@@ -641,7 +645,7 @@ export default function SprintBoardPage() {
                   </div>
                   <div>
                     <Label>Epic</Label>
-                    <Input value={editForm.epic} onChange={(e) => setEditForm((p: any) => ({ ...p, epic: e.target.value }))} />
+                    <EpicSelector value={editForm.epic_id ?? null} onChange={(id) => setEditForm((p: any) => ({ ...p, epic_id: id }))} />
                   </div>
                 </div>
 

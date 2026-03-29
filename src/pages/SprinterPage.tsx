@@ -23,6 +23,8 @@ import { syncRequirementFromSprint } from "@/hooks/useRequirementChangelog";
 import SprintHistory from "@/components/sprints/SprintHistory";
 import CloseSprintModal from "@/components/sprints/CloseSprintModal";
 import { LinkedRequirements } from "@/components/backlog/LinkedRequirements";
+import { EpicSelector } from "@/components/backlog/EpicSelector";
+import { QualityTagSelector } from "@/components/backlog/QualityTags";
 
 const columns = [
   { key: "todo", label: "To Do", color: "bg-muted" },
@@ -418,9 +420,10 @@ export default function SprinterPage() {
       title: item.title, description: item.description ?? "",
       type: item.type, priority: item.priority,
       estimate: item.estimate,
-      epic: item.epic ?? "", labels: (item.labels ?? []).join(", "),
+      epic_id: (item as any).epic_id ?? null,
       collaborator_ids: (item as any).collaborator_ids ?? [],
       user_story: (item as any).user_story ?? "",
+      quality_tags: (item as any).quality_tags ?? [],
     });
   };
 
@@ -430,10 +433,10 @@ export default function SprinterPage() {
       id: detailItem.id, title: editForm.title,
       description: editForm.description || null, type: editForm.type,
       priority: editForm.priority, estimate: editForm.estimate,
-      epic: editForm.epic || null,
-      labels: editForm.labels ? editForm.labels.split(",").map((l: string) => l.trim()).filter(Boolean) : [],
+      epic_id: editForm.epic_id || null,
       collaborator_ids: editForm.collaborator_ids ?? [],
       user_story: editForm.user_story || null,
+      quality_tags: editForm.quality_tags?.length ? editForm.quality_tags : null,
     });
     setDetailItem(null);
   };
@@ -1069,12 +1072,12 @@ export default function SprinterPage() {
                   </div>
                   <div>
                     <Label>Epic</Label>
-                    <Input value={editForm.epic} onChange={(e) => setEditForm((p: any) => ({ ...p, epic: e.target.value }))} />
+                    <EpicSelector value={editForm.epic_id ?? null} onChange={(id) => setEditForm((p: any) => ({ ...p, epic_id: id }))} />
                   </div>
                 </div>
                 <div>
-                  <Label>Labels (kommaseparert)</Label>
-                  <Input value={editForm.labels} onChange={(e) => setEditForm((p: any) => ({ ...p, labels: e.target.value }))} />
+                  <Label>Kvalitetstags</Label>
+                  <QualityTagSelector value={editForm.quality_tags ?? []} onChange={(tags) => setEditForm((p: any) => ({ ...p, quality_tags: tags }))} />
                 </div>
 
                 {/* Sprint status */}
