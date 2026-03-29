@@ -11,7 +11,7 @@ import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, ReferenceLine } from "recharts";
-import { ChevronDown, ChevronRight, Copy, Download, Table2, TrendingUp, TrendingDown, Minus, History, Check, X as XIcon, Pencil, FileText } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, Download, Table2, TrendingUp, TrendingDown, Minus, History, Check, X as XIcon, Pencil, FileText, RefreshCw } from "lucide-react";
 import { format, parseISO, eachDayOfInterval } from "date-fns";
 import { nb } from "date-fns/locale";
 import html2canvas from "html2canvas";
@@ -145,6 +145,96 @@ export default function SprintHistory() {
     },
     onError: () => toast.error("Kunne ikke oppdatere"),
   });
+
+  const [recalculating, setRecalculating] = useState<string | null>(null);
+
+  const recalculateSnapshot = async (sprint: CompletedSprint) => {
+    const sn = sprint.snapshot;
+    if (!sn) return;
+    setRecalculating(sprint.id);
+    try {
+      // Determine which item IDs to use
+      const snAny = sn as any;
+      const allItemIds: string[] = snAny.item_ids?.length ? snAny.item_ids : [];
+      const doneItemIds: string[] = snAny.done_item_ids?.length ? snAny.done_item_ids : [];
+      const hasFullIds = allItemIds.length > 0;
+
+      // Fallback: extract done item IDs from completion_events
+      let fallbackDoneIds: string[] = [];
+      if (!hasFullIds && sn.completion_events?.length) {
+        fallbackDoneIds = (sn.completion_events as CompletionEvent[])
+          .map(e => e.taskId).filter(Boolean);
+      }
+
+      const idsToFetch = hasFullIds ? allItemIds : fallbackDoneIds;
+      if (idsToFetch.length === 0) {
+        toast.error("Ingen item-IDer tilgjengelig for rekalkulering");
+        setRecalculating(null);
+        return;
+      }
+
+      // Fetch current backlog items
+      const { data: currentItems, error } = await supabase
+        .from("backlog_items")
+        .select("id, title, type, estimate, collaborator_ids, assignee_id")
+        .in("id", idsToFetch);
+      if (error) throw error;
+
+      const itemMap = new Map((currentItems ?? []).map(i => [i.id, i]));
+      const effectiveDoneIds = new Set(hasFullIds ? doneItemIds : fallbackDoneIds);
+
+      // Rebuild totals
+      let totalPoints = 0;
+      let completedPoints = 0;
+      const itemsByType: Record<string, number> = {};
+      const itemsByPerson: Record<string, { assigned: number; completed: number; points: number }> = {};
+
+      idsToFetch.forEach(id => {
+        const item = itemMap.get(id);
+        if (!item) return;
+        const sp = item.estimate ?? 0;
+        const isDone = effectiveDoneIds.has(id);
+        totalPoints += sp;
+        if (isDone) {
+          completedPoints += sp;
+          const t = item.type ?? "other";
+          itemsByType[t] = (itemsByType[t] ?? 0) + 1;
+        }
+        const assignees: string[] = (item as any).collaborator_ids?.length
+          ? (item as any).collaborator_ids : [];
+        const keys = assignees.length > 0 ? assignees : ["Ufordelt"];
+        keys.forEach(key => {
+          if (!itemsByPerson[key]) itemsByPerson[key] = { assigned: 0, completed: 0, points: 0 };
+          itemsByPerson[key].assigned++;
+          if (isDone) {
+            itemsByPerson[key].completed++;
+            itemsByPerson[key].points += sp;
+          }
+        });
+      });
+
+      // Update snapshot
+      const { error: updErr } = await (supabase.from("sprint_snapshots")
+        .update({
+          total_points: totalPoints,
+          completed_points: completedPoints,
+          items_by_type: itemsByType,
+          items_by_person: itemsByPerson,
+          recalculated_at: new Date().toISOString(),
+        } as any).eq("id", sn.id) as any);
+      if (updErr) throw updErr;
+
+      qc.invalidateQueries({ queryKey: ["sprint_snapshots"] });
+      toast.success(hasFullIds
+        ? "Snapshot rekalkulert med oppdaterte SP-verdier"
+        : "Delvis rekalkulert — kun fullførte oppgaver oppdatert"
+      );
+    } catch (e) {
+      toast.error("Kunne ikke rekalkulere: " + (e as Error).message);
+    } finally {
+      setRecalculating(null);
+    }
+  };
 
   const copyText = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -373,7 +463,30 @@ ${sprint.reflection ?? "Ingen refleksjon"}
                   <p className="text-xs text-muted-foreground italic mt-0.5 border-l-2 border-primary/30 pl-2">{sprint.goal}</p>
                 )}
               </div>
+              {/* Recalculate button */}
+              <button
+                onClick={(e) => { e.stopPropagation(); recalculateSnapshot(sprint); }}
+                disabled={recalculating === sprint.id}
+                className="shrink-0 flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-accent/50 transition-colors"
+                title="Rekalkuler SP fra nåværende data"
+              >
+                <RefreshCw className={`h-3 w-3 ${recalculating === sprint.id ? "animate-spin" : ""}`} />
+                Rekalkuler
+              </button>
             </button>
+
+            {/* Recalculation info */}
+            {(sn as any)?.recalculated_at && (
+              <p className="text-[10px] text-muted-foreground px-4 -mt-1 mb-1">
+                Sist rekalkulert: {format(parseISO((sn as any).recalculated_at), "d. MMM yyyy HH:mm", { locale: nb })}
+              </p>
+            )}
+            {/* Warning for old snapshots without full item IDs */}
+            {sn && !(sn as any)?.item_ids?.length && (sn as any)?.recalculated_at && (
+              <p className="text-[10px] text-amber-600 px-4 -mt-1 mb-1">
+                ⚠ Delvis rekalkulert — kun fullførte oppgaver er oppdatert. Fremtidige sprinter vil ha full støtte.
+              </p>
+            )}
 
             {/* Collapsed stats */}
             {sn && (

@@ -106,9 +106,11 @@ export default function CloseSprintModal({ open, onOpenChange, sprint, sprintIte
         completedBy: null,
       }));
 
-      // Save snapshot
+      // Save snapshot — include item IDs for future recalculation
       const { error: snapError } = await supabase.from("sprint_snapshots").insert({
         sprint_id: sprint.id,
+        item_ids: sprintItems.map((i) => i.backlog_item_id),
+        done_item_ids: doneItems.map((i) => i.backlog_item_id),
         total_items: totalItems,
         completed_items: completedItems,
         total_points: totalPoints,
