@@ -64,7 +64,7 @@ export default function ActivitiesPage() {
       {/* Progress card */}
       <div className="card-elevated p-6 space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-lg font-semibold text-foreground">Opptjent: {earned}p av 30p</span>
+          <span className={`text-lg font-semibold ${earned > 30 ? "text-green-600" : "text-foreground"}`}>Opptjent: {earned}p av 30p</span>
           <span className="text-lg font-semibold text-primary tabular-nums">{Math.round(progressPct)}%</span>
         </div>
         <div className="h-3 rounded-full bg-muted overflow-hidden">
