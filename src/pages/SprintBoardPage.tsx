@@ -573,7 +573,7 @@ export default function SprintBoardPage() {
 
       {/* Detail modal */}
       <Dialog open={!!detailItem} onOpenChange={(open) => { if (!open) setDetailItem(null); }}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-[720px] max-h-[90vh] overflow-y-auto">
           {editForm && detailItem && (
             <>
               <DialogHeader>

@@ -703,7 +703,7 @@ export default function BacklogPage() {
 
       {/* Create dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-[720px] max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Nytt backlog-item</DialogTitle></DialogHeader>
           <div className="space-y-4">
             {/* Pre-fill from requirement */}
@@ -829,7 +829,7 @@ export default function BacklogPage() {
 
       {/* Edit detail dialog */}
       <Dialog open={!!detailItem} onOpenChange={(open) => { if (!open) setDetailItem(null); }}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-[720px] max-h-[90vh] overflow-y-auto">
           {editForm && detailItem && (
             <>
               <DialogHeader>
