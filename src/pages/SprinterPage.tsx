@@ -127,6 +127,14 @@ export default function SprinterPage() {
   const [inlineAddCol, setInlineAddCol] = useState<string | null>(null);
   const [inlineTitle, setInlineTitle] = useState("");
   const [backlogInlineTitle, setBacklogInlineTitle] = useState("");
+  const [showInlineCreate, setShowInlineCreate] = useState(false);
+  const [inlineForm, setInlineForm] = useState({
+    title: "",
+    type: "user_story",
+    priority: "should_have",
+    estimate: null as number | null,
+    collaborator_ids: [] as string[],
+  });
   const [detailItem, setDetailItem] = useState<BacklogItem | null>(null);
   const [detailSprintItemId, setDetailSprintItemId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<any>(null);
@@ -249,9 +257,16 @@ export default function SprinterPage() {
   });
 
   const inlineCreateMutation = useMutation({
-    mutationFn: async ({ title, column }: { title: string; column?: string }) => {
+    mutationFn: async ({ title, column, type, priority, estimate, collaborator_ids }: {
+      title: string; column?: string; type?: string; priority?: string; estimate?: number | null; collaborator_ids?: string[];
+    }) => {
       const { data, error } = await supabase.from("backlog_items").insert({
-        item_id: "", title, type: "user_story", priority: "should_have",
+        item_id: "",
+        title,
+        type: type || "user_story",
+        priority: priority || "should_have",
+        estimate: estimate ?? null,
+        collaborator_ids: collaborator_ids?.length ? collaborator_ids : null,
       }).select().single();
       if (error) throw error;
       if (column && currentSprintId) {
@@ -470,7 +485,10 @@ export default function SprinterPage() {
           );
         })}
         {backlogFiltered.length === 0 && (
-          <p className="text-xs text-muted-foreground text-center py-8">Ingen items i backlog</p>
+          <div className="text-center py-12">
+            <p className="text-sm text-muted-foreground">Ingen items i backlog</p>
+            <p className="text-xs text-muted-foreground mt-1">Opprett den første oppgaven under ↓</p>
+          </div>
         )}
       </div>
 
@@ -486,17 +504,139 @@ export default function SprinterPage() {
         </div>
       )}
 
-      {/* Inline add */}
-      <div className="px-4 py-3">
-        <div className="flex gap-1">
-          <Input value={backlogInlineTitle} onChange={(e) => setBacklogInlineTitle(e.target.value)}
-            placeholder="+ Ny oppgave..." className="h-8 text-xs rounded-[10px] border-dashed"
+      {/* Inline create form */}
+      <div className="px-3 py-3 border-t border-neutral-100">
+        {!showInlineCreate ? (
+          <button
+            onClick={() => setShowInlineCreate(true)}
+            className="w-full py-3 rounded-[10px] border border-dashed border-neutral-300 text-sm text-muted-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-foreground transition-colors flex items-center justify-center gap-1.5"
+          >
+            <Plus className="h-3.5 w-3.5" /> Ny oppgave
+          </button>
+        ) : (
+          <div className="bg-white rounded-xl border border-primary/20 p-4 space-y-3"
+            style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && backlogInlineTitle.trim()) {
-                inlineCreateMutation.mutate({ title: backlogInlineTitle.trim() });
+              if (e.key === "Escape") { setShowInlineCreate(false); setInlineForm({ title: "", type: "user_story", priority: "should_have", estimate: null, collaborator_ids: [] }); }
+              if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && inlineForm.title.trim()) {
+                inlineCreateMutation.mutate({
+                  title: inlineForm.title.trim(),
+                  type: inlineForm.type,
+                  priority: inlineForm.priority,
+                  estimate: inlineForm.estimate,
+                  collaborator_ids: inlineForm.collaborator_ids,
+                });
+                setInlineForm((p) => ({ ...p, title: "", estimate: null, collaborator_ids: [] }));
               }
-            }} />
-        </div>
+            }}
+          >
+            {/* Title */}
+            <Input
+              autoFocus
+              value={inlineForm.title}
+              onChange={(e) => setInlineForm((p) => ({ ...p, title: e.target.value }))}
+              placeholder="Skriv tittel på oppgaven..."
+              className="text-sm rounded-lg"
+            />
+
+            {/* Type pills + SP + Priority */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {[
+                { key: "user_story", label: "Brukerhistorie", bg: "#E6F1FB", fg: "#0C447C" },
+                { key: "technical", label: "Teknisk", bg: "#E1F5EE", fg: "#085041" },
+                { key: "design", label: "Design", bg: "#FBEAF0", fg: "#72243E" },
+              ].map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => setInlineForm((p) => ({ ...p, type: t.key }))}
+                  className="py-1 px-2.5 rounded-md text-xs font-medium transition-all"
+                  style={{
+                    backgroundColor: inlineForm.type === t.key ? t.bg : "hsl(var(--muted))",
+                    color: inlineForm.type === t.key ? t.fg : "hsl(var(--muted-foreground))",
+                  }}
+                >
+                  {t.label}
+                </button>
+              ))}
+
+              <Input
+                type="number"
+                value={inlineForm.estimate ?? ""}
+                onChange={(e) => setInlineForm((p) => ({ ...p, estimate: e.target.value ? parseInt(e.target.value) : null }))}
+                placeholder="SP"
+                className="w-14 h-7 text-xs text-center rounded-lg"
+              />
+
+              {[
+                { key: "must_have", label: "Must", dot: "bg-red-500" },
+                { key: "should_have", label: "Should", dot: "bg-amber-500" },
+                { key: "nice_to_have", label: "Could", dot: "bg-neutral-400" },
+              ].map((p) => (
+                <button
+                  key={p.key}
+                  type="button"
+                  onClick={() => setInlineForm((prev) => ({ ...prev, priority: p.key }))}
+                  className={`flex items-center gap-1 py-1 px-2 rounded-md text-xs font-medium transition-all ${
+                    inlineForm.priority === p.key ? "bg-neutral-200 text-foreground" : "text-muted-foreground hover:bg-neutral-100"
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${p.dot}`} />
+                  {p.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Assignees */}
+            <div className="flex items-center gap-1.5">
+              {members?.map((m) => {
+                const selected = inlineForm.collaborator_ids.includes(m.id);
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setInlineForm((p) => ({
+                      ...p,
+                      collaborator_ids: selected
+                        ? p.collaborator_ids.filter((id) => id !== m.id)
+                        : [...p.collaborator_ids, m.id],
+                    }))}
+                    className={`rounded-full transition-all ${selected ? "ring-2 ring-primary ring-offset-1" : "opacity-60 hover:opacity-100"}`}
+                  >
+                    <MemberAvatar member={m} size="sm" />
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => { setShowInlineCreate(false); setInlineForm({ title: "", type: "user_story", priority: "should_have", estimate: null, collaborator_ids: [] }); }}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Avbryt
+              </button>
+              <button
+                onClick={() => {
+                  if (!inlineForm.title.trim()) return;
+                  inlineCreateMutation.mutate({
+                    title: inlineForm.title.trim(),
+                    type: inlineForm.type,
+                    priority: inlineForm.priority,
+                    estimate: inlineForm.estimate,
+                    collaborator_ids: inlineForm.collaborator_ids,
+                  });
+                  setInlineForm((p) => ({ ...p, title: "", estimate: null, collaborator_ids: [] }));
+                }}
+                disabled={!inlineForm.title.trim() || inlineCreateMutation.isPending}
+                className="bg-primary text-white py-2 px-4 rounded-[10px] text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                {inlineCreateMutation.isPending ? "Oppretter..." : "Opprett"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -636,25 +776,7 @@ export default function SprinterPage() {
                       );
                     })}
                   </div>
-                  {/* Inline add in column */}
-                  {inlineAddCol === col.key ? (
-                    <div className="flex gap-1 mt-1">
-                      <Input autoFocus value={inlineTitle} onChange={(e) => setInlineTitle(e.target.value)}
-                        placeholder="Tittel..." className="h-7 text-xs"
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && inlineTitle.trim()) inlineCreateMutation.mutate({ title: inlineTitle.trim(), column: col.key });
-                          if (e.key === "Escape") { setInlineAddCol(null); setInlineTitle(""); }
-                        }} />
-                      <Button size="sm" variant="ghost" className="h-7 px-1" onClick={() => { setInlineAddCol(null); setInlineTitle(""); }}>
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <button onClick={() => setInlineAddCol(col.key)}
-                      className="w-full text-sm text-muted-foreground hover:text-primary py-2 flex items-center justify-center gap-1 rounded-lg hover:bg-accent/50 mt-1 transition-colors">
-                      <Plus className="h-3.5 w-3.5" /> Legg til
-                    </button>
-                  )}
+                  {/* Fjernet — items legges til via drag fra backlog */}
                 </div>
               );
             })}
