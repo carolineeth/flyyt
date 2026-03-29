@@ -97,13 +97,13 @@ export function PointsPlanner({ catalog, registrations, onClickRegistration }: P
 
   const warnings = useMemo(() => {
     const msgs: { type: "warning" | "success"; text: string }[] = [];
-    const mandatoryCats = catalog.filter((c) => c.is_mandatory && c.period === "first_half");
+    const mandatoryCats = catalog.filter((c) => c.is_mandatory && (c.period === "first_half" || c.period === "second_half"));
     const unplannedMandatory = mandatoryCats.filter((c) => {
       const regs = registrations.filter((r) => r.catalog_id === c.id);
-      return !regs.some((r) => r.status === "completed") && !regs.some((r) => r.planned_week != null && r.planned_week <= 14);
+      return !regs.some((r) => r.status === "completed") && !regs.some((r) => r.planned_week != null);
     });
     if (unplannedMandatory.length > 0) {
-      msgs.push({ type: "warning", text: `⚠ ${unplannedMandatory.length} obligatorisk${unplannedMandatory.length > 1 ? "e" : ""} aktivitet${unplannedMandatory.length > 1 ? "er" : ""} ikke planlagt før uke 14` });
+      msgs.push({ type: "warning", text: `⚠ ${unplannedMandatory.length} obligatorisk${unplannedMandatory.length > 1 ? "e" : ""} aktivitet${unplannedMandatory.length > 1 ? "er" : ""} ikke planlagt` });
     }
     weekData.forEach((w) => {
       if (w.optionalCount > 3) {

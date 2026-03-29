@@ -118,22 +118,23 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
           <p className="text-sm text-muted-foreground">Kobles automatisk fra møtekalenderen</p>
         </div>
         <div className="space-y-2">
-          {advisorMeeting && (
+          {advisorMeeting && (() => {
+            const advisorRegs = [...getRegistrationsFor(advisorMeeting.id)].sort((a, b) =>
+              (a.completed_date ?? a.created_at ?? "").localeCompare(b.completed_date ?? b.created_at ?? "")
+            );
+            const completedCount = advisorRegs.filter((r) => r.status === "completed").length;
+            return (
             <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">{advisorMeeting.name}</span>
-                    <Badge variant="secondary" className="text-[10px]">1p per uke, maks 4</Badge>
+                    <Badge variant="secondary" className="text-[10px]">1p per uke, maks 4p</Badge>
                   </div>
-                  {getRegistrationsFor(advisorMeeting.id).length < 4 && (
-                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openModalNew(advisorMeeting)}>
-                      + Registrer ny
-                    </Button>
-                  )}
+                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openModalNew(advisorMeeting)}>
+                    + Registrer ny
+                  </Button>
                 </div>
-                {[...getRegistrationsFor(advisorMeeting.id)].sort((a, b) =>
-                  (a.completed_date ?? a.created_at ?? "").localeCompare(b.completed_date ?? b.created_at ?? "")
-                ).map((reg, i) => (
+                {advisorRegs.map((reg, i) => (
                   <div
                     key={reg.id}
                     className="flex items-center gap-2 text-xs px-2 py-1.5 rounded hover:bg-accent/30 cursor-pointer transition-colors"
@@ -141,6 +142,7 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
                   >
                     <StatusIcon catId={advisorMeeting.id} />
                     <span className="flex-1">Møte #{i + 1}{reg.completed_date ? ` — ${reg.completed_date}` : ""}</span>
+                    {i >= 4 && <Badge variant="outline" className="text-[9px] text-muted-foreground">0p</Badge>}
                     {reg.linked_meeting_id && (
                       <a
                         href="/moter"
@@ -166,23 +168,21 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
                   </div>
                 ))}
                 <div className="flex gap-1.5">
-                  {Array.from({ length: 4 }).map((_, i) => {
-                    const completed = getRegistrationsFor(advisorMeeting.id).filter((r) => r.status === "completed").length;
-                    return (
-                      <div
-                        key={i}
-                        className={`w-4 h-4 rounded-full border-2 ${
-                          i < completed ? "bg-green-500 border-green-500" : "border-neutral-200"
-                        }`}
-                      />
-                    );
-                  })}
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={`w-4 h-4 rounded-full border-2 ${
+                        i < completedCount ? "bg-green-500 border-green-500" : "border-neutral-200"
+                      }`}
+                    />
+                  ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {getRegistrationsFor(advisorMeeting.id).filter((r) => r.status === "completed").length} av 4 gjennomført
+                  {completedCount} av 4 gir poeng · {advisorRegs.length} totalt registrert
                 </p>
             </div>
-          )}
+            );
+          })()}
         </div>
       </div>
 
@@ -198,15 +198,11 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
             const regs = [...getRegistrationsFor(item.id)].sort((a, b) =>
               (a.completed_date ?? a.created_at ?? "").localeCompare(b.completed_date ?? b.created_at ?? "")
             );
-            const totalAgileCompleted = agileMeetings.reduce((sum, m) =>
-              sum + getRegistrationsFor(m.id).filter((r) => r.status === "completed").length, 0
-            );
-            const canAddMore = totalAgileCompleted < 3;
             return (
               <div key={item.id} className="bg-neutral-50 rounded-xl p-4 space-y-2">
                 <div className="text-center">
                   <p className="text-sm font-semibold">{item.name.replace("Smidige møter: ", "")}</p>
-                  <Badge variant="secondary" className="text-xs">{item.points}p</Badge>
+                  <Badge variant="secondary" className="text-xs">{item.points}p (1 gir poeng)</Badge>
                 </div>
                 {regs.map((reg, i) => (
                   <div
@@ -216,6 +212,7 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
                   >
                     <StatusIcon catId={item.id} />
                     <span className="flex-1">#{i + 1}{reg.completed_date ? ` — ${reg.completed_date}` : ""}</span>
+                    {i >= 1 && reg.status === "completed" && <Badge variant="outline" className="text-[9px] text-muted-foreground">0p</Badge>}
                     {reg.linked_meeting_id && (
                       <a href="/moter" onClick={(e) => e.stopPropagation()} className="flex items-center gap-0.5 text-[10px] text-primary/70 hover:text-primary shrink-0">
                         <Link2 className="h-2.5 w-2.5" /> Møte
@@ -230,9 +227,7 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
                   </div>
                 ))}
                 {regs.length === 0 && <div className="flex justify-center"><StatusIcon catId={item.id} /></div>}
-                {canAddMore && (
-                  <Button variant="outline" size="sm" className="w-full h-7 text-xs" onClick={() => openModalNew(item)}>+ Registrer ny</Button>
-                )}
+                <Button variant="outline" size="sm" className="w-full h-7 text-xs" onClick={() => openModalNew(item)}>+ Registrer ny</Button>
               </div>
             );
           })}
