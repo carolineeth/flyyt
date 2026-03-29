@@ -96,7 +96,7 @@ export default function BacklogPage() {
   const { data: refinementSessions = [] } = useQuery({
     queryKey: ["refinement_sessions"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("backlog_refinement_sessions").select("*").order("session_date", { ascending: false });
+      const { data, error } = await (supabase.from("backlog_refinement_sessions" as any).select("*").order("session_date", { ascending: false }) as any);
       if (error) throw error;
       return data;
     },
@@ -109,13 +109,13 @@ export default function BacklogPage() {
 
   const saveRefinementSession = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("backlog_refinement_sessions").insert({
+      const { error } = await (supabase.from("backlog_refinement_sessions" as any).insert({
         notes: refinementNotes || null,
         tasks_added: refinementStats.added,
         tasks_reestimated: refinementStats.reestimated,
         tasks_reprioritized: refinementStats.reprioritized,
         participants: members?.map(m => m.id) ?? [],
-      } as any);
+      } as any) as any);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -174,6 +174,9 @@ export default function BacklogPage() {
   const [viewMode, setViewMode] = useState<"list" | "board">("list");
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const [dragOverStatus, setDragOverStatus] = useState<string | null>(null);
+  const [detailItem, setDetailItem] = useState<BacklogItem | null>(null);
+  const [editForm, setEditForm] = useState<any>(null);
+
   const [newItem, setNewItem] = useState({
     title: "", description: "", type: "user_story", priority: "should_have",
     estimate: null as number | null, epic: "",
@@ -277,6 +280,50 @@ export default function BacklogPage() {
     onError: (e) => toast.error(e.message),
   });
 
+  const updateItemMutation = useMutation({
+    mutationFn: async ({ id, ...updates }: { id: string; [key: string]: any }) => {
+      const { error } = await supabase.from("backlog_items").update(updates).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["backlog_items"] });
+      setDetailItem(null);
+      toast.success("Oppdatert");
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const openDetail = (item: BacklogItem) => {
+    setDetailItem(item);
+    setEditForm({
+      title: item.title,
+      description: item.description ?? "",
+      type: item.type,
+      priority: item.priority,
+      estimate: item.estimate,
+      epic: item.epic ?? "",
+      collaborator_ids: (item as any).collaborator_ids ?? [],
+      user_story: (item as any).user_story ?? "",
+      labels: (item.labels ?? []).join(", "),
+    });
+  };
+
+  const saveDetail = () => {
+    if (!detailItem) return;
+    updateItemMutation.mutate({
+      id: detailItem.id,
+      title: editForm.title,
+      description: editForm.description || null,
+      type: editForm.type,
+      priority: editForm.priority,
+      estimate: editForm.estimate,
+      epic: editForm.epic || null,
+      collaborator_ids: editForm.collaborator_ids ?? [],
+      user_story: editForm.user_story || null,
+      labels: editForm.labels ? editForm.labels.split(",").map((l: string) => l.trim()).filter(Boolean) : [],
+    });
+  };
+
   const handleDragStart = (e: React.DragEvent, itemId: string) => {
     setDraggedItemId(itemId);
     e.dataTransfer.effectAllowed = "move";
@@ -333,7 +380,8 @@ export default function BacklogPage() {
         onDragEnd={handleDragEnd}
         onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
         onDrop={(e) => handleListDrop(e, item.id)}
-        className={`transition-all cursor-grab active:cursor-grabbing ${isDragging ? "opacity-40 scale-95" : "hover:shadow-sm"}`}
+        onClick={() => openDetail(item)}
+        className={`transition-all cursor-pointer ${isDragging ? "opacity-40 scale-95" : "hover:shadow-sm"}`}
       >
         <CardContent className={`${compact ? "p-2.5" : "py-3 px-4"} flex items-center gap-2`}>
           <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground/40" />
@@ -751,6 +799,115 @@ export default function BacklogPage() {
             <Button variant="ghost" onClick={() => setShowCreate(false)}>Avbryt</Button>
             <Button onClick={() => createMutation.mutate()} disabled={!newItem.title || createMutation.isPending}>Opprett</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit detail dialog */}
+      <Dialog open={!!detailItem} onOpenChange={(open) => { if (!open) setDetailItem(null); }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          {editForm && detailItem && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-base">
+                  <span className="text-muted-foreground font-mono text-sm mr-2">{detailItem.item_id}</span>
+                  Rediger item
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div><Label>Tittel</Label><Input value={editForm.title} onChange={(e) => setEditForm((p: any) => ({ ...p, title: e.target.value }))} /></div>
+                <div><Label>Beskrivelse</Label><Textarea value={editForm.description} onChange={(e) => setEditForm((p: any) => ({ ...p, description: e.target.value }))} rows={3} /></div>
+                <div>
+                  <Label>Brukerhistorie</Label>
+                  <Textarea value={editForm.user_story} onChange={(e) => setEditForm((p: any) => ({ ...p, user_story: e.target.value }))}
+                    placeholder="Som en [brukergruppe] vil jeg [funksjon] slik at [nytte]" rows={2} className="text-xs" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Type</Label>
+                    <Select value={editForm.type} onValueChange={(v) => setEditForm((p: any) => ({ ...p, type: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{Object.entries(typeLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Prioritet</Label>
+                    <Select value={editForm.priority} onValueChange={(v) => setEditForm((p: any) => ({ ...p, priority: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{Object.entries(priorityLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <Label>Estimat (Story Points)</Label>
+                  <div className="flex gap-2 mt-1">
+                    {storyPoints.map((sp) => (
+                      <button key={sp} onClick={() => setEditForm((p: any) => ({ ...p, estimate: p.estimate === sp ? null : sp }))}
+                        className={`h-8 w-8 rounded-full text-xs font-medium transition-colors ${editForm.estimate === sp ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}>
+                        {sp}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Tildelt</Label>
+                    <div className="space-y-0.5 mt-1.5">
+                      {members?.map((m) => {
+                        const selected = (editForm.collaborator_ids ?? []).includes(m.id);
+                        return (
+                          <button key={m.id} type="button"
+                            onClick={() => setEditForm((p: any) => ({
+                              ...p,
+                              collaborator_ids: selected
+                                ? (p.collaborator_ids ?? []).filter((id: string) => id !== m.id)
+                                : [...(p.collaborator_ids ?? []), m.id],
+                            }))}
+                            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors text-left ${selected ? "bg-primary/10" : "hover:bg-muted"}`}
+                          >
+                            <div className={`h-4 w-4 rounded border shrink-0 flex items-center justify-center ${selected ? "bg-primary border-primary" : "border-muted-foreground/40"}`}>
+                              {selected && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+                            </div>
+                            <MemberAvatar member={m} />
+                            <span className={`text-sm ${selected ? "text-foreground font-medium" : "text-muted-foreground"}`}>{m.name.split(" ")[0]}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <Label>Epic</Label>
+                      <Input value={editForm.epic} onChange={(e) => setEditForm((p: any) => ({ ...p, epic: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>Labels (kommaseparert)</Label>
+                      <Input value={editForm.labels} onChange={(e) => setEditForm((p: any) => ({ ...p, labels: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label>Status</Label>
+                      <Select value={detailItem.status} onValueChange={(v) => {
+                        updateStatusMutation.mutate({ id: detailItem.id, status: v, oldStatus: detailItem.status });
+                      }}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>{Object.entries(statusLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter className="flex-col sm:flex-row gap-2">
+                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive"
+                  onClick={() => { deleteMutation.mutate(detailItem.id); setDetailItem(null); }}>
+                  <Trash2 className="h-4 w-4 mr-1" /> Slett
+                </Button>
+                <div className="flex-1" />
+                <Button variant="ghost" onClick={() => setDetailItem(null)}>Avbryt</Button>
+                <Button onClick={saveDetail} disabled={updateItemMutation.isPending}>
+                  {updateItemMutation.isPending ? "Lagrer..." : "Lagre"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>
