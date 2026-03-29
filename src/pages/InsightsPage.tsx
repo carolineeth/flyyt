@@ -265,8 +265,8 @@ export default function InsightsPage() {
     members.forEach((m) => {
       result[m.id] = { user_story: 0, technical: 0, design: 0, report: 0, admin: 0 };
     });
-    const doneItemsList = items.filter((i) => i.status === "done");
-    doneItemsList.forEach((item) => {
+    // Include ALL items (not just done) so the chart is never empty mid-project
+    items.forEach((item) => {
       const assignees: string[] = (item as any).collaborator_ids ?? (item.assignee_id ? [item.assignee_id] : []);
       assignees.forEach((id) => {
         if (result[id]) {
@@ -345,6 +345,40 @@ export default function InsightsPage() {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([week, count]) => ({ week, count }));
   }, [completedMeetings]);
+
+  // Meeting attendance per person
+  const meetingAttendanceByPerson = useMemo(() => {
+    if (!members.length || !completedMeetings.length) return [];
+    const countMap: Record<string, number> = {};
+    members.forEach((m) => { countMap[m.id] = 0; });
+    completedMeetings.forEach((meeting) => {
+      const participants: string[] = (meeting as any).participants ?? [];
+      participants.forEach((id) => {
+        if (countMap[id] !== undefined) countMap[id]++;
+      });
+    });
+    return members.map((m) => ({
+      name: m.name.split(" ")[0],
+      meetings: countMap[m.id] ?? 0,
+      pct: Math.round(((countMap[m.id] ?? 0) / completedMeetings.length) * 100),
+    })).sort((a, b) => b.meetings - a.meetings);
+  }, [members, completedMeetings]);
+
+  // Standup participation per person
+  const standupByPerson = useMemo(() => {
+    if (!members.length || !dailyUpdates.length) return [];
+    const countMap: Record<string, number> = {};
+    members.forEach((m) => { countMap[m.id] = 0; });
+    dailyUpdates.forEach((u: any) => {
+      if (countMap[u.member_id] !== undefined) countMap[u.member_id]++;
+    });
+    const uniqueDays = new Set(dailyUpdates.map((u: any) => u.entry_date)).size;
+    return members.map((m) => ({
+      name: m.name.split(" ")[0],
+      count: countMap[m.id] ?? 0,
+      pct: uniqueDays > 0 ? Math.round(((countMap[m.id] ?? 0) / uniqueDays) * 100) : 0,
+    })).sort((a, b) => b.count - a.count);
+  }, [members, dailyUpdates]);
 
   const actionPointRate = useMemo(() => {
     if (!actionPoints.length) return 0;
@@ -568,6 +602,13 @@ export default function InsightsPage() {
         icon={<Users className="h-4 w-4" />}
         onCopy={() => copy(generateCrossFunctionalReport())}
       >
+        {workByPerson.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-[160px] text-muted-foreground gap-2">
+            <Users className="h-8 w-8 opacity-30" />
+            <p className="text-sm">Ingen backlog-items er tildelt ennå</p>
+            <p className="text-xs opacity-70">Grafen fylles ut når items assignes til teammedlemmer</p>
+          </div>
+        ) : (
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Work by person */}
           <div>
@@ -612,6 +653,7 @@ export default function InsightsPage() {
             </p>
           </div>
         </div>
+        )}
 
         <ReflectionField
           value={reflections.crossfunc || ""}
@@ -742,6 +784,59 @@ export default function InsightsPage() {
             </div>
           </div>
         )}
+
+        {/* Meeting attendance per person */}
+        {meetingAttendanceByPerson.length > 0 && (
+          <div className="mt-4">
+            <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+              Møtedeltakelse per person
+              <span className="font-normal ml-1 text-xs">({completedMeetings.length} møter totalt)</span>
+            </h4>
+            <div className="space-y-2">
+              {meetingAttendanceByPerson.map((p) => (
+                <div key={p.name} className="flex items-center gap-3">
+                  <span className="text-sm font-medium w-20">{p.name}</span>
+                  <div className="flex-1 bg-muted rounded-full h-2">
+                    <div className="bg-primary rounded-full h-2 transition-all" style={{ width: `${p.pct}%` }} />
+                  </div>
+                  <span className="text-xs text-muted-foreground w-20 text-right">
+                    {p.meetings} møter ({p.pct}%)
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Standup participation per person */}
+        {standupByPerson.length > 0 && (
+          <div className="mt-4">
+            <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+              Standup-deltakelse per person
+            </h4>
+            <div className="space-y-2">
+              {standupByPerson.map((p) => (
+                <div key={p.name} className="flex items-center gap-3">
+                  <span className="text-sm font-medium w-20">{p.name}</span>
+                  <div className="flex-1 bg-muted rounded-full h-2">
+                    <div
+                      className={`rounded-full h-2 transition-all ${
+                        p.pct >= 80 ? "bg-green-500" : p.pct >= 50 ? "bg-amber-400" : "bg-red-400"
+                      }`}
+                      style={{ width: `${Math.min(p.pct, 100)}%` }}
+                    />
+                  </div>
+                  <span className="text-xs text-muted-foreground w-20 text-right">
+                    {p.count} dager ({p.pct}%)
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Prosent av dager med standup-oppføring (grønn ≥ 80%, gul ≥ 50%, rød &lt; 50%)
+            </p>
+          </div>
+        )}
       </SectionCard>
 
       {/* REQUIREMENTS CHANGELOG */}
@@ -757,6 +852,38 @@ export default function InsightsPage() {
           <StatBox label="Totale endringer" value={reqChanges.length} />
           <StatBox label="Siste endring" value={reqChanges[0] ? format(parseISO(reqChanges[0].created_at), "d. MMM", { locale: nb }) : "—"} />
         </div>
+
+        {/* Change type breakdown */}
+        {reqChanges.length > 0 && (() => {
+          const created = reqChanges.filter((c) => c.change_type === "created").length;
+          const deleted = reqChanges.filter((c) => c.change_type === "deleted").length;
+          const statusChanged = reqChanges.filter((c) => c.change_type === "status_changed").length;
+          const other = reqChanges.length - created - deleted - statusChanged;
+          return (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {created > 0 && (
+                <span className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium bg-teal-50 text-teal-700">
+                  + {created} lagt til
+                </span>
+              )}
+              {deleted > 0 && (
+                <span className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700">
+                  − {deleted} slettet
+                </span>
+              )}
+              {statusChanged > 0 && (
+                <span className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700">
+                  ↕ {statusChanged} status-endringer
+                </span>
+              )}
+              {other > 0 && (
+                <span className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium bg-neutral-100 text-neutral-600">
+                  ✎ {other} andre endringer
+                </span>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Implemented progress */}
         {requirements.length > 0 && (() => {

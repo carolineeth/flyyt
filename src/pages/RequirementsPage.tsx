@@ -300,6 +300,19 @@ export default function RequirementsPage() {
   // ── Delete requirement ──
   const deleteReqMutation = useMutation({
     mutationFn: async (id: string) => {
+      // Fetch title before deleting so we can log it meaningfully
+      const { data: reqData } = await (supabase
+        .from("requirements" as any)
+        .select("title")
+        .eq("id", id)
+        .maybeSingle() as any);
+      const title = (reqData as { title?: string } | null)?.title ?? "Ukjent krav";
+      // Log deletion BEFORE the delete so requirement_id is still valid
+      await logRequirementChange({
+        requirement_id: id,
+        change_type: "deleted",
+        description: `Krav slettet: "${title}"`,
+      });
       const { error } = await (supabase
         .from("requirements" as any)
         .delete()
