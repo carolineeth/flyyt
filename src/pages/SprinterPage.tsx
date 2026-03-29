@@ -433,7 +433,6 @@ export default function SprinterPage() {
       epic: editForm.epic || null,
       labels: editForm.labels ? editForm.labels.split(",").map((l: string) => l.trim()).filter(Boolean) : [],
       collaborator_ids: editForm.collaborator_ids ?? [],
-      user_story: editForm.user_story || null,
     });
     setDetailItem(null);
   };

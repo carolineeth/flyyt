@@ -227,10 +227,8 @@ export default function BacklogPage() {
         priority: newItem.priority,
         status: newItem.status,
         estimate: newItem.estimate,
-        epic_id: newItem.epic_id || null,
         assignee_id: null,
         collaborator_ids: newItem.collaborator_ids.length ? newItem.collaborator_ids : null,
-        quality_tags: newItem.quality_tags.length ? newItem.quality_tags : null,
       } as any).select().single();
       if (error) throw error;
       if (data) {
@@ -335,10 +333,7 @@ export default function BacklogPage() {
       type: editForm.type,
       priority: editForm.priority,
       estimate: editForm.estimate,
-      epic_id: editForm.epic_id || null,
       collaborator_ids: editForm.collaborator_ids ?? [],
-      user_story: editForm.user_story || null,
-      quality_tags: editForm.quality_tags?.length ? editForm.quality_tags : null,
     });
   };
 
