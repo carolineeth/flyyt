@@ -283,7 +283,7 @@ export default function InsightsPage() {
         ...data,
         total,
       };
-    }).filter((d) => d.total > 0);
+    });
   }, [items, members]);
 
   const crossFunctionalityScores = useMemo(() => {
