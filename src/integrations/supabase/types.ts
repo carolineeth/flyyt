@@ -371,6 +371,8 @@ export type Database = {
           type: string
           updated_at: string
           user_story: string | null
+          quality_tags: string[] | null
+          estimate_changelog: any | null
         }
         Insert: {
           assignee_id?: string | null
@@ -379,10 +381,12 @@ export type Database = {
           description?: string | null
           epic?: string | null
           estimate?: number | null
+          estimate_changelog?: any | null
           id?: string
           item_id: string
           labels?: string[] | null
           priority?: string
+          quality_tags?: string[] | null
           sort_order?: number
           status?: string
           title: string
@@ -397,10 +401,12 @@ export type Database = {
           description?: string | null
           epic?: string | null
           estimate?: number | null
+          estimate_changelog?: any | null
           id?: string
           item_id?: string
           labels?: string[] | null
           priority?: string
+          quality_tags?: string[] | null
           sort_order?: number
           status?: string
           title?: string
@@ -1057,6 +1063,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      backlog_refinement_sessions: {
+        Row: {
+          id: string
+          session_date: string
+          notes: string | null
+          tasks_added: number
+          tasks_reestimated: number
+          tasks_reprioritized: number
+          participants: string[] | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          session_date?: string
+          notes?: string | null
+          tasks_added?: number
+          tasks_reestimated?: number
+          tasks_reprioritized?: number
+          participants?: string[] | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          session_date?: string
+          notes?: string | null
+          tasks_added?: number
+          tasks_reestimated?: number
+          tasks_reprioritized?: number
+          participants?: string[] | null
+          created_at?: string
+        }
+        Relationships: []
       }
       requirement_backlog_links: {
         Row: {

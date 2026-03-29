@@ -454,6 +454,7 @@ export default function SprinterPage() {
             <>Backlog <span className="text-muted-foreground font-normal text-base">({backlogFiltered.length})</span></>
           )}
         </h2>
+        <a href="/backlog" className="text-xs text-primary hover:underline">Se full backlog →</a>
       </div>
 
       {/* Filters */}

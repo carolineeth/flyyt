@@ -14,7 +14,9 @@ import { Label } from "@/components/ui/label";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { ListTodo, Plus, GripVertical, Trash2, Check } from "lucide-react";
+import { ListTodo, Plus, GripVertical, Trash2, Check, ClipboardEdit, History } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { nb } from "date-fns/locale";
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import type { BacklogItem, Sprint } from "@/lib/types";
 import { logBacklogChange } from "@/lib/backlogChangelog";
@@ -79,6 +81,65 @@ export default function BacklogPage() {
       return data;
     },
   });
+
+  // Sprint items with column info (for active + completed sections)
+  const { data: sprintItemsFull } = useQuery({
+    queryKey: ["sprint_items_full"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sprint_items").select("*, backlog_item:backlog_items(*), sprint:sprints(id, name, is_active, completed_at)");
+      if (error) throw error;
+      return data as any[];
+    },
+  });
+
+  // Refinement sessions
+  const { data: refinementSessions = [] } = useQuery({
+    queryKey: ["refinement_sessions"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("backlog_refinement_sessions").select("*").order("session_date", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const [activeSection, setActiveSection] = useState<"backlog" | "active" | "completed">("backlog");
+  const [refinementMode, setRefinementMode] = useState(false);
+  const [refinementNotes, setRefinementNotes] = useState("");
+  const [refinementStats, setRefinementStats] = useState({ added: 0, reestimated: 0, reprioritized: 0 });
+
+  const saveRefinementSession = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("backlog_refinement_sessions").insert({
+        notes: refinementNotes || null,
+        tasks_added: refinementStats.added,
+        tasks_reestimated: refinementStats.reestimated,
+        tasks_reprioritized: refinementStats.reprioritized,
+        participants: members?.map(m => m.id) ?? [],
+      } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["refinement_sessions"] });
+      toast.success("Backlog Refinement lagret");
+      setRefinementMode(false);
+      setRefinementNotes("");
+      setRefinementStats({ added: 0, reestimated: 0, reprioritized: 0 });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  // Computed sections
+  const activeSprintItems = useMemo(() => {
+    if (!sprintItemsFull) return [];
+    return sprintItemsFull.filter((si: any) => si.sprint?.is_active && !si.sprint?.completed_at);
+  }, [sprintItemsFull]);
+
+  const completedItems = useMemo(() => {
+    if (!sprintItemsFull) return [];
+    return sprintItemsFull.filter((si: any) => si.column_name === "done");
+  }, [sprintItemsFull]);
+
+  const columnLabels: Record<string, string> = { todo: "To Do", in_progress: "In Progress", review: "Review", done: "Done" };
 
   // Unlinked requirements for pre-fill
   const { data: unlinkedRequirements } = useQuery<{
@@ -337,14 +398,71 @@ export default function BacklogPage() {
     <div className="space-y-6 scroll-reveal">
       <PageHeader
         title="Product Backlog"
-        description="Dra elementer for å endre rekkefølge eller status"
+        description="Alle oppgaver — backlog, aktive i sprint, og fullførte"
         action={
-          <Button size="sm" onClick={() => setShowCreate(true)}>
-            <Plus className="h-4 w-4 mr-1" /> Legg til
-          </Button>
+          <div className="flex gap-2">
+            {!refinementMode ? (
+              <button className="py-2 px-4 rounded-[10px] bg-amber-50 text-amber-700 text-sm font-medium hover:bg-amber-100 transition-colors flex items-center gap-1.5"
+                onClick={() => setRefinementMode(true)}>
+                <ClipboardEdit className="h-3.5 w-3.5" /> Start Backlog Refinement
+              </button>
+            ) : (
+              <button className="py-2 px-4 rounded-[10px] bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700 transition-colors"
+                onClick={() => saveRefinementSession.mutate()} disabled={saveRefinementSession.isPending}>
+                {saveRefinementSession.isPending ? "Lagrer..." : "Fullfør Refinement"}
+              </button>
+            )}
+            <Button size="sm" onClick={() => setShowCreate(true)}>
+              <Plus className="h-4 w-4 mr-1" /> Legg til
+            </Button>
+          </div>
         }
       />
 
+      {/* Refinement banner */}
+      {refinementMode && (
+        <div className="card-elevated p-4 border-l-4 border-l-amber-500 space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            <span className="text-sm font-semibold text-amber-700">Backlog Refinement pågår</span>
+          </div>
+          <textarea
+            value={refinementNotes}
+            onChange={(e) => setRefinementNotes(e.target.value)}
+            placeholder="Refinement-notater: Hva ble diskutert, re-estimert, prioritert..."
+            className="w-full text-sm rounded-[10px] border border-neutral-200 p-3 min-h-[48px] resize-none"
+            rows={2}
+          />
+          <div className="flex gap-4 text-xs text-muted-foreground">
+            <span>Lagt til: <strong className="text-foreground">{refinementStats.added}</strong></span>
+            <span>Re-estimert: <strong className="text-foreground">{refinementStats.reestimated}</strong></span>
+            <span>Omprioritert: <strong className="text-foreground">{refinementStats.reprioritized}</strong></span>
+          </div>
+          <button onClick={() => { setRefinementMode(false); setRefinementNotes(""); setRefinementStats({ added: 0, reestimated: 0, reprioritized: 0 }); }}
+            className="text-xs text-muted-foreground hover:text-foreground">Avbryt refinement</button>
+        </div>
+      )}
+
+      {/* Section tabs */}
+      <div className="flex gap-1.5">
+        {[
+          { key: "backlog" as const, label: "Backlog", count: items?.filter(i => !itemSprintMap[i.id]).length ?? 0 },
+          { key: "active" as const, label: "Aktive i sprint", count: activeSprintItems.length },
+          { key: "completed" as const, label: "Fullførte", count: completedItems.length },
+        ].map(tab => (
+          <button key={tab.key} onClick={() => setActiveSection(tab.key)}
+            className={`py-2 px-4 rounded-[10px] text-sm font-medium transition-colors ${
+              activeSection === tab.key
+                ? "bg-primary/10 text-primary font-semibold"
+                : "bg-white text-muted-foreground border border-neutral-200 hover:bg-neutral-50"
+            }`}>
+            {tab.label} <span className="ml-1 text-xs opacity-70">{tab.count}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* === BACKLOG SECTION === */}
+      {activeSection === "backlog" && <>
       <div className="flex gap-2 flex-wrap items-center">
         <Select value={filterType} onValueChange={setFilterType}>
           <SelectTrigger className="w-36 h-8 text-sm"><SelectValue placeholder="Type" /></SelectTrigger>
@@ -407,6 +525,102 @@ export default function BacklogPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      </>}
+
+      {/* === ACTIVE SPRINT ITEMS SECTION === */}
+      {activeSection === "active" && (
+        <div className="card-elevated p-6 space-y-4">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Aktive oppgaver i sprint</p>
+          {activeSprintItems.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">Ingen aktive sprint-items</p>
+          ) : (
+            <div className="space-y-1">
+              {activeSprintItems.map((si: any) => {
+                const item = si.backlog_item;
+                if (!item) return null;
+                const collaborators = ((item as any).collaborator_ids ?? [])
+                  .map((id: string) => members?.find((m) => m.id === id)).filter(Boolean);
+                return (
+                  <div key={si.id} className="flex items-center gap-3 py-3 px-4 border-b border-neutral-100 hover:bg-neutral-50 rounded-lg transition-colors">
+                    <span className={`text-xs py-0.5 px-2 rounded-md font-medium ${typeColors[item.type] ?? "bg-muted"}`}>
+                      {(typeLabels[item.type] ?? "").slice(0, 3)}
+                    </span>
+                    <span className="text-sm font-medium flex-1 min-w-0 truncate">{item.title}</span>
+                    <span className={`text-xs py-0.5 px-2 rounded-md ${
+                      si.column_name === "done" ? "bg-green-50 text-green-700" :
+                      si.column_name === "in_progress" ? "bg-blue-50 text-blue-700" :
+                      si.column_name === "review" ? "bg-amber-50 text-amber-700" :
+                      "bg-neutral-100 text-neutral-600"
+                    }`}>{columnLabels[si.column_name] ?? si.column_name}</span>
+                    {item.estimate && <span className="text-xs text-muted-foreground tabular-nums">{item.estimate} SP</span>}
+                    {collaborators.length > 0 && (
+                      <div className="flex -space-x-1.5">
+                        {collaborators.slice(0, 3).map((m: any) => <MemberAvatar key={m.id} member={m} />)}
+                      </div>
+                    )}
+                    <span className="text-xs text-muted-foreground">{si.sprint?.name}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* === COMPLETED ITEMS SECTION === */}
+      {activeSection === "completed" && (
+        <div className="card-elevated p-6 space-y-4">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">Fullførte oppgaver (alle sprinter)</p>
+          {completedItems.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">Ingen fullførte items ennå</p>
+          ) : (
+            <div className="space-y-1">
+              {completedItems.map((si: any) => {
+                const item = si.backlog_item;
+                if (!item) return null;
+                const collaborators = ((item as any).collaborator_ids ?? [])
+                  .map((id: string) => members?.find((m) => m.id === id)).filter(Boolean);
+                return (
+                  <div key={si.id} className="flex items-center gap-3 py-3 px-4 border-b border-neutral-100 hover:bg-neutral-50 rounded-lg transition-colors">
+                    <Check className="h-4 w-4 text-green-600 shrink-0" />
+                    <span className={`text-xs py-0.5 px-2 rounded-md font-medium ${typeColors[item.type] ?? "bg-muted"}`}>
+                      {(typeLabels[item.type] ?? "").slice(0, 3)}
+                    </span>
+                    <span className="text-sm font-medium flex-1 min-w-0 truncate">{item.title}</span>
+                    {item.estimate && <span className="text-xs text-muted-foreground tabular-nums">{item.estimate} SP</span>}
+                    {collaborators.length > 0 && (
+                      <div className="flex -space-x-1.5">
+                        {collaborators.slice(0, 3).map((m: any) => <MemberAvatar key={m.id} member={m} />)}
+                      </div>
+                    )}
+                    <span className="text-xs text-muted-foreground">{si.sprint?.name}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* === REFINEMENT HISTORY === */}
+      {refinementSessions.length > 0 && (
+        <div className="card-elevated p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <History className="h-4 w-4 text-muted-foreground" />
+            <p className="text-sm font-semibold">Refinement-historikk</p>
+          </div>
+          <div className="space-y-2">
+            {refinementSessions.slice(0, 5).map((rs: any) => (
+              <div key={rs.id} className="flex items-center gap-3 text-xs py-2 border-b border-neutral-100 last:border-0">
+                <span className="text-muted-foreground">{format(parseISO(rs.session_date), "d. MMM yyyy", { locale: nb })}</span>
+                <span>+{rs.tasks_added} lagt til · {rs.tasks_reestimated} re-estimert · {rs.tasks_reprioritized} omprioritert</span>
+                {rs.notes && <span className="text-muted-foreground truncate flex-1">{rs.notes}</span>}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

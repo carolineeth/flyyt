@@ -22,6 +22,7 @@ import InsightsPage from "@/pages/InsightsPage";
 import ReportPage from "@/pages/ReportPage";
 import ChangePasswordPage from "@/pages/ChangePasswordPage";
 import ProfilePage from "@/pages/ProfilePage";
+import BacklogPage from "@/pages/BacklogPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -87,6 +88,7 @@ const App = () => (
                 <Route path="/aktiviteter" element={<ActivitiesPage />} />
                 <Route path="/standup" element={<StandupPage />} />
                 <Route path="/sprinter" element={<SprinterPage />} />
+                <Route path="/backlog" element={<BacklogPage />} />
                 <Route path="/krav" element={<RequirementsPage />} />
                 
                 <Route path="/moter" element={<MeetingCalendarPage />} />

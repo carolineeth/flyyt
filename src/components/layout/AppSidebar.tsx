@@ -3,6 +3,7 @@ import {
   Target,
   Layers,
   CheckSquare,
+  ListChecks,
   BarChart3,
   Calendar,
   Link2,
@@ -35,6 +36,7 @@ const navItems = [
   { title: "Standup", url: "/standup", icon: MessageCircle, hasNotification: true },
   { title: "Aktiviteter", url: "/aktiviteter", icon: Target },
   { title: "Sprinter", url: "/sprinter", icon: Layers },
+  { title: "Backlog", url: "/backlog", icon: ListChecks },
   { title: "Krav", url: "/krav", icon: ClipboardList },
   
   { title: "Møter", url: "/moter", icon: Calendar },
