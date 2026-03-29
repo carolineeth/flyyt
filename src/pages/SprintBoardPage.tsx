@@ -249,7 +249,7 @@ export default function SprintBoardPage() {
 
   const updateBacklogItemMutation = useMutation({
     mutationFn: async ({ id, ...updates }: { id: string; [key: string]: any }) => {
-      const { error } = await supabase.from("backlog_items").update(updates).eq("id", id);
+      const { error } = await (supabase.from("backlog_items").update(updates as any).eq("id", id) as any);
       if (error) throw error;
     },
     onSuccess: () => {
