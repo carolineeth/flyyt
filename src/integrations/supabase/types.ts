@@ -1294,6 +1294,7 @@ export type Database = {
           completed_item_titles: string[] | null
           completed_items: number
           completed_points: number
+          completion_events: any | null
           created_at: string
           daily_burndown: Json | null
           id: string
@@ -1308,6 +1309,7 @@ export type Database = {
           completed_item_titles?: string[] | null
           completed_items?: number
           completed_points?: number
+          completion_events?: any | null
           created_at?: string
           daily_burndown?: Json | null
           id?: string
@@ -1322,6 +1324,7 @@ export type Database = {
           completed_item_titles?: string[] | null
           completed_items?: number
           completed_points?: number
+          completion_events?: any | null
           created_at?: string
           daily_burndown?: Json | null
           id?: string
@@ -1346,39 +1349,57 @@ export type Database = {
         Row: {
           completed_at: string | null
           created_at: string
+          edit_changelog: any | null
           end_date: string
           goal: string | null
           id: string
           is_active: boolean
           name: string
           notes: string | null
+          planning_completed_at: string | null
+          planning_participants: string[] | null
           reflection: string | null
+          review_completed_at: string | null
+          review_participants: string[] | null
+          sprint_planning_notes: string | null
           sprint_review_notes: string | null
           start_date: string
         }
         Insert: {
           completed_at?: string | null
           created_at?: string
+          edit_changelog?: any | null
           end_date: string
           goal?: string | null
           id?: string
           is_active?: boolean
           name: string
           notes?: string | null
+          planning_completed_at?: string | null
+          planning_participants?: string[] | null
           reflection?: string | null
+          review_completed_at?: string | null
+          review_participants?: string[] | null
+          sprint_planning_notes?: string | null
           sprint_review_notes?: string | null
           start_date: string
         }
         Update: {
           completed_at?: string | null
           created_at?: string
+          edit_changelog?: any | null
           end_date?: string
           goal?: string | null
           id?: string
           is_active?: boolean
           name?: string
           notes?: string | null
+          planning_completed_at?: string | null
+          planning_participants?: string[] | null
           reflection?: string | null
+          review_completed_at?: string | null
+          review_participants?: string[] | null
+          sprint_planning_notes?: string | null
           sprint_review_notes?: string | null
           start_date?: string
         }

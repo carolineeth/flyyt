@@ -140,6 +140,9 @@ export default function SprinterPage() {
   const [editForm, setEditForm] = useState<any>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
+  const [planningNotes, setPlanningNotes] = useState("");
+  const [showReviewMode, setShowReviewMode] = useState(false);
+  const [reviewNotes, setReviewNotes] = useState("");
 
   // Computed
   const sprintItemIds = useMemo(() => new Set(allSprintItemIds ?? []), [allSprintItemIds]);
@@ -328,6 +331,44 @@ export default function SprinterPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["sprints"] });
       toast.success("Sprint startet");
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  // Save sprint planning notes + mark planning as completed
+  const savePlanningMutation = useMutation({
+    mutationFn: async ({ sprintId, notes, participants }: { sprintId: string; notes: string; participants: string[] }) => {
+      const { error } = await supabase.from("sprints").update({
+        sprint_planning_notes: notes || null,
+        planning_completed_at: new Date().toISOString(),
+        planning_participants: participants,
+      } as any).eq("id", sprintId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["sprints"] });
+      toast.success("Sprint Planning fullført og lagret");
+      setPlanningMode(false);
+      setPlanningSelected(new Set());
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  // Save sprint review notes + mark review as completed
+  const saveReviewMutation = useMutation({
+    mutationFn: async ({ sprintId, notes, participants }: { sprintId: string; notes: string; participants: string[] }) => {
+      const { error } = await supabase.from("sprints").update({
+        sprint_review_notes: notes || null,
+        review_completed_at: new Date().toISOString(),
+        review_participants: participants,
+      } as any).eq("id", sprintId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["sprints"] });
+      qc.invalidateQueries({ queryKey: ["completed_sprints"] });
+      toast.success("Sprint Review fullført og lagret");
+      setShowReviewMode(false);
     },
     onError: (e) => toast.error((e as Error).message),
   });
@@ -668,7 +709,13 @@ export default function SprinterPage() {
               Start sprint
             </Button>
           )}
-          {currentSprint?.is_active && !planningMode && (
+          {currentSprint?.is_active && !planningMode && !showReviewMode && (
+            <button className="h-8 px-4 text-sm font-medium rounded-[10px] bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors flex items-center gap-1.5"
+              onClick={() => { setShowReviewMode(true); setReviewNotes(currentSprint.sprint_review_notes ?? ""); }}>
+              Sprint Review
+            </button>
+          )}
+          {currentSprint?.is_active && !planningMode && !showReviewMode && (
             <button className="h-8 px-4 text-sm font-medium rounded-[10px] bg-red-50 text-red-700 hover:bg-red-100 transition-colors flex items-center gap-1.5"
               onClick={() => setShowCloseSprint(true)}>
               <StopCircle className="h-3.5 w-3.5" /> Avslutt sprint
@@ -703,11 +750,84 @@ export default function SprinterPage() {
             )}
           </div>
         )}
+        {/* Sprint status banner */}
+        {currentSprint && !currentSprint.completed_at && (
+          <div className={`flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-lg ${
+            planningMode ? "bg-blue-50 text-blue-700" :
+            showReviewMode ? "bg-purple-50 text-purple-700" :
+            currentSprint.is_active ? "bg-green-50 text-green-700" :
+            "bg-neutral-100 text-neutral-600"
+          }`}>
+            <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
+            {planningMode ? "Sprint Planning pågår" :
+             showReviewMode ? "Sprint Review pågår" :
+             currentSprint.is_active ? "Sprint aktiv" :
+             "Sprint ikke startet"}
+          </div>
+        )}
+
         {planningMode && (
-          <div className="text-xs text-green-700 bg-green-50 rounded px-2 py-1">
-            Valgt: <strong>{
-              Array.from(planningSelected).reduce((s, id) => s + (allBacklogItems?.find(i => i.id === id)?.estimate ?? 0), 0)
-            } SP</strong> | Anbefalt: ~40 SP per sprint
+          <div className="space-y-2">
+            <div className="text-xs text-green-700 bg-green-50 rounded px-2 py-1">
+              Valgt: <strong>{
+                Array.from(planningSelected).reduce((s, id) => s + (allBacklogItems?.find(i => i.id === id)?.estimate ?? 0), 0)
+              } SP</strong> | Anbefalt: ~40 SP per sprint
+            </div>
+            <div>
+              <textarea
+                value={planningNotes}
+                onChange={(e) => setPlanningNotes(e.target.value)}
+                placeholder="Sprint Planning-notater: Beslutninger, prioriteringer, diskusjoner..."
+                className="w-full text-sm rounded-[10px] border border-neutral-200 p-3 min-h-[60px] resize-none"
+                rows={2}
+              />
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={() => {
+                  if (!currentSprintId) return;
+                  savePlanningMutation.mutate({
+                    sprintId: currentSprintId,
+                    notes: planningNotes,
+                    participants: members?.map(m => m.id) ?? [],
+                  });
+                }}
+                disabled={savePlanningMutation.isPending}
+                className="bg-blue-600 text-white py-1.5 px-4 rounded-[10px] text-xs font-semibold hover:bg-blue-700 transition-colors"
+              >
+                {savePlanningMutation.isPending ? "Lagrer..." : "Fullfør Sprint Planning"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Sprint Review mode */}
+        {showReviewMode && currentSprint && (
+          <div className="space-y-2 bg-purple-50 rounded-xl p-4">
+            <p className="text-sm font-semibold text-purple-700">Sprint Review</p>
+            <textarea
+              value={reviewNotes}
+              onChange={(e) => setReviewNotes(e.target.value)}
+              placeholder="Sprint Review-notater: Hva ble demonstrert, feedback fra stakeholders..."
+              className="w-full text-sm rounded-[10px] border border-purple-200 p-3 min-h-[60px] resize-none bg-white"
+              rows={2}
+            />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowReviewMode(false)} className="text-xs text-muted-foreground hover:text-foreground">Avbryt</button>
+              <button
+                onClick={() => {
+                  saveReviewMutation.mutate({
+                    sprintId: currentSprint.id,
+                    notes: reviewNotes,
+                    participants: members?.map(m => m.id) ?? [],
+                  });
+                }}
+                disabled={saveReviewMutation.isPending}
+                className="bg-purple-600 text-white py-1.5 px-4 rounded-[10px] text-xs font-semibold hover:bg-purple-700 transition-colors"
+              >
+                {saveReviewMutation.isPending ? "Lagrer..." : "Fullfør Sprint Review"}
+              </button>
+            </div>
           </div>
         )}
       </div>

@@ -11,7 +11,7 @@ import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, ReferenceLine } from "recharts";
-import { ChevronDown, ChevronRight, Copy, Download, Table2, TrendingUp, TrendingDown, Minus, History, Check, X as XIcon } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, Download, Table2, TrendingUp, TrendingDown, Minus, History, Check, X as XIcon, Pencil, FileText } from "lucide-react";
 import { format, parseISO, eachDayOfInterval } from "date-fns";
 import { nb } from "date-fns/locale";
 import html2canvas from "html2canvas";
@@ -25,6 +25,14 @@ const typeColors: Record<string, string> = {
   design: "bg-[#FBEAF0] text-[#72243E]",
 };
 
+interface CompletionEvent {
+  taskId: string;
+  taskName: string;
+  storyPoints: number;
+  completedAt: string | null;
+  completedBy: string | null;
+}
+
 interface SprintSnapshot {
   id: string;
   sprint_id: string;
@@ -37,6 +45,7 @@ interface SprintSnapshot {
   completed_item_titles: string[];
   incomplete_item_titles: string[];
   daily_burndown: { date: string; remaining: number; ideal: number }[];
+  completion_events?: CompletionEvent[];
   created_at: string;
 }
 
@@ -48,7 +57,11 @@ interface CompletedSprint {
   end_date: string;
   completed_at: string | null;
   sprint_review_notes: string | null;
+  sprint_planning_notes: string | null;
+  planning_completed_at: string | null;
+  review_completed_at: string | null;
   reflection: string | null;
+  edit_changelog: any[] | null;
   snapshot?: SprintSnapshot;
 }
 
@@ -111,6 +124,28 @@ export default function SprintHistory() {
     onError: () => toast.error("Kunne ikke lagre"),
   });
 
+  const [editingSprintId, setEditingSprintId] = useState<string | null>(null);
+
+  // Edit sprint field with changelog
+  const editSprintField = useMutation({
+    mutationFn: async ({ id, field, value, oldValue }: { id: string; field: string; value: string; oldValue: string }) => {
+      // Get existing changelog
+      const sprint = sprintsWithSnapshots.find(s => s.id === id);
+      const existingLog: any[] = (sprint as any)?.edit_changelog ?? [];
+      const newEntry = { timestamp: new Date().toISOString(), field, oldValue, newValue: value };
+      const { error } = await supabase.from("sprints").update({
+        [field]: value || null,
+        edit_changelog: [...existingLog, newEntry],
+      } as any).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["completed_sprints"] });
+      toast.success("Sprint oppdatert");
+    },
+    onError: () => toast.error("Kunne ikke oppdatere"),
+  });
+
   const copyText = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} kopiert`);
@@ -139,11 +174,103 @@ ${sn.incomplete_item_titles.map((t) => `- ${t}`).join("\n") || "Ingen"}
 Bidrag per teammedlem:
 ${byPerson || "Ingen data"}
 
+Sprint Planning-notater:
+${sprint.sprint_planning_notes ?? "–"}
+
 Sprint review:
 ${sprint.sprint_review_notes ?? "–"}
 
 Refleksjon:
 ${sprint.reflection ?? "–"}`;
+  };
+
+  // Markdown export for university process log
+  const exportSprintMarkdown = (sprint: CompletedSprint) => {
+    const sn = sprint.snapshot;
+    if (!sn) return "";
+    const completionPct = sn.total_points > 0 ? Math.round((sn.completed_points / sn.total_points) * 100) : 0;
+    const period = `${format(parseISO(sprint.start_date), "d. MMM", { locale: nb })}–${format(parseISO(sprint.end_date), "d. MMM yyyy", { locale: nb })}`;
+    const byPerson = Object.entries(sn.items_by_person ?? {})
+      .map(([key, d]) => {
+        const member = members?.find((m) => m.id === key);
+        const name = member ? member.name.split(" ")[0] : key;
+        return `- ${name}: ${d.points} SP (${d.completed} fullført av ${d.assigned} tildelt)`;
+      }).join("\n");
+
+    const completionEvents = (sn.completion_events ?? []) as CompletionEvent[];
+    const completedTasksSection = completionEvents.length > 0
+      ? completionEvents.map(e => {
+          const dateStr = e.completedAt ? format(parseISO(e.completedAt), "d. MMM", { locale: nb }) : "ukjent dato";
+          return `- [${dateStr}] — ${e.taskName} (${e.storyPoints} SP)`;
+        }).join("\n")
+      : sn.completed_item_titles.map(t => `- ${t}`).join("\n");
+
+    return `## ${sprint.name} — ${period}
+
+### Sprint Planning
+**Sprint goal:** ${sprint.goal ?? "–"}
+${sprint.sprint_planning_notes ? `\n**Notater:**\n${sprint.sprint_planning_notes}\n` : ""}
+**Planlagt:** ${sn.total_items} items, ${sn.total_points} story points
+
+### Statistikk
+- **Levert:** ${sn.completed_items} items, ${sn.completed_points} SP (${completionPct}% completion)
+- **Velocity:** ${sn.completed_points} SP
+
+### Fullførte oppgaver
+${completedTasksSection || "Ingen"}
+
+### Ikke fullført
+${sn.incomplete_item_titles.map(t => `- ${t}`).join("\n") || "Ingen"}
+
+### Bidrag per teammedlem
+${byPerson || "Ingen data"}
+
+### Sprint Review
+${sprint.sprint_review_notes ?? "Ingen notater"}
+
+### Refleksjon
+${sprint.reflection ?? "Ingen refleksjon"}
+`;
+  };
+
+  // Full JSON export
+  const exportAllJSON = () => {
+    const data = sprintsWithSnapshots.map(s => ({
+      sprint: {
+        name: s.name, goal: s.goal, start_date: s.start_date, end_date: s.end_date,
+        completed_at: s.completed_at, sprint_planning_notes: s.sprint_planning_notes,
+        planning_completed_at: (s as any).planning_completed_at,
+        review_completed_at: (s as any).review_completed_at,
+        sprint_review_notes: s.sprint_review_notes, reflection: s.reflection,
+        edit_changelog: s.edit_changelog ?? [],
+      },
+      snapshot: s.snapshot ? {
+        total_items: s.snapshot.total_items, completed_items: s.snapshot.completed_items,
+        total_points: s.snapshot.total_points, completed_points: s.snapshot.completed_points,
+        items_by_type: s.snapshot.items_by_type, items_by_person: s.snapshot.items_by_person,
+        completed_item_titles: s.snapshot.completed_item_titles,
+        incomplete_item_titles: s.snapshot.incomplete_item_titles,
+        daily_burndown: s.snapshot.daily_burndown,
+        completion_events: s.snapshot.completion_events ?? [],
+      } : null,
+    }));
+    const aggregate = {
+      total_sprints: data.length,
+      avg_velocity: avgVelocity,
+      total_items_completed: data.reduce((s, d) => s + (d.snapshot?.completed_items ?? 0), 0),
+      total_items_planned: data.reduce((s, d) => s + (d.snapshot?.total_items ?? 0), 0),
+      total_sp_delivered: data.reduce((s, d) => s + (d.snapshot?.completed_points ?? 0), 0),
+    };
+    return JSON.stringify({ sprints: data, aggregate, exported_at: new Date().toISOString() }, null, 2);
+  };
+
+  // Full Markdown export
+  const exportAllMarkdown = () => {
+    let md = `# Sprint-oversikt — Flyyt\n\n`;
+    md += `**Eksportert:** ${format(new Date(), "d. MMMM yyyy HH:mm", { locale: nb })}\n`;
+    md += `**Totalt:** ${sprintsWithSnapshots.length} sprinter · Gjennomsnittlig velocity: ${avgVelocity} SP/sprint\n\n---\n\n`;
+    [...sprintsWithSnapshots].reverse().forEach(s => { md += exportSprintMarkdown(s) + "\n---\n\n"; });
+    return md;
   };
 
   const exportSprintTable = (sprint: CompletedSprint) => {
@@ -235,6 +362,12 @@ ${sprint.reflection ?? "–"}`;
                     {format(parseISO(sprint.start_date), "d. MMM", { locale: nb })}–{format(parseISO(sprint.end_date), "d. MMM yyyy", { locale: nb })}
                   </span>
                   <Badge className="bg-green-100 text-green-700 text-[9px]">Fullført</Badge>
+                  {(sprint as any).planning_completed_at && (
+                    <Badge className="bg-blue-50 text-blue-700 text-[9px]">Sprint Planning ✓</Badge>
+                  )}
+                  {(sprint as any).review_completed_at && (
+                    <Badge className="bg-purple-50 text-purple-700 text-[9px]">Sprint Review ✓</Badge>
+                  )}
                 </div>
                 {sprint.goal && (
                   <p className="text-xs text-muted-foreground italic mt-0.5 border-l-2 border-primary/30 pl-2">{sprint.goal}</p>
@@ -344,6 +477,50 @@ ${sprint.reflection ?? "–"}`;
                   </div>
                 )}
 
+                {/* Completion timeline */}
+                {(() => {
+                  const events = (sn.completion_events ?? []) as CompletionEvent[];
+                  const hasTimestamps = events.some(e => e.completedAt);
+                  if (events.length === 0) return null;
+                  if (!hasTimestamps) return (
+                    <div>
+                      <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">Fullførte oppgaver over tid</p>
+                      <p className="text-xs text-muted-foreground italic">Tidsstempler ikke tilgjengelig for denne sprinten</p>
+                    </div>
+                  );
+                  // Build cumulative data
+                  const sorted = events.filter(e => e.completedAt).sort((a, b) => (a.completedAt ?? "").localeCompare(b.completedAt ?? ""));
+                  let cumSP = 0;
+                  const timelineData = sorted.map((e, i) => {
+                    cumSP += e.storyPoints;
+                    return { name: format(parseISO(e.completedAt!), "d. MMM", { locale: nb }), cumTasks: i + 1, cumSP, task: e.taskName };
+                  });
+                  return (
+                    <div>
+                      <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">Fullførte oppgaver over tid</p>
+                      <div className="h-[160px]">
+                        <ResponsiveContainer>
+                          <LineChart data={timelineData}>
+                            <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                            <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                            <YAxis tick={{ fontSize: 10 }} width={30} />
+                            <Tooltip contentStyle={{ fontSize: 11 }} formatter={(val: any, name: string) => [val, name === "cumSP" ? "Kumulative SP" : "Oppgaver"]} />
+                            <Line type="stepAfter" dataKey="cumSP" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} name="Kumulative SP" />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Sprint Planning notes */}
+                <div>
+                  <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">Sprint Planning-notater</Label>
+                  <Textarea value={sprint.sprint_planning_notes ?? ""} rows={2}
+                    className="mt-1 text-xs bg-muted/30"
+                    onChange={(e) => updateReflection.mutate({ id: sprint.id, field: "sprint_planning_notes", value: e.target.value })} />
+                </div>
+
                 {/* Sprint review notes */}
                 <div>
                   <Label className="text-[11px] text-muted-foreground uppercase tracking-wide">Sprint review-notater</Label>
@@ -360,19 +537,33 @@ ${sprint.reflection ?? "–"}`;
                     onChange={(e) => updateReflection.mutate({ id: sprint.id, field: "reflection", value: e.target.value })} />
                 </div>
 
+                {/* Edit changelog */}
+                {(sprint.edit_changelog ?? []).length > 0 && (
+                  <div>
+                    <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">Endringslogg</p>
+                    <div className="space-y-1 max-h-24 overflow-y-auto">
+                      {(sprint.edit_changelog as any[]).map((entry, i) => (
+                        <p key={i} className="text-[10px] text-muted-foreground">
+                          {format(parseISO(entry.timestamp), "d. MMM HH:mm", { locale: nb })} — {entry.field} endret
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Export buttons */}
                 <div className="flex gap-2 flex-wrap">
                   <Button size="sm" variant="outline" className="text-[11px] h-7"
-                    onClick={() => copyText(exportSprintText(sprint), "Prosesslogg-tekst")}>
-                    <Copy className="h-3 w-3 mr-1" /> Eksporter til prosesslogg
+                    onClick={() => copyText(exportSprintMarkdown(sprint), "Markdown for prosesslogg")}>
+                    <FileText className="h-3 w-3 mr-1" /> Markdown (prosesslogg)
+                  </Button>
+                  <Button size="sm" variant="outline" className="text-[11px] h-7"
+                    onClick={() => copyText(exportSprintText(sprint), "Ren tekst")}>
+                    <Copy className="h-3 w-3 mr-1" /> Ren tekst
                   </Button>
                   <Button size="sm" variant="outline" className="text-[11px] h-7"
                     onClick={() => exportImage(`sprint-card-${sprint.id}`)}>
-                    <Download className="h-3 w-3 mr-1" /> Eksporter som bilde
-                  </Button>
-                  <Button size="sm" variant="outline" className="text-[11px] h-7"
-                    onClick={() => copyText(exportSprintTable(sprint), "Markdown-tabell")}>
-                    <Table2 className="h-3 w-3 mr-1" /> Eksporter sprint-tabell
+                    <Download className="h-3 w-3 mr-1" /> Bilde
                   </Button>
                 </div>
               </div>
@@ -464,6 +655,35 @@ ${sprint.reflection ?? "–"}`;
             }}>
               <Copy className="h-3 w-3 mr-1" /> Eksporter tabell
             </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Export all sprints */}
+      {sprintsWithSnapshots.length > 0 && (
+        <Card>
+          <CardContent className="pt-4 flex flex-wrap gap-3 items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold">Eksporter alle sprinter</p>
+              <p className="text-xs text-muted-foreground">Komplett sprint-historikk for prosesslogg og rapport</p>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" className="text-[11px] h-7"
+                onClick={() => copyText(exportAllMarkdown(), "Markdown-eksport")}>
+                <FileText className="h-3 w-3 mr-1" /> Markdown (prosesslogg)
+              </Button>
+              <Button size="sm" variant="outline" className="text-[11px] h-7"
+                onClick={() => {
+                  const blob = new Blob([exportAllJSON()], { type: "application/json" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url; a.download = `flyyt-sprint-export-${format(new Date(), "yyyy-MM-dd")}.json`;
+                  a.click(); URL.revokeObjectURL(url);
+                  toast.success("JSON-fil lastet ned");
+                }}>
+                <Download className="h-3 w-3 mr-1" /> JSON (backup)
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}

@@ -96,6 +96,16 @@ export default function CloseSprintModal({ open, onOpenChange, sprint, sprintIte
         dailyBurndown[i].remaining = Math.round(totalPoints - completedPoints * progress);
       }
 
+      // Build completion events for done items
+      // For existing sprints without timestamps, completedAt will be null
+      const completionEvents = doneItems.map((i) => ({
+        taskId: i.backlog_item_id,
+        taskName: i.backlog_item?.title ?? "",
+        storyPoints: i.backlog_item?.estimate ?? 0,
+        completedAt: new Date().toISOString(), // Current close time as best approximation
+        completedBy: null,
+      }));
+
       // Save snapshot
       const { error: snapError } = await supabase.from("sprint_snapshots").insert({
         sprint_id: sprint.id,
@@ -108,7 +118,8 @@ export default function CloseSprintModal({ open, onOpenChange, sprint, sprintIte
         completed_item_titles: doneItems.map((i) => i.backlog_item?.title ?? ""),
         incomplete_item_titles: incompleteItems.map((i) => i.backlog_item?.title ?? ""),
         daily_burndown: dailyBurndown,
-      });
+        completion_events: completionEvents,
+      } as any);
       if (snapError) throw snapError;
 
       // Update sprint
