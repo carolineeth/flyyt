@@ -37,7 +37,8 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
   const mandatoryFirstHalf = catalog.filter((c) => c.is_mandatory && c.period === "first_half");
   const optionalFirstHalf = catalog.filter((c) => !c.is_mandatory && c.period === "first_half");
   const meetingBased = catalog.filter((c) => c.category === "meeting_based");
-  const secondHalf = catalog.filter((c) => c.period === "second_half");
+  const mandatorySecondHalf = catalog.filter((c) => c.is_mandatory && c.period === "second_half");
+  const optionalSecondHalf = catalog.filter((c) => !c.is_mandatory && c.period === "second_half");
   const custom = catalog.filter((c) => c.name === "Egendefinert aktivitet");
 
   const agileMeetings = meetingBased.filter((c) => ["daily_standup", "sprint_planning", "sprint_review"].includes(c.meeting_type || ""));
@@ -270,22 +271,38 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
         })}
       </div>
 
-      {/* Second half */}
-      <Section title="Andre halvdel" subtitle="Tilgjengelig etter 5. april" variant="dimmed">
-        {secondHalf.length > 0 ? (
-          secondHalf.map((item) => (
+      {/* Mandatory second half */}
+      {mandatorySecondHalf.length > 0 && (
+        <><div className="border-t border-neutral-200 mt-6 pt-6" />
+        <Section title="Obligatoriske — andre halvdel" subtitle="Frist 10. mai" variant="mandatory">
+          {mandatorySecondHalf
+            .sort((a, b) => (isCompleted(a.id) ? 1 : 0) - (isCompleted(b.id) ? 1 : 0))
+            .map((item) => (
+              <CatalogRow key={item.id} item={item} onClick={() => openModal(item)}>
+                <StatusIcon catId={item.id} />
+                <span className="text-sm flex-1">{item.name}</span>
+                <Badge variant="secondary" className="text-[10px] tabular-nums">{item.points}p</Badge>
+                <Badge variant="destructive" className="text-[10px]">Obligatorisk</Badge>
+                <Badge variant="outline" className="text-[10px]">10. mai</Badge>
+              </CatalogRow>
+            ))}
+        </Section></>
+      )}
+
+      {/* Optional second half */}
+      {optionalSecondHalf.length > 0 && (
+        <><div className="border-t border-neutral-200 mt-6 pt-6" />
+        <Section title="Valgfrie — andre halvdel" subtitle="Frist 10. mai">
+          {optionalSecondHalf.map((item) => (
             <CatalogRow key={item.id} item={item} onClick={() => openModal(item)}>
               <StatusIcon catId={item.id} />
               <span className="text-sm flex-1">{item.name}</span>
               <Badge variant="secondary" className="text-[10px] tabular-nums">{item.points}p</Badge>
+              {item.period_deadline && <Badge variant="outline" className="text-[10px]">10. mai</Badge>}
             </CatalogRow>
-          ))
-        ) : (
-          <div className="text-sm text-muted-foreground py-4 text-center">
-            Nye aktiviteter publiseres etter 5. april. Du kan legge dem til her når de er klare.
-          </div>
-        )}
-      </Section>
+          ))}
+        </Section></>
+      )}
 
       {/* Registration modal */}
       {selectedCatalog && (
