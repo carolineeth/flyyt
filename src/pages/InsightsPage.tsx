@@ -902,6 +902,42 @@ export default function InsightsPage() {
           );
         })()}
 
+        {/* Requirements activity over time chart */}
+        {reqChanges.length > 0 && (() => {
+          // Group changes by week and type
+          const weekMap: Record<string, { week: string; opprettet: number; implementert: number; slettet: number; andre: number }> = {};
+          [...reqChanges].reverse().forEach((c) => {
+            const w = `Uke ${getISOWeek(parseISO(c.created_at))}`;
+            if (!weekMap[w]) weekMap[w] = { week: w, opprettet: 0, implementert: 0, slettet: 0, andre: 0 };
+            if (c.change_type === "created") weekMap[w].opprettet++;
+            else if (c.change_type === "status_changed" && c.new_value === "implemented") weekMap[w].implementert++;
+            else if (c.change_type === "deleted") weekMap[w].slettet++;
+            else weekMap[w].andre++;
+          });
+          const chartData = Object.values(weekMap);
+          if (chartData.length < 2) return null;
+          return (
+            <div className="mb-4">
+              <h4 className="text-sm font-medium mb-2 text-muted-foreground">Kravaktivitet over tid</h4>
+              <div className="h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                    <XAxis dataKey="week" className="text-xs" />
+                    <YAxis className="text-xs" allowDecimals={false} />
+                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                    <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
+                    <Bar dataKey="opprettet" stackId="a" fill="#0F6E56" name="Opprettet" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="implementert" stackId="a" fill="#2563EB" name="Implementert" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="slettet" stackId="a" fill="#DC2626" name="Slettet" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="andre" stackId="a" fill="#9CA3AF" name="Andre endringer" radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Change timeline */}
         {reqChanges.length > 0 ? (
           <div>
