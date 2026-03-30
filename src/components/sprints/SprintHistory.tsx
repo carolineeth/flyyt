@@ -159,28 +159,56 @@ export default function SprintHistory() {
       const doneItemIds: string[] = snAny.done_item_ids?.length ? snAny.done_item_ids : [];
       const hasFullIds = allItemIds.length > 0;
 
-      // Fallback: extract done item IDs from completion_events
+      // Fallback 1: extract done item IDs from completion_events
       let fallbackDoneIds: string[] = [];
       if (!hasFullIds && sn.completion_events?.length) {
         fallbackDoneIds = (sn.completion_events as CompletionEvent[])
           .map(e => e.taskId).filter(Boolean);
       }
 
-      const idsToFetch = hasFullIds ? allItemIds : fallbackDoneIds;
+      // Fallback 2: match by title if no IDs at all
+      let matchedByTitle = false;
+      let idsToFetch = hasFullIds ? allItemIds : fallbackDoneIds;
+
       if (idsToFetch.length === 0) {
-        toast.error("Ingen item-IDer tilgjengelig for rekalkulering");
-        setRecalculating(null);
-        return;
+        // Last resort: find items by title from completed_item_titles + incomplete_item_titles
+        const allTitles = [...(sn.completed_item_titles ?? []), ...(sn.incomplete_item_titles ?? [])];
+        if (allTitles.length === 0) {
+          toast.error("Ingen item-IDer eller titler tilgjengelig for rekalkulering");
+          setRecalculating(null);
+          return;
+        }
+        const { data: titleMatched, error: titleErr } = await supabase
+          .from("backlog_items")
+          .select("id, title, type, estimate, collaborator_ids, assignee_id");
+        if (titleErr) throw titleErr;
+
+        const completedTitleSet = new Set(sn.completed_item_titles ?? []);
+        const matched = (titleMatched ?? []).filter(i => allTitles.includes(i.title));
+        idsToFetch = matched.map(i => i.id);
+        fallbackDoneIds = matched.filter(i => completedTitleSet.has(i.title)).map(i => i.id);
+        matchedByTitle = true;
       }
 
       // Fetch current backlog items
-      const { data: currentItems, error } = await supabase
-        .from("backlog_items")
-        .select("id, title, type, estimate, collaborator_ids, assignee_id")
-        .in("id", idsToFetch);
-      if (error) throw error;
+      let currentItems: any[];
+      if (matchedByTitle) {
+        // Already fetched above
+        const { data } = await supabase
+          .from("backlog_items")
+          .select("id, title, type, estimate, collaborator_ids, assignee_id")
+          .in("id", idsToFetch);
+        currentItems = data ?? [];
+      } else {
+        const { data, error } = await supabase
+          .from("backlog_items")
+          .select("id, title, type, estimate, collaborator_ids, assignee_id")
+          .in("id", idsToFetch);
+        if (error) throw error;
+        currentItems = data ?? [];
+      }
 
-      const itemMap = new Map((currentItems ?? []).map(i => [i.id, i]));
+      const itemMap = new Map(currentItems.map(i => [i.id, i]));
       const effectiveDoneIds = new Set(hasFullIds ? doneItemIds : fallbackDoneIds);
 
       // Rebuild totals
@@ -227,6 +255,8 @@ export default function SprintHistory() {
       qc.invalidateQueries({ queryKey: ["sprint_snapshots"] });
       toast.success(hasFullIds
         ? "Snapshot rekalkulert med oppdaterte SP-verdier"
+        : matchedByTitle
+        ? "Rekalkulert via tittel-matching — nøyaktigheten kan variere"
         : "Delvis rekalkulert — kun fullførte oppgaver oppdatert"
       );
     } catch (e) {
