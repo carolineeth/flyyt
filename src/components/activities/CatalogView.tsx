@@ -34,12 +34,11 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
   const isCompleted = (catId: string) => getRegistrationsFor(catId).some((r) => r.status === "completed");
   const isInProgress = (catId: string) => getRegistrationsFor(catId).some((r) => r.status === "in_progress");
 
-  const mandatoryFirstHalf = catalog.filter((c) => c.is_mandatory && c.period === "first_half");
-  const optionalFirstHalf = catalog.filter((c) => !c.is_mandatory && c.period === "first_half");
   const meetingBased = catalog.filter((c) => c.category === "meeting_based");
-  const mandatorySecondHalf = catalog.filter((c) => c.is_mandatory && c.period === "second_half");
-  const optionalSecondHalf = catalog.filter((c) => !c.is_mandatory && c.period === "second_half");
   const custom = catalog.filter((c) => c.name === "Egendefinert aktivitet");
+  const meetingAndCustomIds = new Set([...meetingBased.map(c => c.id), ...custom.map(c => c.id)]);
+  const allMandatory = catalog.filter((c) => c.is_mandatory && !meetingAndCustomIds.has(c.id));
+  const allOptional = catalog.filter((c) => !c.is_mandatory && !meetingAndCustomIds.has(c.id));
 
   const agileMeetings = meetingBased.filter((c) => ["daily_standup", "sprint_planning", "sprint_review"].includes(c.meeting_type || ""));
   const advisorMeeting = meetingBased.find((c) => c.meeting_type === "veiledermøte");
@@ -78,10 +77,10 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
 
   return (
     <div className="space-y-6">
-      {/* Mandatory + Optional first half in one card */}
+      {/* Obligatoriske + Valgfrie in one card */}
       <div className="card-elevated p-6 space-y-0">
-      <Section title="Obligatoriske — første halvdel" subtitle="Frist 5. april" variant="mandatory">
-        {mandatoryFirstHalf
+      <Section title="Obligatoriske aktiviteter" variant="mandatory">
+        {allMandatory
           .sort((a, b) => (isCompleted(a.id) ? 1 : 0) - (isCompleted(b.id) ? 1 : 0))
           .map((item) => (
             <CatalogRow key={item.id} item={item} onClick={() => openModal(item)}>
@@ -89,21 +88,18 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
               <span className="text-sm flex-1">{item.name}</span>
               <Badge variant="secondary" className="text-[10px] tabular-nums">{item.points}p</Badge>
               <Badge variant="destructive" className="text-[10px]">Obligatorisk</Badge>
-              <Badge variant="outline" className="text-[10px]">5. apr</Badge>
             </CatalogRow>
           ))}
       </Section>
 
-      {/* Optional first half — same card, with separator */}
-      {optionalFirstHalf.length > 0 && (
+      {allOptional.length > 0 && (
         <><div className="border-t border-neutral-200 mt-6 pt-6" />
-        <Section title="Valgfrie — første halvdel">
-          {optionalFirstHalf.map((item) => (
+        <Section title="Valgfrie aktiviteter">
+          {allOptional.map((item) => (
             <CatalogRow key={item.id} item={item} onClick={() => openModal(item)}>
               <StatusIcon catId={item.id} />
               <span className="text-sm flex-1">{item.name}</span>
               <Badge variant="secondary" className="text-[10px] tabular-nums">{item.points}p</Badge>
-              {item.period_deadline && <Badge variant="outline" className="text-[10px]">5. apr</Badge>}
             </CatalogRow>
           ))}
         </Section>
@@ -266,38 +262,7 @@ export function CatalogView({ catalog, registrations }: CatalogViewProps) {
         })}
       </div>
 
-      {/* Mandatory second half */}
-      {mandatorySecondHalf.length > 0 && (
-        <><div className="border-t border-neutral-200 mt-6 pt-6" />
-        <Section title="Obligatoriske — andre halvdel" subtitle="Frist 10. mai" variant="mandatory">
-          {mandatorySecondHalf
-            .sort((a, b) => (isCompleted(a.id) ? 1 : 0) - (isCompleted(b.id) ? 1 : 0))
-            .map((item) => (
-              <CatalogRow key={item.id} item={item} onClick={() => openModal(item)}>
-                <StatusIcon catId={item.id} />
-                <span className="text-sm flex-1">{item.name}</span>
-                <Badge variant="secondary" className="text-[10px] tabular-nums">{item.points}p</Badge>
-                <Badge variant="destructive" className="text-[10px]">Obligatorisk</Badge>
-                <Badge variant="outline" className="text-[10px]">10. mai</Badge>
-              </CatalogRow>
-            ))}
-        </Section></>
-      )}
-
-      {/* Optional second half */}
-      {optionalSecondHalf.length > 0 && (
-        <><div className="border-t border-neutral-200 mt-6 pt-6" />
-        <Section title="Valgfrie — andre halvdel" subtitle="Frist 10. mai">
-          {optionalSecondHalf.map((item) => (
-            <CatalogRow key={item.id} item={item} onClick={() => openModal(item)}>
-              <StatusIcon catId={item.id} />
-              <span className="text-sm flex-1">{item.name}</span>
-              <Badge variant="secondary" className="text-[10px] tabular-nums">{item.points}p</Badge>
-              {item.period_deadline && <Badge variant="outline" className="text-[10px]">10. mai</Badge>}
-            </CatalogRow>
-          ))}
-        </Section></>
-      )}
+      {/* Second-half sections removed — activities merged into unified sections above */}
 
       {/* Registration modal */}
       {selectedCatalog && (
