@@ -299,6 +299,7 @@ export default function RequirementsPage() {
     },
     onSuccess: (id) => {
       queryClient.invalidateQueries({ queryKey: ["requirements"] });
+      queryClient.invalidateQueries({ queryKey: ["requirement_changes"] });
       toast.success("Krav opprettet");
       setCreateOpen(false);
       setNewReq({ type: "functional", category: "Værkart", title: "", description: "", acceptance_criteria: "", priority: "should" });
