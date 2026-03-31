@@ -1157,6 +1157,42 @@ export type Database = {
           },
         ]
       }
+      requirement_changes: {
+        Row: {
+          change_type: string
+          changed_by: string | null
+          created_at: string
+          description: string | null
+          field_changed: string | null
+          id: string
+          new_value: string | null
+          old_value: string | null
+          requirement_id: string | null
+        }
+        Insert: {
+          change_type: string
+          changed_by?: string | null
+          created_at?: string
+          description?: string | null
+          field_changed?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          requirement_id?: string | null
+        }
+        Update: {
+          change_type?: string
+          changed_by?: string | null
+          created_at?: string
+          description?: string | null
+          field_changed?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          requirement_id?: string | null
+        }
+        Relationships: []
+      }
       requirements: {
         Row: {
           acceptance_criteria: string | null
