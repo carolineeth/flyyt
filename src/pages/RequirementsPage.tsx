@@ -224,11 +224,11 @@ export default function RequirementsPage() {
     updateReq.mutate(
       { id, [field]: value } as any,
       {
-        onSuccess: () => {
+        onSuccess: async () => {
           toast.success("Oppdatert");
           // Log the change
           if (field === "status" && current) {
-            logRequirementChange({
+            await logRequirementChange({
               requirement_id: id,
               change_type: "status_changed",
               field_changed: "status",
@@ -237,7 +237,7 @@ export default function RequirementsPage() {
               description: `Status endret fra ${STATUS_DISPLAY[current.status] ?? current.status} til ${STATUS_DISPLAY[value] ?? value}`,
             });
           } else if (field === "priority" && current) {
-            logRequirementChange({
+            await logRequirementChange({
               requirement_id: id,
               change_type: "priority_changed",
               field_changed: "priority",
@@ -245,7 +245,17 @@ export default function RequirementsPage() {
               new_value: value,
               description: `Prioritet endret fra ${PRIORITY_DISPLAY[current.priority] ?? current.priority} til ${PRIORITY_DISPLAY[value] ?? value}`,
             });
+          } else if (current) {
+            await logRequirementChange({
+              requirement_id: id,
+              change_type: "updated",
+              field_changed: field,
+              old_value: String((current as any)[field] ?? ""),
+              new_value: String(value ?? ""),
+              description: `Felt «${field}» oppdatert`,
+            });
           }
+          queryClient.invalidateQueries({ queryKey: ["requirement_changes"] });
         },
       }
     );
