@@ -915,7 +915,7 @@ export default function InsightsPage() {
             else weekMap[w].andre++;
           });
           const chartData = Object.values(weekMap);
-          if (chartData.length < 2) return null;
+          if (chartData.length === 0) return null;
           return (
             <div className="mb-4">
               <h4 className="text-sm font-medium mb-2 text-muted-foreground">Kravaktivitet over tid</h4>

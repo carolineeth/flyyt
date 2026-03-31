@@ -362,18 +362,18 @@ export type Database = {
           epic: string | null
           epic_id: string | null
           estimate: number | null
+          estimate_changelog: Json | null
           id: string
           item_id: string
           labels: string[] | null
           priority: string
+          quality_tags: string[] | null
           sort_order: number
           status: string
           title: string
           type: string
           updated_at: string
           user_story: string | null
-          quality_tags: string[] | null
-          estimate_changelog: any | null
         }
         Insert: {
           assignee_id?: string | null
@@ -383,7 +383,7 @@ export type Database = {
           epic?: string | null
           epic_id?: string | null
           estimate?: number | null
-          estimate_changelog?: any | null
+          estimate_changelog?: Json | null
           id?: string
           item_id: string
           labels?: string[] | null
@@ -404,7 +404,7 @@ export type Database = {
           epic?: string | null
           epic_id?: string | null
           estimate?: number | null
-          estimate_changelog?: any | null
+          estimate_changelog?: Json | null
           id?: string
           item_id?: string
           labels?: string[] | null
@@ -425,7 +425,47 @@ export type Database = {
             referencedRelation: "team_members"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "backlog_items_epic_id_fkey"
+            columns: ["epic_id"]
+            isOneToOne: false
+            referencedRelation: "epics"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      backlog_refinement_sessions: {
+        Row: {
+          created_at: string | null
+          id: string
+          notes: string | null
+          participants: string[] | null
+          session_date: string
+          tasks_added: number | null
+          tasks_reestimated: number | null
+          tasks_reprioritized: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          participants?: string[] | null
+          session_date?: string
+          tasks_added?: number | null
+          tasks_reestimated?: number | null
+          tasks_reprioritized?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          participants?: string[] | null
+          session_date?: string
+          tasks_added?: number | null
+          tasks_reestimated?: number | null
+          tasks_reprioritized?: number | null
+        }
+        Relationships: []
       }
       daily_team_notes: {
         Row: {
@@ -448,30 +488,6 @@ export type Database = {
           entry_date?: string
           id?: string
           updated_at?: string
-        }
-        Relationships: []
-      }
-      epics: {
-        Row: {
-          id: string
-          name: string
-          color: string
-          is_archived: boolean
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          color?: string
-          is_archived?: boolean
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          color?: string
-          is_archived?: boolean
-          created_at?: string
         }
         Relationships: []
       }
@@ -559,6 +575,30 @@ export type Database = {
           related_backlog_items?: string[] | null
           source?: string | null
           title?: string
+        }
+        Relationships: []
+      }
+      epics: {
+        Row: {
+          color: string
+          created_at: string | null
+          id: string
+          is_archived: boolean
+          name: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string | null
+          id?: string
+          is_archived?: boolean
+          name: string
+        }
+        Update: {
+          color?: string
+          created_at?: string | null
+          id?: string
+          is_archived?: boolean
+          name?: string
         }
         Relationships: []
       }
@@ -1091,39 +1131,6 @@ export type Database = {
           },
         ]
       }
-      backlog_refinement_sessions: {
-        Row: {
-          id: string
-          session_date: string
-          notes: string | null
-          tasks_added: number
-          tasks_reestimated: number
-          tasks_reprioritized: number
-          participants: string[] | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          session_date?: string
-          notes?: string | null
-          tasks_added?: number
-          tasks_reestimated?: number
-          tasks_reprioritized?: number
-          participants?: string[] | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          session_date?: string
-          notes?: string | null
-          tasks_added?: number
-          tasks_reestimated?: number
-          tasks_reprioritized?: number
-          participants?: string[] | null
-          created_at?: string
-        }
-        Relationships: []
-      }
       requirement_backlog_links: {
         Row: {
           backlog_item_id: string
@@ -1149,6 +1156,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      requirement_changes: {
+        Row: {
+          change_type: string
+          changed_by: string | null
+          created_at: string
+          description: string | null
+          field_changed: string | null
+          id: string
+          new_value: string | null
+          old_value: string | null
+          requirement_id: string | null
+        }
+        Insert: {
+          change_type: string
+          changed_by?: string | null
+          created_at?: string
+          description?: string | null
+          field_changed?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          requirement_id?: string | null
+        }
+        Update: {
+          change_type?: string
+          changed_by?: string | null
+          created_at?: string
+          description?: string | null
+          field_changed?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          requirement_id?: string | null
+        }
+        Relationships: []
       }
       requirements: {
         Row: {
@@ -1360,13 +1403,16 @@ export type Database = {
           completed_item_titles: string[] | null
           completed_items: number
           completed_points: number
-          completion_events: any | null
+          completion_events: Json | null
           created_at: string
           daily_burndown: Json | null
+          done_item_ids: string[] | null
           id: string
           incomplete_item_titles: string[] | null
+          item_ids: string[] | null
           items_by_person: Json | null
           items_by_type: Json | null
+          recalculated_at: string | null
           sprint_id: string
           total_items: number
           total_points: number
@@ -1375,13 +1421,16 @@ export type Database = {
           completed_item_titles?: string[] | null
           completed_items?: number
           completed_points?: number
-          completion_events?: any | null
+          completion_events?: Json | null
           created_at?: string
           daily_burndown?: Json | null
+          done_item_ids?: string[] | null
           id?: string
           incomplete_item_titles?: string[] | null
+          item_ids?: string[] | null
           items_by_person?: Json | null
           items_by_type?: Json | null
+          recalculated_at?: string | null
           sprint_id: string
           total_items?: number
           total_points?: number
@@ -1390,13 +1439,16 @@ export type Database = {
           completed_item_titles?: string[] | null
           completed_items?: number
           completed_points?: number
-          completion_events?: any | null
+          completion_events?: Json | null
           created_at?: string
           daily_burndown?: Json | null
+          done_item_ids?: string[] | null
           id?: string
           incomplete_item_titles?: string[] | null
+          item_ids?: string[] | null
           items_by_person?: Json | null
           items_by_type?: Json | null
+          recalculated_at?: string | null
           sprint_id?: string
           total_items?: number
           total_points?: number
@@ -1415,7 +1467,7 @@ export type Database = {
         Row: {
           completed_at: string | null
           created_at: string
-          edit_changelog: any | null
+          edit_changelog: Json | null
           end_date: string
           goal: string | null
           id: string
@@ -1434,7 +1486,7 @@ export type Database = {
         Insert: {
           completed_at?: string | null
           created_at?: string
-          edit_changelog?: any | null
+          edit_changelog?: Json | null
           end_date: string
           goal?: string | null
           id?: string
@@ -1453,7 +1505,7 @@ export type Database = {
         Update: {
           completed_at?: string | null
           created_at?: string
-          edit_changelog?: any | null
+          edit_changelog?: Json | null
           end_date?: string
           goal?: string | null
           id?: string
