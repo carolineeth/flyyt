@@ -179,16 +179,17 @@ export default function RequirementsPage() {
         try { await (supabase.from("requirements" as any).update({ linked_backlog_item_id: null } as any).eq("id", requirementId) as any); } catch {}
       }
     },
-    onSuccess: (_, { requirementId, backlogItemId }) => {
+    onSuccess: async (_, { requirementId, backlogItemId }) => {
       queryClient.invalidateQueries({ queryKey: ["requirement_backlog_links"] });
       queryClient.invalidateQueries({ queryKey: ["requirements"] });
       const item = backlogItems?.find((b) => b.id === backlogItemId);
-      logRequirementChange({
+      await logRequirementChange({
         requirement_id: requirementId,
         change_type: "removed_from_backlog",
         old_value: backlogItemId,
         description: `Fjernet kobling til backlog-item: ${item?.title ?? backlogItemId}`,
       });
+      queryClient.invalidateQueries({ queryKey: ["requirement_changes"] });
       toast.success("Kobling fjernet");
     },
     onError: (e) => toast.error((e as Error).message),
