@@ -150,16 +150,17 @@ export default function RequirementsPage() {
       // Double-write to old column as backup (fail silently)
       try { await (supabase.from("requirements" as any).update({ linked_backlog_item_id: backlogItemId } as any).eq("id", requirementId) as any); } catch {}
     },
-    onSuccess: (_, { requirementId, backlogItemId }) => {
+    onSuccess: async (_, { requirementId, backlogItemId }) => {
       queryClient.invalidateQueries({ queryKey: ["requirement_backlog_links"] });
       queryClient.invalidateQueries({ queryKey: ["requirements"] });
       const item = backlogItems?.find((b) => b.id === backlogItemId);
-      logRequirementChange({
+      await logRequirementChange({
         requirement_id: requirementId,
         change_type: "added_to_backlog",
         new_value: backlogItemId,
         description: `Koblet til backlog-item: ${item?.title ?? backlogItemId}`,
       });
+      queryClient.invalidateQueries({ queryKey: ["requirement_changes"] });
       toast.success("Kobling lagt til");
     },
     onError: (e) => toast.error((e as Error).message),
@@ -178,16 +179,17 @@ export default function RequirementsPage() {
         try { await (supabase.from("requirements" as any).update({ linked_backlog_item_id: null } as any).eq("id", requirementId) as any); } catch {}
       }
     },
-    onSuccess: (_, { requirementId, backlogItemId }) => {
+    onSuccess: async (_, { requirementId, backlogItemId }) => {
       queryClient.invalidateQueries({ queryKey: ["requirement_backlog_links"] });
       queryClient.invalidateQueries({ queryKey: ["requirements"] });
       const item = backlogItems?.find((b) => b.id === backlogItemId);
-      logRequirementChange({
+      await logRequirementChange({
         requirement_id: requirementId,
         change_type: "removed_from_backlog",
         old_value: backlogItemId,
         description: `Fjernet kobling til backlog-item: ${item?.title ?? backlogItemId}`,
       });
+      queryClient.invalidateQueries({ queryKey: ["requirement_changes"] });
       toast.success("Kobling fjernet");
     },
     onError: (e) => toast.error((e as Error).message),
@@ -224,11 +226,11 @@ export default function RequirementsPage() {
     updateReq.mutate(
       { id, [field]: value } as any,
       {
-        onSuccess: () => {
+        onSuccess: async () => {
           toast.success("Oppdatert");
           // Log the change
           if (field === "status" && current) {
-            logRequirementChange({
+            await logRequirementChange({
               requirement_id: id,
               change_type: "status_changed",
               field_changed: "status",
@@ -237,7 +239,7 @@ export default function RequirementsPage() {
               description: `Status endret fra ${STATUS_DISPLAY[current.status] ?? current.status} til ${STATUS_DISPLAY[value] ?? value}`,
             });
           } else if (field === "priority" && current) {
-            logRequirementChange({
+            await logRequirementChange({
               requirement_id: id,
               change_type: "priority_changed",
               field_changed: "priority",
@@ -245,7 +247,17 @@ export default function RequirementsPage() {
               new_value: value,
               description: `Prioritet endret fra ${PRIORITY_DISPLAY[current.priority] ?? current.priority} til ${PRIORITY_DISPLAY[value] ?? value}`,
             });
+          } else if (current) {
+            await logRequirementChange({
+              requirement_id: id,
+              change_type: "updated",
+              field_changed: field,
+              old_value: String((current as any)[field] ?? ""),
+              new_value: String(value ?? ""),
+              description: `Felt «${field}» oppdatert`,
+            });
           }
+          queryClient.invalidateQueries({ queryKey: ["requirement_changes"] });
         },
       }
     );
@@ -289,6 +301,7 @@ export default function RequirementsPage() {
     },
     onSuccess: (id) => {
       queryClient.invalidateQueries({ queryKey: ["requirements"] });
+      queryClient.invalidateQueries({ queryKey: ["requirement_changes"] });
       toast.success("Krav opprettet");
       setCreateOpen(false);
       setNewReq({ type: "functional", category: "Værkart", title: "", description: "", acceptance_criteria: "", priority: "should" });
