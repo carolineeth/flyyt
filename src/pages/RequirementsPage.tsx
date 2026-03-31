@@ -150,16 +150,17 @@ export default function RequirementsPage() {
       // Double-write to old column as backup (fail silently)
       try { await (supabase.from("requirements" as any).update({ linked_backlog_item_id: backlogItemId } as any).eq("id", requirementId) as any); } catch {}
     },
-    onSuccess: (_, { requirementId, backlogItemId }) => {
+    onSuccess: async (_, { requirementId, backlogItemId }) => {
       queryClient.invalidateQueries({ queryKey: ["requirement_backlog_links"] });
       queryClient.invalidateQueries({ queryKey: ["requirements"] });
       const item = backlogItems?.find((b) => b.id === backlogItemId);
-      logRequirementChange({
+      await logRequirementChange({
         requirement_id: requirementId,
         change_type: "added_to_backlog",
         new_value: backlogItemId,
         description: `Koblet til backlog-item: ${item?.title ?? backlogItemId}`,
       });
+      queryClient.invalidateQueries({ queryKey: ["requirement_changes"] });
       toast.success("Kobling lagt til");
     },
     onError: (e) => toast.error((e as Error).message),
