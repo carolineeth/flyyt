@@ -88,7 +88,7 @@ export default function SprintHistory() {
     queryFn: async () => {
       const { data, error } = await supabase.from("sprint_snapshots").select("*");
       if (error) throw error;
-      return data as SprintSnapshot[];
+      return data as unknown as SprintSnapshot[];
     },
   });
 
