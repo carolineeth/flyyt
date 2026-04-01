@@ -6,7 +6,7 @@ import { calcTotalEarnedPoints } from "@/lib/calcTotalEarnedPoints";
 import { useTeamMembers } from "@/hooks/useTeamMembers";
 import { useAllDailyUpdates, useCurrentMember } from "@/hooks/useDailyUpdates";
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
-import { DashboardTasks } from "@/components/dashboard/DashboardTasks";
+
 import { ArrowRight, ChevronLeft, ChevronRight, Check, Clock } from "lucide-react";
 import { Link } from "react-router-dom";
 import {
@@ -692,8 +692,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 4. Oppgaver */}
-      <DashboardTasks />
 
       {/* 5. Ukesplan */}
       <WeeklyPlan registrations={regs} catalog={cat} />
