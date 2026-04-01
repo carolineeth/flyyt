@@ -692,8 +692,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 4. Oppgaver */}
-      <DashboardTasks />
 
       {/* 5. Ukesplan */}
       <WeeklyPlan registrations={regs} catalog={cat} />
