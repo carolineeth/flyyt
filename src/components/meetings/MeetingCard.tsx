@@ -19,7 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SubSessionBlock } from "./SubSessionBlock";
 import { toast } from "sonner";
-import { Plus, Play, Square, Copy, ChevronUp, ChevronDown, X, CalendarDays, Save, Pencil, Eye, Users, ListChecks, FileText, Trash2 } from "lucide-react";
+import { Plus, Play, Square, Copy, ChevronUp, ChevronDown, X, CalendarDays, Users, ListChecks, FileText, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const subSessionTemplates: Record<string, string[]> = {
@@ -39,7 +39,6 @@ const subSessionTypeLabels: Record<string, string> = {
   annet: "Annet",
 };
 
-// ISO week calculation (shared utility)
 function isoWeek(dateStr: string): number {
   const d = new Date(dateStr + "T00:00:00");
   const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -49,8 +48,6 @@ function isoWeek(dateStr: string): number {
   return Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
 }
 
-// Auto-links a new sub-session to the matching activity_catalog entry.
-// If a registration already exists for this type+week, it links to that instead.
 async function autoLinkSubSessionToActivity(
   ssId: string,
   type: string,
@@ -68,7 +65,6 @@ async function autoLinkSubSessionToActivity(
 
   const completedWeek = isoWeek(meetingDateStr);
 
-  // Check if a registration already exists for this catalog+week
   const { data: weekRegs } = await (supabase
     .from("activity_registrations" as any)
     .select("id")
@@ -84,7 +80,6 @@ async function autoLinkSubSessionToActivity(
     return;
   }
 
-  // Count completed regs to determine occurrence_number
   const { data: allCompleted } = await (supabase
     .from("activity_registrations" as any)
     .select("id")
@@ -137,23 +132,21 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
   const [notes, setNotes] = useState(meeting?.notes || "");
   const [room, setRoom] = useState(meeting?.room || "");
   const [expanded, setExpanded] = useState(true);
-  const [editMode, setEditMode] = useState(false);
   const [showReschedule, setShowReschedule] = useState(false);
   const [newDate, setNewDate] = useState("");
 
   useEffect(() => { setNotes(meeting?.notes || ""); }, [meeting?.notes]);
   useEffect(() => { setRoom(meeting?.room || ""); }, [meeting?.room]);
 
-  // Auto-save room
+  // Auto-save room with debounce
   useEffect(() => {
+    if (!meeting?.id || room === (meeting?.room || "")) return;
     const t = setTimeout(() => {
-      if (meeting?.id && room !== (meeting?.room || "")) {
-        saveToSupabase(
-          () => supabase.from("meetings").update({ room } as any).eq("id", meeting.id) as any,
-          { silent: true, errorMessage: "Kunne ikke lagre rom. Prøv igjen." }
-        );
-      }
-    }, 500);
+      saveToSupabase(
+        () => supabase.from("meetings").update({ room } as any).eq("id", meeting.id) as any,
+        { silent: true, errorMessage: "Kunne ikke lagre rom." }
+      );
+    }, 800);
     return () => clearTimeout(t);
   }, [room, meeting?.room, meeting?.id]);
 
@@ -161,18 +154,32 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
     if (!meeting?.id) return;
     await saveToSupabase(
       () => supabase.from("meetings").update({ notes: val } as any).eq("id", meeting.id) as any,
-      { silent: true, errorMessage: "Kunne ikke lagre notater. Prøv igjen." }
+      { silent: true, errorMessage: "Kunne ikke lagre notater." }
     );
   }, [meeting?.id]);
 
+  // Auto-save notes with debounce
   useEffect(() => {
-    const t = setTimeout(() => {
-      if (meeting?.id && notes !== (meeting?.notes || "")) {
-        saveNotes(notes);
-      }
-    }, 500);
+    if (!meeting?.id || notes === (meeting?.notes || "")) return;
+    const t = setTimeout(() => { saveNotes(notes); }, 800);
     return () => clearTimeout(t);
   }, [notes, meeting?.notes, saveNotes, meeting?.id]);
+
+  // Also save on blur for immediate persistence
+  const handleNotesBlur = useCallback(() => {
+    if (meeting?.id && notes !== (meeting?.notes || "")) {
+      saveNotes(notes);
+    }
+  }, [meeting?.id, notes, meeting?.notes, saveNotes]);
+
+  const handleRoomBlur = useCallback(() => {
+    if (meeting?.id && room !== (meeting?.room || "")) {
+      saveToSupabase(
+        () => supabase.from("meetings").update({ room } as any).eq("id", meeting.id) as any,
+        { silent: true, errorMessage: "Kunne ikke lagre rom." }
+      );
+    }
+  }, [meeting?.id, room, meeting?.room]);
 
   if (!meeting) return null;
 
@@ -188,15 +195,9 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
     .map((pid: string) => members?.find((m) => m.id === pid)?.name?.split(" ")[0])
     .filter(Boolean);
 
-  const saveMeeting = async () => {
-    await saveNotes(notes);
-    setEditMode(false);
-    toast.success("Møte lagret");
-  };
-
   const cancelMeeting = async () => {
     const { error } = await supabase.from("meetings").update({ status: "cancelled" } as any).eq("id", meeting.id);
-    if (error) { toast.error("Kunne ikke avlyse møtet. Prøv igjen.", { duration: 5000 }); return; }
+    if (error) { toast.error("Kunne ikke avlyse møtet."); return; }
     qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
     toast.success("Møte avlyst");
   };
@@ -216,15 +217,15 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
       date: new Date(dateStr).toISOString(),
       week_number: newWeek,
     } as any).eq("id", meeting.id);
-    if (error) { toast.error("Kunne ikke flytte møtet. Prøv igjen.", { duration: 5000 }); return; }
+    if (error) { toast.error("Kunne ikke flytte møtet."); return; }
     qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
     setShowReschedule(false);
-    toast.success("Møte flyttet til " + newMeetingDate.toLocaleDateString("nb-NO", { day: "numeric", month: "long" }));
+    toast.success("Møte flyttet");
   };
 
   const uncancelMeeting = async () => {
     const { error } = await supabase.from("meetings").update({ status: "upcoming" } as any).eq("id", meeting.id);
-    if (error) { toast.error("Kunne ikke gjenopprette møtet. Prøv igjen.", { duration: 5000 }); return; }
+    if (error) { toast.error("Kunne ikke gjenopprette møtet."); return; }
     qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
     toast.success("Møte gjenopprettet");
   };
@@ -237,15 +238,14 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
       title: newAgenda.trim(),
       sort_order: order,
     } as any);
-    if (error) { toast.error("Kunne ikke legge til agendapunkt. Prøv igjen.", { duration: 5000 }); return; }
+    if (error) { toast.error("Kunne ikke legge til agendapunkt."); return; }
     setNewAgenda("");
     qc.invalidateQueries({ queryKey: ["meeting_agenda_items", meeting.id] });
-    toast.success("Lagret");
   };
 
   const toggleAgendaItem = async (itemId: string, completed: boolean) => {
     const { error } = await supabase.from("meeting_agenda_items" as any).update({ is_completed: completed } as any).eq("id", itemId);
-    if (error) toast.error("Kunne ikke oppdatere agendapunkt. Prøv igjen.", { duration: 5000 });
+    if (error) toast.error("Kunne ikke oppdatere agendapunkt.");
     else qc.invalidateQueries({ queryKey: ["meeting_agenda_items", meeting.id] });
   };
 
@@ -260,7 +260,13 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
       supabase.from("meeting_agenda_items" as any).update({ sort_order: a.sort_order } as any).eq("id", b.id),
     ]);
     const err = results.find((r) => r.error)?.error;
-    if (err) toast.error("Kunne ikke flytte agendapunkt. Prøv igjen.", { duration: 5000 });
+    if (err) toast.error("Kunne ikke flytte agendapunkt.");
+    else qc.invalidateQueries({ queryKey: ["meeting_agenda_items", meeting.id] });
+  };
+
+  const deleteAgendaItem = async (itemId: string) => {
+    const { error } = await supabase.from("meeting_agenda_items" as any).delete().eq("id", itemId);
+    if (error) toast.error("Kunne ikke slette agendapunkt.");
     else qc.invalidateQueries({ queryKey: ["meeting_agenda_items", meeting.id] });
   };
 
@@ -287,7 +293,6 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
       if (tplErr) console.error("Failed to insert template items", tplErr);
     }
 
-    // Auto-link to activity plan
     const meetingDateStr = meeting.meeting_date || meetingDate.toISOString().split("T")[0];
     await autoLinkSubSessionToActivity(
       (ss as any).id, type, meeting.id, meetingDateStr, meeting.participants || [], qc
@@ -298,18 +303,14 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
   };
 
   const deleteSubSession = async (ssId: string) => {
-    // Remove action points referencing this sub session
     const { error: apErr } = await supabase.from("meeting_action_points").delete().eq("source_sub_session_id", ssId);
     if (apErr) { toast.error("Kunne ikke fjerne action points"); return; }
-    // Remove sub session items
     const { error: itemsErr } = await supabase.from("meeting_sub_session_items").delete().eq("sub_session_id", ssId);
     if (itemsErr) { toast.error("Kunne ikke slette delmøte-innhold"); return; }
-    // Remove activity registration links
     const { error: regErr } = await (supabase.from("activity_registrations").update({ linked_sub_session_id: null }).eq("linked_sub_session_id", ssId) as any);
     if (regErr) console.error("Failed to unlink registrations", regErr);
-    // Remove the sub session itself
     const { error: ssErr } = await supabase.from("meeting_sub_sessions").delete().eq("id", ssId);
-    if (ssErr) { console.error("Failed to delete sub session", ssErr); toast.error("Kunne ikke slette delmøte"); return; }
+    if (ssErr) { toast.error("Kunne ikke slette delmøte"); return; }
     qc.invalidateQueries({ queryKey: ["meeting_sub_sessions", meeting.id] });
     toast.success("Delmøte fjernet");
   };
@@ -318,7 +319,7 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
     const now = new Date();
     const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
     const { error } = await supabase.from("meetings").update({ status: "in_progress", actual_start_time: time } as any).eq("id", meeting.id);
-    if (error) { toast.error("Kunne ikke starte møtet. Prøv igjen.", { duration: 5000 }); return; }
+    if (error) { toast.error("Kunne ikke starte møtet."); return; }
     qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
     toast.success("Møte startet");
   };
@@ -327,7 +328,7 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
     const now = new Date();
     const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
     const { error } = await supabase.from("meetings").update({ status: "completed", actual_end_time: time } as any).eq("id", meeting.id);
-    if (error) { toast.error("Kunne ikke avslutte møtet. Prøv igjen.", { duration: 5000 }); return; }
+    if (error) { toast.error("Kunne ikke avslutte møtet."); return; }
     qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
     toast.success("Møte avsluttet");
   };
@@ -338,13 +339,13 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
       title: "",
       is_completed: false,
     } as any);
-    if (error) { toast.error("Kunne ikke legge til action point. Prøv igjen.", { duration: 5000 }); return; }
+    if (error) { toast.error("Kunne ikke legge til action point."); return; }
     qc.invalidateQueries({ queryKey: ["meeting_action_points", meeting.id] });
   };
 
   const updateActionPoint = async (apId: string, updates: any) => {
     const { error } = await supabase.from("meeting_action_points").update(updates).eq("id", apId);
-    if (error) toast.error("Kunne ikke lagre action point. Prøv igjen.", { duration: 5000 });
+    if (error) toast.error("Kunne ikke lagre action point.");
     else qc.invalidateQueries({ queryKey: ["meeting_action_points", meeting.id] });
   };
 
@@ -352,10 +353,9 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
     const current: string[] = meeting.participants || [];
     const updated = isPresent ? current.filter((id: string) => id !== memberId) : [...current, memberId];
     const { error } = await supabase.from("meetings").update({ participants: updated } as any).eq("id", meeting.id);
-    if (error) { toast.error("Kunne ikke oppdatere deltaker. Prøv igjen.", { duration: 5000 }); return; }
+    if (error) { toast.error("Kunne ikke oppdatere deltaker."); return; }
     qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
 
-    // Sync to linked activity_registration_participants
     const { data: linkedRegs } = await (supabase
       .from("activity_registrations" as any)
       .select("id")
@@ -376,15 +376,14 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
 
   const deleteActionPoint = async (apId: string) => {
     const { error } = await supabase.from("meeting_action_points").delete().eq("id", apId);
-    if (error) toast.error("Kunne ikke slette action point. Prøv igjen.", { duration: 5000 });
+    if (error) toast.error("Kunne ikke slette action point.");
     else qc.invalidateQueries({ queryKey: ["meeting_action_points", meeting.id] });
   };
 
   const overrideRole = async (field: "leader_id" | "notetaker_id", memberId: string | null) => {
     const { error } = await supabase.from("meetings").update({ [field]: memberId } as any).eq("id", meeting.id);
-    if (error) { toast.error("Kunne ikke oppdatere rolle. Prøv igjen.", { duration: 5000 }); return; }
+    if (error) { toast.error("Kunne ikke oppdatere rolle."); return; }
     qc.invalidateQueries({ queryKey: ["week_meetings", year, week] });
-    toast.success(memberId ? "Rolle oppdatert" : "Rolle fjernet");
   };
 
   const exportToProcessLog = () => {
@@ -438,58 +437,57 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
       <CardContent className="p-0">
         {/* Header — always visible */}
         <div
-          className="px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-accent/30 transition-colors"
+          className="px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-accent/30 transition-colors"
           onClick={() => setExpanded(!expanded)}
         >
-          <div className="space-y-0.5">
+          <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-muted-foreground">
+              <span className="text-sm font-medium text-muted-foreground">
                 {formatWeekdayNb(meetingDate)} {meetingDate.getDate()}. {meetingDate.toLocaleDateString("nb-NO", { month: "short" })}
               </span>
               {recurringMeeting && (
-                <span className="text-xs text-muted-foreground">
+                <span className="text-sm text-muted-foreground">
                   {recurringMeeting.start_time?.slice(0, 5)}–{recurringMeeting.end_time?.slice(0, 5)}
                 </span>
               )}
               {room && (
-                <Badge variant="outline" className="text-[10px] font-normal">{room}</Badge>
+                <Badge variant="outline" className="text-xs font-normal">{room}</Badge>
               )}
             </div>
             <div className="flex items-center gap-2">
-              <span className={`text-sm font-semibold ${isCancelled ? "line-through text-muted-foreground" : ""}`}>
+              <span className={`text-base font-semibold ${isCancelled ? "line-through text-muted-foreground" : ""}`}>
                 {meetingLabel}
               </span>
               {(() => {
-                if (isCancelled) return <Badge variant="destructive" className="text-[10px]">Avlyst</Badge>;
-                if (status === "in_progress") return <Badge className="bg-green-600 text-white text-[10px]">Pågår</Badge>;
-                if (status === "completed") return <Badge variant="secondary" className="text-[10px]">Fullført</Badge>;
+                if (isCancelled) return <Badge variant="destructive" className="text-xs">Avlyst</Badge>;
+                if (status === "in_progress") return <Badge className="bg-green-600 text-white text-xs">Pågår</Badge>;
+                if (status === "completed") return <Badge variant="secondary" className="text-xs">Fullført</Badge>;
                 const meetingDay = meeting.meeting_date || format(meetingDate, "yyyy-MM-dd");
                 const todayStr2 = format(new Date(), "yyyy-MM-dd");
-                if (meetingDay === todayStr2) return <Badge className="bg-teal-600 text-white text-[10px]">I dag</Badge>;
-                if (meetingDay < todayStr2) return <Badge className="bg-green-600/80 text-white text-[10px]">Fullført</Badge>;
-                return <Badge variant="outline" className="text-[10px] text-muted-foreground">Kommende</Badge>;
+                if (meetingDay === todayStr2) return <Badge className="bg-teal-600 text-white text-xs">I dag</Badge>;
+                if (meetingDay < todayStr2) return <Badge className="bg-green-600/80 text-white text-xs">Fullført</Badge>;
+                return <Badge variant="outline" className="text-xs text-muted-foreground">Kommende</Badge>;
               })()}
             </div>
           </div>
           <div className="flex items-center gap-1">
-            {/* Quick stats in header */}
             {!expanded && !isCancelled && (
-              <div className="flex items-center gap-2 mr-2 text-muted-foreground">
+              <div className="flex items-center gap-3 mr-3 text-muted-foreground">
                 {(agendaItems?.length ?? 0) > 0 && (
-                  <span className="flex items-center gap-0.5 text-[10px]">
-                    <ListChecks className="h-3 w-3" />
+                  <span className="flex items-center gap-1 text-xs">
+                    <ListChecks className="h-3.5 w-3.5" />
                     {agendaItems?.filter((a: any) => a.is_completed).length}/{agendaItems?.length}
                   </span>
                 )}
                 {presentCount > 0 && (
-                  <span className="flex items-center gap-0.5 text-[10px]">
-                    <Users className="h-3 w-3" />
+                  <span className="flex items-center gap-1 text-xs">
+                    <Users className="h-3.5 w-3.5" />
                     {presentCount}
                   </span>
                 )}
                 {(subSessions?.length ?? 0) > 0 && (
-                  <span className="flex items-center gap-0.5 text-[10px]">
-                    <FileText className="h-3 w-3" />
+                  <span className="flex items-center gap-1 text-xs">
+                    <FileText className="h-3.5 w-3.5" />
                     {subSessions?.length}
                   </span>
                 )}
@@ -499,299 +497,219 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
           </div>
         </div>
 
-        {/* Expanded content */}
+        {/* Expanded content — always editable */}
         {expanded && !isCancelled && (
-          <div className="px-4 pb-4 space-y-3 border-t border-border pt-3">
-            {/* Roles row */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex items-center gap-1">
-                <Badge className="bg-teal-600 text-white text-[10px]">Leder</Badge>
-                {editMode ? (
-                  <Select value={meeting.leader_id || ""} onValueChange={(v) => overrideRole("leader_id", v === "none" ? null as any : v)}>
-                    <SelectTrigger className="h-6 text-xs w-28 border-0 p-0 pl-1">
-                      <SelectValue placeholder={leaderName} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Ingen</SelectItem>
-                      {members?.map((m) => <SelectItem key={m.id} value={m.id}>{m.name.split(" ")[0]}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <span className="text-xs font-medium">{leaderName}</span>
-                )}
+          <div className="px-5 pb-5 space-y-5 border-t border-border pt-4">
+            {/* Roles & Room */}
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <Badge className="bg-teal-600 text-white text-xs">Leder</Badge>
+                <Select value={meeting.leader_id || ""} onValueChange={(v) => overrideRole("leader_id", v === "none" ? null as any : v)}>
+                  <SelectTrigger className="h-8 text-sm w-32 border-0 p-0 pl-1">
+                    <SelectValue placeholder={leaderName} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Ingen</SelectItem>
+                    {members?.map((m) => <SelectItem key={m.id} value={m.id}>{m.name.split(" ")[0]}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="flex items-center gap-1">
-                <Badge className="bg-purple-600 text-white text-[10px]">Referent</Badge>
-                {editMode ? (
-                  <Select value={meeting.notetaker_id || ""} onValueChange={(v) => overrideRole("notetaker_id", v === "none" ? null as any : v)}>
-                    <SelectTrigger className="h-6 text-xs w-28 border-0 p-0 pl-1">
-                      <SelectValue placeholder={notetakerName} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Ingen</SelectItem>
-                      {members?.map((m) => <SelectItem key={m.id} value={m.id}>{m.name.split(" ")[0]}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <span className="text-xs font-medium">{notetakerName}</span>
-                )}
+              <div className="flex items-center gap-1.5">
+                <Badge className="bg-purple-600 text-white text-xs">Referent</Badge>
+                <Select value={meeting.notetaker_id || ""} onValueChange={(v) => overrideRole("notetaker_id", v === "none" ? null as any : v)}>
+                  <SelectTrigger className="h-8 text-sm w-32 border-0 p-0 pl-1">
+                    <SelectValue placeholder={notetakerName} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Ingen</SelectItem>
+                    {members?.map((m) => <SelectItem key={m.id} value={m.id}>{m.name.split(" ")[0]}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
-              {editMode ? (
-                <div className="flex items-center gap-1">
-                  <Badge variant="outline" className="text-[10px] shrink-0">Rom</Badge>
-                  <Input
-                    value={room}
-                    onChange={(e) => setRoom(e.target.value)}
-                    placeholder="F.eks. Grupperom 3"
-                    className="h-6 text-xs w-36"
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                </div>
-              ) : room ? (
-                <div className="flex items-center gap-1">
-                  <Badge variant="outline" className="text-[10px]">Rom</Badge>
-                  <span className="text-xs font-medium">{room}</span>
-                </div>
-              ) : null}
-              <div className="ml-auto">
-                <Button
-                  variant={editMode ? "default" : "outline"}
-                  size="sm"
-                  className="h-6 text-[11px] px-2"
-                  onClick={(e) => { e.stopPropagation(); setEditMode(!editMode); }}
-                >
-                  {editMode ? <><Eye className="h-3 w-3 mr-1" /> Forhåndsvisning</> : <><Pencil className="h-3 w-3 mr-1" /> Rediger</>}
-                </Button>
+              <div className="flex items-center gap-1.5">
+                <Badge variant="outline" className="text-xs shrink-0">Rom</Badge>
+                <Input
+                  value={room}
+                  onChange={(e) => setRoom(e.target.value)}
+                  onBlur={handleRoomBlur}
+                  placeholder="Grupperom..."
+                  className="h-8 text-sm w-40"
+                  onClick={(e) => e.stopPropagation()}
+                />
               </div>
             </div>
 
             {/* Participants */}
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                <Users className="h-3 w-3" /> Tilstede
-                {presentCount > 0 && <span className="text-[10px]">({presentCount}/{members?.length ?? 0})</span>}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                <Users className="h-4 w-4" /> Tilstede
+                {presentCount > 0 && <span className="text-xs">({presentCount}/{members?.length ?? 0})</span>}
               </p>
-              {editMode ? (
-                <div className="flex flex-wrap gap-2.5">
-                  {members?.map((m) => {
-                    const isPresent = (meeting.participants || []).includes(m.id);
-                    return (
-                      <label key={m.id} className="flex items-center gap-1.5 text-xs cursor-pointer">
-                        <Checkbox
-                          checked={isPresent}
-                          onCheckedChange={() => toggleMeetingParticipant(m.id, isPresent)}
-                        />
-                        {m.name.split(" ")[0]}
-                      </label>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="flex flex-wrap gap-1">
-                  {presentCount > 0 ? (
-                    presentNames.map((name: string, i: number) => (
-                      <Badge key={i} variant="secondary" className="text-[10px] font-normal">{name}</Badge>
-                    ))
-                  ) : (
-                    <span className="text-xs text-muted-foreground italic">Ingen registrert ennå</span>
-                  )}
-                </div>
-              )}
+              <div className="flex flex-wrap gap-3">
+                {members?.map((m) => {
+                  const isPresent = (meeting.participants || []).includes(m.id);
+                  return (
+                    <label key={m.id} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={isPresent}
+                        onCheckedChange={() => toggleMeetingParticipant(m.id, isPresent)}
+                      />
+                      {m.name.split(" ")[0]}
+                    </label>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Agenda */}
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                <ListChecks className="h-3 w-3" /> Agenda
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+                <ListChecks className="h-4 w-4" /> Agenda
                 {(agendaItems?.length ?? 0) > 0 && (
-                  <span className="text-[10px]">
+                  <span className="text-xs">
                     ({agendaItems?.filter((a: any) => a.is_completed).length}/{agendaItems?.length})
                   </span>
                 )}
               </p>
-              {(agendaItems?.length ?? 0) > 0 ? (
-                <div className="space-y-0.5">
+              {(agendaItems?.length ?? 0) > 0 && (
+                <div className="space-y-1">
                   {agendaItems?.map((ai: any, idx: number) => (
                     <div key={ai.id} className="flex items-center gap-2 group">
                       <Checkbox
                         checked={ai.is_completed}
                         onCheckedChange={(v) => toggleAgendaItem(ai.id, !!v)}
                       />
-                      <span className={`text-xs flex-1 ${ai.is_completed ? "line-through text-muted-foreground" : ""}`}>
+                      <span className={`text-sm flex-1 ${ai.is_completed ? "line-through text-muted-foreground" : ""}`}>
                         {ai.title}
                       </span>
-                      {editMode && (
-                        <div className="opacity-0 group-hover:opacity-100 flex gap-0.5">
-                          <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => moveAgendaItem(idx, "up")} disabled={idx === 0}>
-                            <ChevronUp className="h-3 w-3" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => moveAgendaItem(idx, "down")} disabled={idx === (agendaItems?.length ?? 0) - 1}>
-                            <ChevronDown className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      )}
+                      <div className="opacity-0 group-hover:opacity-100 flex gap-0.5">
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => moveAgendaItem(idx, "up")} disabled={idx === 0}>
+                          <ChevronUp className="h-3 w-3" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => moveAgendaItem(idx, "down")} disabled={idx === (agendaItems?.length ?? 0) - 1}>
+                          <ChevronDown className="h-3 w-3" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => deleteAgendaItem(ai.id)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
-              ) : (
-                !editMode && <span className="text-xs text-muted-foreground italic">Ingen agendapunkter ennå</span>
               )}
-              {/* Always allow adding agenda items */}
-              <div className="flex gap-1 mt-1">
+              <div className="flex gap-2">
                 <Input
                   value={newAgenda}
                   onChange={(e) => setNewAgenda(e.target.value)}
                   placeholder="+ Legg til agendapunkt"
-                  className="h-7 text-xs"
+                  className="h-9 text-sm"
                   onKeyDown={(e) => e.key === "Enter" && addAgendaItem()}
                 />
-                <Button variant="ghost" size="sm" className="h-7 px-2" onClick={addAgendaItem}>
-                  <Plus className="h-3 w-3" />
+                <Button variant="ghost" size="sm" className="h-9 px-3" onClick={addAgendaItem}>
+                  <Plus className="h-4 w-4" />
                 </Button>
               </div>
             </div>
 
-            {/* Sub-sessions */}
-            {((subSessions?.length ?? 0) > 0 || editMode) && (
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">Delmøter</p>
-                {subSessions?.map((ss: any) => (
-                  editMode ? (
-                    <SubSessionBlock
-                      key={ss.id}
-                      subSession={ss}
-                      meetingStatus={status}
-                      meetingId={meeting.id}
-                      meetingDate={meeting.meeting_date || meetingDate.toISOString().split("T")[0]}
-                      meetingParticipants={meeting.participants || []}
-                      onDelete={() => deleteSubSession(ss.id)}
-                    />
-                  ) : (
-                    <div key={ss.id} className="rounded-md border border-border px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-[10px]">{subSessionTypeLabels[ss.type] || ss.type}</Badge>
-                        <span className="text-xs font-medium">{ss.title}</span>
-                      </div>
-                      {ss.notes && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{ss.notes}</p>}
-                    </div>
-                  )
-                ))}
-                {editMode && (
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-7 text-xs">
-                        <Plus className="h-3 w-3 mr-1" /> Legg til delmøte
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-48 p-1" align="start">
-                      {Object.entries(subSessionTypeLabels).map(([k, v]) => (
-                        <Button
-                          key={k}
-                          variant="ghost"
-                          size="sm"
-                          className="w-full justify-start h-8 text-xs"
-                          onClick={() => addSubSession(k)}
-                        >
-                          {v}
-                        </Button>
-                      ))}
-                    </PopoverContent>
-                  </Popover>
-                )}
-              </div>
-            )}
+            {/* Sub-sessions — always editable */}
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-muted-foreground">Delmøter</p>
+              {subSessions?.map((ss: any) => (
+                <SubSessionBlock
+                  key={ss.id}
+                  subSession={ss}
+                  meetingStatus={status}
+                  meetingId={meeting.id}
+                  meetingDate={meeting.meeting_date || meetingDate.toISOString().split("T")[0]}
+                  meetingParticipants={meeting.participants || []}
+                  onDelete={() => deleteSubSession(ss.id)}
+                />
+              ))}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 text-sm">
+                    <Plus className="h-4 w-4 mr-1" /> Legg til delmøte
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-52 p-1" align="start">
+                  {Object.entries(subSessionTypeLabels).map(([k, v]) => (
+                    <Button
+                      key={k}
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start h-9 text-sm"
+                      onClick={() => addSubSession(k)}
+                    >
+                      {v}
+                    </Button>
+                  ))}
+                </PopoverContent>
+              </Popover>
+            </div>
 
             {/* Notes */}
-            {(editMode || notes) && (
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Notater</p>
-                {editMode ? (
-                  <Textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Møtenotater..."
-                    rows={3}
-                    className="text-xs"
-                  />
-                ) : (
-                  <p className="text-xs bg-muted/50 rounded-md px-3 py-2 whitespace-pre-wrap">{notes}</p>
-                )}
-              </div>
-            )}
+            <div>
+              <p className="text-sm font-medium text-muted-foreground mb-1.5">Møtenotater</p>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                onBlur={handleNotesBlur}
+                placeholder="Skriv møtenotater her... (lagres automatisk)"
+                rows={4}
+                className="text-sm"
+              />
+              <p className="text-xs text-muted-foreground/60 mt-1">Lagres automatisk</p>
+            </div>
 
             {/* Action points */}
-            {((actionPoints?.length ?? 0) > 0 || editMode) && (
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">Action points</p>
-                {actionPoints?.map((ap) => (
-                  editMode ? (
-                    <ActionPointRow key={ap.id} ap={ap} members={members || []} onUpdate={updateActionPoint} onDelete={deleteActionPoint} />
-                  ) : (
-                    <div key={ap.id} className="flex items-center gap-2 text-xs">
-                      <Checkbox checked={ap.is_completed} onCheckedChange={(v) => updateActionPoint(ap.id, { is_completed: !!v })} />
-                      <span className={`flex-1 ${ap.is_completed ? "line-through text-muted-foreground" : ""}`}>{ap.title || "–"}</span>
-                      {ap.assignee_id && (
-                        <Badge variant="secondary" className="text-[10px] font-normal">
-                          {members?.find((m) => m.id === ap.assignee_id)?.name?.split(" ")[0]}
-                        </Badge>
-                      )}
-                      {ap.deadline && <span className="text-[10px] text-muted-foreground">{ap.deadline}</span>}
-                    </div>
-                  )
-                ))}
-                {editMode && (
-                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={addActionPoint}>
-                    <Plus className="h-3 w-3 mr-1" /> Action point
-                  </Button>
-                )}
-              </div>
-            )}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-muted-foreground">Action points</p>
+              {actionPoints?.map((ap) => (
+                <ActionPointRow key={ap.id} ap={ap} members={members || []} onUpdate={updateActionPoint} onDelete={deleteActionPoint} />
+              ))}
+              <Button variant="outline" size="sm" className="h-8 text-sm" onClick={addActionPoint}>
+                <Plus className="h-4 w-4 mr-1" /> Action point
+              </Button>
+            </div>
 
             {/* Control buttons */}
-            <div className="flex gap-2 pt-1 flex-wrap">
+            <div className="flex gap-2 pt-2 flex-wrap border-t border-border">
               {!isPast && status === "upcoming" && (
-                <Button size="sm" className="h-7 text-xs" onClick={startMeeting}>
-                  <Play className="h-3 w-3 mr-1" /> Start møte
+                <Button size="sm" className="h-8 text-sm" onClick={startMeeting}>
+                  <Play className="h-4 w-4 mr-1" /> Start møte
                 </Button>
               )}
               {!isPast && status === "in_progress" && (
-                <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={endMeeting}>
-                  <Square className="h-3 w-3 mr-1" /> Avslutt møte
+                <Button size="sm" variant="destructive" className="h-8 text-sm" onClick={endMeeting}>
+                  <Square className="h-4 w-4 mr-1" /> Avslutt møte
                 </Button>
               )}
-              {editMode && (
-                <>
-                  <Button size="sm" variant="default" className="h-7 text-xs" onClick={saveMeeting}>
-                    <Save className="h-3 w-3 mr-1" /> Lagre
+              <Popover open={showReschedule} onOpenChange={setShowReschedule}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 text-sm">
+                    <CalendarDays className="h-4 w-4 mr-1" /> Flytt møte
                   </Button>
-                  <Popover open={showReschedule} onOpenChange={setShowReschedule}>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-7 text-xs">
-                        <CalendarDays className="h-3 w-3 mr-1" /> Flytt møte
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-64 p-3" align="start">
-                      <div className="space-y-2">
-                        <p className="text-xs font-medium">Velg ny dato</p>
-                        <Input
-                          type="date"
-                          value={newDate}
-                          onChange={(e) => setNewDate(e.target.value)}
-                          className="h-8 text-xs"
-                        />
-                        <Button size="sm" className="h-7 text-xs w-full" onClick={() => rescheduleMeeting(newDate)} disabled={!newDate}>
-                          Flytt hit
-                        </Button>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                  <Button variant="outline" size="sm" className="h-7 text-xs text-destructive hover:text-destructive" onClick={cancelMeeting}>
-                    <X className="h-3 w-3 mr-1" /> Avlys
-                  </Button>
-                </>
-              )}
-              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={exportToProcessLog}>
-                <Copy className="h-3 w-3 mr-1" /> Eksporter
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-3" align="start">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Velg ny dato</p>
+                    <Input
+                      type="date"
+                      value={newDate}
+                      onChange={(e) => setNewDate(e.target.value)}
+                      className="h-9 text-sm"
+                    />
+                    <Button size="sm" className="h-8 text-sm w-full" onClick={() => rescheduleMeeting(newDate)} disabled={!newDate}>
+                      Flytt hit
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <Button variant="outline" size="sm" className="h-8 text-sm text-destructive hover:text-destructive" onClick={cancelMeeting}>
+                <X className="h-4 w-4 mr-1" /> Avlys
+              </Button>
+              <Button variant="outline" size="sm" className="h-8 text-sm" onClick={exportToProcessLog}>
+                <Copy className="h-4 w-4 mr-1" /> Eksporter
               </Button>
             </div>
           </div>
@@ -799,27 +717,27 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
 
         {/* Cancelled state */}
         {expanded && isCancelled && (
-          <div className="px-4 pb-3 border-t border-border pt-3">
+          <div className="px-5 pb-4 border-t border-border pt-4">
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={uncancelMeeting}>
-                <Play className="h-3 w-3 mr-1" /> Gjenopprett møte
+              <Button size="sm" variant="outline" className="h-8 text-sm" onClick={uncancelMeeting}>
+                <Play className="h-4 w-4 mr-1" /> Gjenopprett møte
               </Button>
               <Popover open={showReschedule} onOpenChange={setShowReschedule}>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-7 text-xs">
-                    <CalendarDays className="h-3 w-3 mr-1" /> Flytt til ny dato
+                  <Button variant="outline" size="sm" className="h-8 text-sm">
+                    <CalendarDays className="h-4 w-4 mr-1" /> Flytt til ny dato
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-64 p-3" align="start">
                   <div className="space-y-2">
-                    <p className="text-xs font-medium">Velg ny dato</p>
+                    <p className="text-sm font-medium">Velg ny dato</p>
                     <Input
                       type="date"
                       value={newDate}
                       onChange={(e) => setNewDate(e.target.value)}
-                      className="h-8 text-xs"
+                      className="h-9 text-sm"
                     />
-                    <Button size="sm" className="h-7 text-xs w-full" onClick={() => { rescheduleMeeting(newDate); uncancelMeeting(); }} disabled={!newDate}>
+                    <Button size="sm" className="h-8 text-sm w-full" onClick={() => { rescheduleMeeting(newDate); uncancelMeeting(); }} disabled={!newDate}>
                       Flytt og gjenopprett
                     </Button>
                   </div>
@@ -839,11 +757,14 @@ function ActionPointRow({ ap, members, onUpdate, onDelete }: { ap: any; members:
   useEffect(() => { setTitle(ap.title); }, [ap.title]);
 
   useEffect(() => {
-    const t = setTimeout(() => {
-      if (title !== ap.title) onUpdate(ap.id, { title });
-    }, 500);
+    if (title === ap.title) return;
+    const t = setTimeout(() => { onUpdate(ap.id, { title }); }, 800);
     return () => clearTimeout(t);
   }, [title, ap.title, ap.id, onUpdate]);
+
+  const handleBlur = () => {
+    if (title !== ap.title) onUpdate(ap.id, { title });
+  };
 
   return (
     <div className="flex items-center gap-2">
@@ -854,11 +775,12 @@ function ActionPointRow({ ap, members, onUpdate, onDelete }: { ap: any; members:
       <Input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
+        onBlur={handleBlur}
         placeholder="Beskrivelse..."
-        className="h-7 text-xs flex-1"
+        className="h-9 text-sm flex-1"
       />
       <Select value={ap.assignee_id || "none"} onValueChange={(v) => onUpdate(ap.id, { assignee_id: v === "none" ? null : v })}>
-        <SelectTrigger className="h-7 text-xs w-28">
+        <SelectTrigger className="h-9 text-sm w-32">
           <SelectValue placeholder="Ansvarlig" />
         </SelectTrigger>
         <SelectContent>
@@ -870,14 +792,14 @@ function ActionPointRow({ ap, members, onUpdate, onDelete }: { ap: any; members:
         type="date"
         value={ap.deadline || ""}
         onChange={(e) => onUpdate(ap.id, { deadline: e.target.value || null })}
-        className="h-7 text-xs w-32"
+        className="h-9 text-sm w-36"
       />
       <button
-        className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+        className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
         onClick={() => onDelete(ap.id)}
         title="Slett action point"
       >
-        <Trash2 className="h-3 w-3" />
+        <Trash2 className="h-4 w-4" />
       </button>
     </div>
   );
