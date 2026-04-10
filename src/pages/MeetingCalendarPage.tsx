@@ -238,7 +238,7 @@ export default function MeetingCalendarPage() {
       {isLoading ? (
         <p className="text-sm text-muted-foreground">Laster...</p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-6">
           {meetingsByRecurring.map(({ rm, meeting, isToday: isTodayMeeting, leaderName: ln, notetakerName: nn }) => (
             <MeetingCard
               key={rm.id}
@@ -258,7 +258,7 @@ export default function MeetingCalendarPage() {
       {unlinkedMeetings.length > 0 && (
         <div className="space-y-4">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Andre møter denne uken</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-6">
             {unlinkedMeetings.map((m: any) => {
               const mDate = new Date(m.date);
               const mDateStr = mDate.toISOString().split("T")[0];
