@@ -35,6 +35,7 @@ import {
   Bar,
   AreaChart,
   Area,
+  ComposedChart,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -43,11 +44,12 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { format, differenceInWeeks, parseISO, startOfWeek, getISOWeek } from "date-fns";
+import { format, differenceInWeeks, parseISO, getISOWeek, differenceInDays } from "date-fns";
 import { nb } from "date-fns/locale";
 import type { BacklogItem, Sprint, Meeting } from "@/lib/types";
 
 const PROJECT_START = new Date("2026-03-03");
+const PROJECT_END = new Date("2026-05-15"); // Innleveringsfrist
 
 // --- Hooks ---
 
@@ -207,8 +209,13 @@ export default function InsightsPage() {
 
   // === TOP METRICS ===
   const weeksElapsed = differenceInWeeks(new Date(), PROJECT_START);
+  const totalProjectWeeks = differenceInWeeks(PROJECT_END, PROJECT_START);
+  const weeksRemaining = Math.max(0, totalProjectWeeks - weeksElapsed);
+  const projectProgressPct = Math.min(100, Math.round((weeksElapsed / totalProjectWeeks) * 100));
   const doneItems = items.filter((i) => i.status === "done");
   const doneSP = doneItems.reduce((s, i) => s + (i.estimate || 0), 0);
+  const totalSP = items.reduce((s, i) => s + (i.estimate || 0), 0);
+  const deliverySpPct = totalSP > 0 ? Math.round((doneSP / totalSP) * 100) : 0;
   const completedSprints = sprints.filter((s) => s.completed_at);
   const completedMeetings = meetings.filter((m) => m.status === "completed");
 
@@ -216,6 +223,7 @@ export default function InsightsPage() {
     () => calcTotalEarnedPoints(activityRegs as Registration[], activityCatalog),
     [activityRegs, activityCatalog]
   );
+  const activityPointsPct = Math.round((totalActivityPoints / 30) * 100);
 
   const avgCompletionRate = useMemo(() => {
     if (!snapshots.length) return 0;
@@ -224,6 +232,83 @@ export default function InsightsPage() {
     );
     return Math.round(rates.reduce((a: number, b: number) => a + b, 0) / rates.length);
   }, [snapshots]);
+
+  // === Project pulse (combined activity per week) ===
+  const projectPulse = useMemo(() => {
+    const weekMap: Record<number, { week: number; standups: number; meetings: number; itemsDone: number }> = {};
+    const ensure = (w: number) => {
+      if (!weekMap[w]) weekMap[w] = { week: w, standups: 0, meetings: 0, itemsDone: 0 };
+      return weekMap[w];
+    };
+    dailyUpdates.forEach((u: any) => ensure(getISOWeek(parseISO(u.entry_date))).standups++);
+    completedMeetings.forEach((m) => ensure(getISOWeek(parseISO(m.date as string))).meetings++);
+    doneItems.forEach((i) => {
+      const d = (i as any).updated_at ?? i.created_at;
+      if (d) ensure(getISOWeek(parseISO(d))).itemsDone++;
+    });
+    return Object.values(weekMap)
+      .sort((a, b) => a.week - b.week)
+      .map((d) => ({ ...d, name: `Uke ${d.week}` }));
+  }, [dailyUpdates, completedMeetings, doneItems]);
+
+  // === Sprint trend (velocity + accuracy combined) ===
+  const sprintTrend = useMemo(() => {
+    return completedSprints.map((sprint) => {
+      const snap: any = snapshots.find((s: any) => s.sprint_id === sprint.id);
+      const planned = snap?.total_points ?? 0;
+      const delivered = snap?.completed_points ?? 0;
+      return {
+        name: sprint.name.replace("Sprint ", "S"),
+        planned,
+        delivered,
+        accuracy: planned > 0 ? Math.round((delivered / planned) * 100) : 0,
+      };
+    });
+  }, [completedSprints, snapshots]);
+
+  // === Average cycle time (created → done) ===
+  const cycleTime = useMemo(() => {
+    const days = doneItems
+      .map((i: any) => {
+        const created = i.created_at ? parseISO(i.created_at) : null;
+        const done = i.updated_at ? parseISO(i.updated_at) : null;
+        if (!created || !done) return null;
+        return Math.max(0, differenceInDays(done, created));
+      })
+      .filter((d): d is number => d !== null);
+    if (!days.length) return { avg: 0, median: 0, count: 0 };
+    const avg = Math.round((days.reduce((a, b) => a + b, 0) / days.length) * 10) / 10;
+    const sorted = [...days].sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)];
+    return { avg, median, count: days.length };
+  }, [doneItems]);
+
+  // === Collaboration matrix (who works with whom) ===
+  const collaborationMatrix = useMemo(() => {
+    if (members.length < 2) return [];
+    const pairs: Record<string, number> = {};
+    items.forEach((item) => {
+      const collab: string[] = (item as any).collaborator_ids ?? [];
+      const all = item.assignee_id && !collab.includes(item.assignee_id) ? [item.assignee_id, ...collab] : collab;
+      for (let i = 0; i < all.length; i++) {
+        for (let j = i + 1; j < all.length; j++) {
+          const key = [all[i], all[j]].sort().join("|");
+          pairs[key] = (pairs[key] || 0) + 1;
+        }
+      }
+    });
+    return Object.entries(pairs)
+      .map(([key, count]) => {
+        const [a, b] = key.split("|");
+        const ma = members.find((m) => m.id === a);
+        const mb = members.find((m) => m.id === b);
+        if (!ma || !mb) return null;
+        return { a: ma.name.split(" ")[0], b: mb.name.split(" ")[0], count };
+      })
+      .filter((x): x is { a: string; b: string; count: number } => x !== null)
+      .sort((x, y) => y.count - x.count)
+      .slice(0, 8);
+  }, [items, members]);
 
   // === SECTION A: Sprint Analysis ===
   const velocityData = useMemo(() => {
@@ -482,31 +567,61 @@ export default function InsightsPage() {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <MetricCard
           icon={<Calendar className="h-4 w-4" />}
-          label="Prosjektvarighet"
-          value={`${weeksElapsed} uker`}
+          label="Tidsforløp"
+          value={`Uke ${weeksElapsed} / ${totalProjectWeeks}`}
+          sub={`${weeksRemaining} uker igjen`}
+          progressPct={projectProgressPct}
         />
         <MetricCard
           icon={<CheckCircle className="h-4 w-4" />}
-          label="Items levert"
-          value={`${doneItems.length} / ${doneSP} SP`}
+          label="Leveranse"
+          value={`${doneItems.length} / ${items.length}`}
+          sub={`${doneSP} av ${totalSP} SP (${deliverySpPct}%)`}
+          progressPct={deliverySpPct}
         />
         <MetricCard
           icon={<Layers className="h-4 w-4" />}
-          label="Sprinter fullført"
-          value={`${completedSprints.length}`}
-          sub={`${avgCompletionRate}% snitt`}
+          label="Sprinter"
+          value={`${completedSprints.length} fullført`}
+          sub={`${avgCompletionRate}% snitt completion`}
         />
         <MetricCard
           icon={<Target className="h-4 w-4" />}
           label="Aktivitetspoeng"
           value={`${totalActivityPoints} / 30p`}
+          sub={`${activityPointsPct}% av maks`}
+          progressPct={activityPointsPct}
         />
         <MetricCard
           icon={<Users className="h-4 w-4" />}
-          label="Møter gjennomført"
-          value={`${completedMeetings.length}`}
+          label="Møter & standups"
+          value={`${completedMeetings.length} møter`}
+          sub={`${dailyUpdates.length} standup-svar`}
         />
       </div>
+
+      {/* PROJECT PULSE */}
+      {projectPulse.length > 0 && (
+        <SectionCard title="Prosjektpuls" icon={<Activity className="h-4 w-4" />}>
+          <p className="text-xs text-muted-foreground -mt-2">
+            Aktivitetsnivå per uke på tvers av standups, møter og leverte items.
+          </p>
+          <div className="h-[220px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={projectPulse}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                <XAxis dataKey="name" className="text-xs" />
+                <YAxis className="text-xs" />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="standups" stackId="a" fill="hsl(var(--primary))" name="Standup-svar" />
+                <Bar dataKey="meetings" stackId="a" fill={CHART_COLORS.report} name="Møter" />
+                <Bar dataKey="itemsDone" stackId="a" fill={CHART_COLORS.design} name="Items fullført" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </SectionCard>
+      )}
 
       {/* SECTION A: Sprint Analysis */}
       <SectionCard
@@ -514,81 +629,77 @@ export default function InsightsPage() {
         icon={<Layers className="h-4 w-4" />}
         onCopy={() => copy(generateSprintReport())}
       >
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Velocity */}
-          <div>
-            <h4 className="text-sm font-medium mb-2 text-muted-foreground">Velocity-trend</h4>
-            <div className="h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={velocityData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                  <XAxis dataKey="name" className="text-xs" />
-                  <YAxis className="text-xs" />
-                  <Tooltip />
-                  <Line
-                    type="monotone"
-                    dataKey="planned"
-                    stroke="hsl(var(--muted-foreground))"
-                    strokeDasharray="5 5"
-                    name="Planlagt"
-                    dot={false}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="delivered"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2}
-                    name="Levert"
-                  />
-                  <Legend />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Gjennomsnittlig velocity: <strong>{avgVelocity} SP/sprint</strong>
-            </p>
+        {sprintTrend.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-[160px] text-muted-foreground gap-2">
+            <Layers className="h-8 w-8 opacity-30" />
+            <p className="text-sm">Ingen fullførte sprinter ennå</p>
           </div>
-
-          {/* Completion rate */}
-          <div>
-            <h4 className="text-sm font-medium mb-2 text-muted-foreground">Completion rate per sprint</h4>
-            <div className="h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={completionData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                  <XAxis dataKey="name" className="text-xs" />
-                  <YAxis className="text-xs" />
-                  <Tooltip />
-                  <Bar dataKey="completed" stackId="a" fill="hsl(var(--primary))" name="Fullført" />
-                  <Bar dataKey="incomplete" stackId="a" fill="hsl(var(--destructive))" name="Ikke fullført" radius={[4, 4, 0, 0]} />
-                  <Legend />
-                </BarChart>
-              </ResponsiveContainer>
+        ) : (
+          <>
+            {/* Key sprint stats */}
+            <div className="grid gap-3 sm:grid-cols-4">
+              <StatBox label="Snitt velocity" value={`${avgVelocity} SP`} />
+              <StatBox
+                label="Snitt completion"
+                value={`${avgCompletionRate}%`}
+                sub={avgCompletionRate >= 80 ? "Sterk leveranse" : avgCompletionRate >= 60 ? "Stabil" : "Variabel"}
+              />
+              <StatBox
+                label="Beste sprint"
+                value={
+                  sprintTrend.reduce((best, s) => (s.delivered > best.delivered ? s : best), sprintTrend[0]).name
+                }
+                sub={`${sprintTrend.reduce((best, s) => (s.delivered > best.delivered ? s : best), sprintTrend[0]).delivered} SP`}
+              />
+              <StatBox
+                label="Cycle time (snitt)"
+                value={`${cycleTime.avg} dager`}
+                sub={`Median ${cycleTime.median}d · ${cycleTime.count} items`}
+              />
             </div>
-          </div>
 
-          {/* Estimation accuracy */}
-          <div className="lg:col-span-2">
-            <h4 className="text-sm font-medium mb-2 text-muted-foreground">Estimerings-nøyaktighet</h4>
-            <div className="flex flex-wrap gap-3">
-              {estimationAccuracy.map((e) => (
-                <div key={e.name} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
-                  e.accuracy >= 80 ? "bg-green-50 text-green-700" : e.accuracy >= 50 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
-                }`}>
-                  <span className="font-medium">{e.name}:</span>
-                  <span className="font-semibold">{e.accuracy}%</span>
-                  {e.accuracy >= 80 ? (
-                    <TrendingUp className="h-3.5 w-3.5" />
-                  ) : e.accuracy >= 50 ? (
-                    <Minus className="h-3.5 w-3.5" />
-                  ) : (
-                    <TrendingDown className="h-3.5 w-3.5" />
-                  )}
+            {/* Combined velocity + accuracy chart */}
+            <div className="mt-2">
+              <h4 className="text-sm font-medium mb-2 text-muted-foreground">Velocity og estimeringsnøyaktighet per sprint</h4>
+              <div className="h-[240px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={sprintTrend}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                    <XAxis dataKey="name" className="text-xs" />
+                    <YAxis yAxisId="left" className="text-xs" />
+                    <YAxis yAxisId="right" orientation="right" className="text-xs" unit="%" domain={[0, 120]} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar yAxisId="left" dataKey="planned" fill="hsl(var(--muted-foreground) / 0.4)" name="Planlagt SP" radius={[4, 4, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="delivered" fill="hsl(var(--primary))" name="Levert SP" radius={[4, 4, 0, 0]} />
+                    <Line yAxisId="right" type="monotone" dataKey="accuracy" stroke={CHART_COLORS.design} strokeWidth={2} name="Nøyaktighet (%)" />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Per-sprint badges */}
+            <div className="flex flex-wrap gap-2">
+              {sprintTrend.map((s) => (
+                <div
+                  key={s.name}
+                  className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs border ${
+                    s.accuracy >= 80
+                      ? "bg-green-50 text-green-700 border-green-200"
+                      : s.accuracy >= 50
+                      ? "bg-amber-50 text-amber-700 border-amber-200"
+                      : "bg-red-50 text-red-700 border-red-200"
+                  }`}
+                >
+                  <span className="font-medium">{s.name}</span>
+                  <span className="opacity-70">{s.delivered}/{s.planned} SP</span>
+                  <span className="font-semibold">{s.accuracy}%</span>
+                  {s.accuracy >= 80 ? <TrendingUp className="h-3 w-3" /> : s.accuracy >= 50 ? <Minus className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                 </div>
               ))}
             </div>
-          </div>
-        </div>
+          </>
+        )}
 
         <ReflectionField
           value={reflections.sprint || ""}
@@ -838,6 +949,32 @@ export default function InsightsPage() {
             </p>
           </div>
         )}
+
+        {/* Collaboration matrix */}
+        {collaborationMatrix.length > 0 && (
+          <div className="mt-6">
+            <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+              Samarbeidsmønster
+              <span className="font-normal ml-1 text-xs">(par som har jobbet sammen på flest items)</span>
+            </h4>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {collaborationMatrix.map((p) => {
+                const max = collaborationMatrix[0].count;
+                return (
+                  <div key={`${p.a}-${p.b}`} className="flex items-center gap-3 bg-neutral-50 rounded-lg px-3 py-2">
+                    <span className="text-sm font-medium w-32 truncate">
+                      {p.a} <span className="text-muted-foreground">+</span> {p.b}
+                    </span>
+                    <div className="flex-1 bg-muted rounded-full h-2">
+                      <div className="bg-primary rounded-full h-2 transition-all" style={{ width: `${(p.count / max) * 100}%` }} />
+                    </div>
+                    <span className="text-xs text-muted-foreground w-10 text-right">{p.count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </SectionCard>
 
       {/* REQUIREMENTS CHANGELOG */}
@@ -875,11 +1012,13 @@ function MetricCard({
   label,
   value,
   sub,
+  progressPct,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   sub?: string;
+  progressPct?: number;
 }) {
   return (
     <div className="card-elevated p-5">
@@ -887,8 +1026,16 @@ function MetricCard({
         {icon}
         <span className="text-xs uppercase tracking-wider">{label}</span>
       </div>
-      <p className="text-3xl font-bold">{value}</p>
+      <p className="text-2xl font-bold leading-tight">{value}</p>
       {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+      {typeof progressPct === "number" && (
+        <div className="mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
+          <div
+            className="h-full bg-primary transition-all"
+            style={{ width: `${Math.min(100, Math.max(0, progressPct))}%` }}
+          />
+        </div>
+      )}
     </div>
   );
 }
