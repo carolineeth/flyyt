@@ -989,11 +989,13 @@ function MetricCard({
   label,
   value,
   sub,
+  progressPct,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   sub?: string;
+  progressPct?: number;
 }) {
   return (
     <div className="card-elevated p-5">
@@ -1001,8 +1003,16 @@ function MetricCard({
         {icon}
         <span className="text-xs uppercase tracking-wider">{label}</span>
       </div>
-      <p className="text-3xl font-bold">{value}</p>
+      <p className="text-2xl font-bold leading-tight">{value}</p>
       {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
+      {typeof progressPct === "number" && (
+        <div className="mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
+          <div
+            className="h-full bg-primary transition-all"
+            style={{ width: `${Math.min(100, Math.max(0, progressPct))}%` }}
+          />
+        </div>
+      )}
     </div>
   );
 }
