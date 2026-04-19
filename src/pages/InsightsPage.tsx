@@ -663,17 +663,17 @@ export default function InsightsPage() {
               <h4 className="text-sm font-medium mb-2 text-muted-foreground">Velocity og estimeringsnøyaktighet per sprint</h4>
               <div className="h-[240px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={sprintTrend}>
+                  <ComposedChart data={sprintTrend}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
                     <XAxis dataKey="name" className="text-xs" />
-                    <YAxis yAxisId="left" className="text-xs" label={{ value: "SP", angle: -90, position: "insideLeft", className: "text-xs fill-muted-foreground" }} />
+                    <YAxis yAxisId="left" className="text-xs" />
                     <YAxis yAxisId="right" orientation="right" className="text-xs" unit="%" domain={[0, 120]} />
                     <Tooltip />
                     <Legend />
                     <Bar yAxisId="left" dataKey="planned" fill="hsl(var(--muted-foreground) / 0.4)" name="Planlagt SP" radius={[4, 4, 0, 0]} />
                     <Bar yAxisId="left" dataKey="delivered" fill="hsl(var(--primary))" name="Levert SP" radius={[4, 4, 0, 0]} />
                     <Line yAxisId="right" type="monotone" dataKey="accuracy" stroke={CHART_COLORS.design} strokeWidth={2} name="Nøyaktighet (%)" />
-                  </BarChart>
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
             </div>
