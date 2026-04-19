@@ -43,11 +43,12 @@ import {
   Cell,
   Legend,
 } from "recharts";
-import { format, differenceInWeeks, parseISO, startOfWeek, getISOWeek } from "date-fns";
+import { format, differenceInWeeks, parseISO, getISOWeek, differenceInDays } from "date-fns";
 import { nb } from "date-fns/locale";
 import type { BacklogItem, Sprint, Meeting } from "@/lib/types";
 
 const PROJECT_START = new Date("2026-03-03");
+const PROJECT_END = new Date("2026-05-15"); // Innleveringsfrist
 
 // --- Hooks ---
 
