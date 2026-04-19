@@ -208,8 +208,13 @@ export default function InsightsPage() {
 
   // === TOP METRICS ===
   const weeksElapsed = differenceInWeeks(new Date(), PROJECT_START);
+  const totalProjectWeeks = differenceInWeeks(PROJECT_END, PROJECT_START);
+  const weeksRemaining = Math.max(0, totalProjectWeeks - weeksElapsed);
+  const projectProgressPct = Math.min(100, Math.round((weeksElapsed / totalProjectWeeks) * 100));
   const doneItems = items.filter((i) => i.status === "done");
   const doneSP = doneItems.reduce((s, i) => s + (i.estimate || 0), 0);
+  const totalSP = items.reduce((s, i) => s + (i.estimate || 0), 0);
+  const deliverySpPct = totalSP > 0 ? Math.round((doneSP / totalSP) * 100) : 0;
   const completedSprints = sprints.filter((s) => s.completed_at);
   const completedMeetings = meetings.filter((m) => m.status === "completed");
 
@@ -217,6 +222,7 @@ export default function InsightsPage() {
     () => calcTotalEarnedPoints(activityRegs as Registration[], activityCatalog),
     [activityRegs, activityCatalog]
   );
+  const activityPointsPct = Math.round((totalActivityPoints / 30) * 100);
 
   const avgCompletionRate = useMemo(() => {
     if (!snapshots.length) return 0;
@@ -225,6 +231,83 @@ export default function InsightsPage() {
     );
     return Math.round(rates.reduce((a: number, b: number) => a + b, 0) / rates.length);
   }, [snapshots]);
+
+  // === Project pulse (combined activity per week) ===
+  const projectPulse = useMemo(() => {
+    const weekMap: Record<number, { week: number; standups: number; meetings: number; itemsDone: number }> = {};
+    const ensure = (w: number) => {
+      if (!weekMap[w]) weekMap[w] = { week: w, standups: 0, meetings: 0, itemsDone: 0 };
+      return weekMap[w];
+    };
+    dailyUpdates.forEach((u: any) => ensure(getISOWeek(parseISO(u.entry_date))).standups++);
+    completedMeetings.forEach((m) => ensure(getISOWeek(parseISO(m.date as string))).meetings++);
+    doneItems.forEach((i) => {
+      const d = (i as any).updated_at ?? i.created_at;
+      if (d) ensure(getISOWeek(parseISO(d))).itemsDone++;
+    });
+    return Object.values(weekMap)
+      .sort((a, b) => a.week - b.week)
+      .map((d) => ({ ...d, name: `Uke ${d.week}` }));
+  }, [dailyUpdates, completedMeetings, doneItems]);
+
+  // === Sprint trend (velocity + accuracy combined) ===
+  const sprintTrend = useMemo(() => {
+    return completedSprints.map((sprint) => {
+      const snap: any = snapshots.find((s: any) => s.sprint_id === sprint.id);
+      const planned = snap?.total_points ?? 0;
+      const delivered = snap?.completed_points ?? 0;
+      return {
+        name: sprint.name.replace("Sprint ", "S"),
+        planned,
+        delivered,
+        accuracy: planned > 0 ? Math.round((delivered / planned) * 100) : 0,
+      };
+    });
+  }, [completedSprints, snapshots]);
+
+  // === Average cycle time (created → done) ===
+  const cycleTime = useMemo(() => {
+    const days = doneItems
+      .map((i: any) => {
+        const created = i.created_at ? parseISO(i.created_at) : null;
+        const done = i.updated_at ? parseISO(i.updated_at) : null;
+        if (!created || !done) return null;
+        return Math.max(0, differenceInDays(done, created));
+      })
+      .filter((d): d is number => d !== null);
+    if (!days.length) return { avg: 0, median: 0, count: 0 };
+    const avg = Math.round((days.reduce((a, b) => a + b, 0) / days.length) * 10) / 10;
+    const sorted = [...days].sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)];
+    return { avg, median, count: days.length };
+  }, [doneItems]);
+
+  // === Collaboration matrix (who works with whom) ===
+  const collaborationMatrix = useMemo(() => {
+    if (members.length < 2) return [];
+    const pairs: Record<string, number> = {};
+    items.forEach((item) => {
+      const collab: string[] = (item as any).collaborator_ids ?? [];
+      const all = item.assignee_id && !collab.includes(item.assignee_id) ? [item.assignee_id, ...collab] : collab;
+      for (let i = 0; i < all.length; i++) {
+        for (let j = i + 1; j < all.length; j++) {
+          const key = [all[i], all[j]].sort().join("|");
+          pairs[key] = (pairs[key] || 0) + 1;
+        }
+      }
+    });
+    return Object.entries(pairs)
+      .map(([key, count]) => {
+        const [a, b] = key.split("|");
+        const ma = members.find((m) => m.id === a);
+        const mb = members.find((m) => m.id === b);
+        if (!ma || !mb) return null;
+        return { a: ma.name.split(" ")[0], b: mb.name.split(" ")[0], count };
+      })
+      .filter((x): x is { a: string; b: string; count: number } => x !== null)
+      .sort((x, y) => y.count - x.count)
+      .slice(0, 8);
+  }, [items, members]);
 
   // === SECTION A: Sprint Analysis ===
   const velocityData = useMemo(() => {
