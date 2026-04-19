@@ -23,6 +23,7 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { useRequirementChanges } from "@/hooks/useRequirementChangelog";
+import { RequirementsInsight } from "@/components/insights/RequirementsInsight";
 import { useActivityCatalog } from "@/hooks/useActivityCatalog";
 import { calcTotalEarnedPoints } from "@/lib/calcTotalEarnedPoints";
 import { PROJECT_START as _PROJECT_START_IMPORT } from "@/hooks/useDailyUpdates";
@@ -840,141 +841,13 @@ export default function InsightsPage() {
       </SectionCard>
 
       {/* REQUIREMENTS CHANGELOG */}
-      <SectionCard
-        title="Kravspesifikasjon-endringer"
-        icon={<ClipboardList className="h-4 w-4" />}
+      <RequirementsInsight
+        requirements={requirements}
+        reqChanges={reqChanges}
+        reflectionValue={reflections.requirements || ""}
+        onReflectionChange={(v) => setReflection("requirements", v)}
         onCopy={() => copy(generateRequirementsReport())}
-      >
-        {/* Summary cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-          <StatBox label="Funksjonelle krav" value={requirements.filter((r) => r.category === "functional").length} />
-          <StatBox label="Ikke-funksjonelle" value={requirements.filter((r) => r.category === "non_functional").length} />
-          <StatBox label="Totale endringer" value={reqChanges.length} />
-          <StatBox label="Siste endring" value={reqChanges[0] ? format(parseISO(reqChanges[0].created_at), "d. MMM", { locale: nb }) : "—"} />
-        </div>
-
-        {/* Change type breakdown */}
-        {reqChanges.length > 0 && (() => {
-          const created = reqChanges.filter((c) => c.change_type === "created").length;
-          const deleted = reqChanges.filter((c) => c.change_type === "deleted").length;
-          const statusChanged = reqChanges.filter((c) => c.change_type === "status_changed").length;
-          const other = reqChanges.length - created - deleted - statusChanged;
-          return (
-            <div className="flex flex-wrap gap-2 mb-4">
-              {created > 0 && (
-                <span className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium bg-teal-50 text-teal-700">
-                  + {created} lagt til
-                </span>
-              )}
-              {deleted > 0 && (
-                <span className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium bg-red-50 text-red-700">
-                  − {deleted} slettet
-                </span>
-              )}
-              {statusChanged > 0 && (
-                <span className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-700">
-                  ↕ {statusChanged} status-endringer
-                </span>
-              )}
-              {other > 0 && (
-                <span className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium bg-neutral-100 text-neutral-600">
-                  ✎ {other} andre endringer
-                </span>
-              )}
-            </div>
-          );
-        })()}
-
-        {/* Implemented progress */}
-        {requirements.length > 0 && (() => {
-          const implemented = requirements.filter((r) => r.status === "implemented" || r.status === "verified").length;
-          const pct = Math.round((implemented / requirements.length) * 100);
-          return (
-            <div className="mb-4">
-              <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                <span>Implementert</span>
-                <span>{implemented} / {requirements.length} ({pct}%)</span>
-              </div>
-              <div className="bg-muted rounded-full h-2">
-                <div className="bg-primary rounded-full h-2 transition-all" style={{ width: `${pct}%` }} />
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* Requirements activity over time chart */}
-        {reqChanges.length > 0 && (() => {
-          // Group changes by week and type
-          const weekMap: Record<string, { week: string; opprettet: number; implementert: number; slettet: number; andre: number }> = {};
-          [...reqChanges].reverse().forEach((c) => {
-            const w = `Uke ${getISOWeek(parseISO(c.created_at))}`;
-            if (!weekMap[w]) weekMap[w] = { week: w, opprettet: 0, implementert: 0, slettet: 0, andre: 0 };
-            if (c.change_type === "created") weekMap[w].opprettet++;
-            else if (c.change_type === "status_changed" && c.new_value === "implemented") weekMap[w].implementert++;
-            else if (c.change_type === "deleted") weekMap[w].slettet++;
-            else weekMap[w].andre++;
-          });
-          const chartData = Object.values(weekMap);
-          if (chartData.length === 0) return null;
-          return (
-            <div className="mb-4">
-              <h4 className="text-sm font-medium mb-2 text-muted-foreground">Kravaktivitet over tid</h4>
-              <div className="h-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                    <XAxis dataKey="week" className="text-xs" />
-                    <YAxis className="text-xs" allowDecimals={false} />
-                    <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                    <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-                    <Bar dataKey="opprettet" stackId="a" fill="#0F6E56" name="Opprettet" radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="implementert" stackId="a" fill="#2563EB" name="Implementert" radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="slettet" stackId="a" fill="#DC2626" name="Slettet" radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="andre" stackId="a" fill="#9CA3AF" name="Andre endringer" radius={[2, 2, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* Change timeline */}
-        {reqChanges.length > 0 ? (
-          <div>
-            <h4 className="text-sm font-medium mb-3 text-muted-foreground">Endringslogg (siste 10)</h4>
-            <div className="space-y-0 max-h-72 overflow-y-auto">
-              {reqChanges.slice(0, 10).map((c) => {
-                const borderMap: Record<string, string> = {
-                  created: "border-l-teal-500",
-                  updated: "border-l-blue-500",
-                  deleted: "border-l-red-500",
-                  status_changed: "border-l-blue-500",
-                  priority_changed: "border-l-amber-500",
-                  added_to_backlog: "border-l-teal-500",
-                  removed_from_backlog: "border-l-red-500",
-                };
-                const border = borderMap[c.change_type] ?? "border-l-neutral-300";
-                return (
-                  <div key={c.id} className={`flex gap-3 items-start py-2.5 border-l-[3px] pl-3 ${border}`}>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-xs text-muted-foreground">{format(parseISO(c.created_at), "d. MMM HH:mm", { locale: nb })}</span>
-                      <p className="text-sm mt-0.5">{c.description ?? c.change_type}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">Ingen endringer logget ennå.</p>
-        )}
-
-        <ReflectionField
-          value={reflections.requirements || ""}
-          onChange={(v) => setReflection("requirements", v)}
-          placeholder="Refleksjon: Hvordan utviklet kravspesifikasjonen seg gjennom prosjektet?"
-        />
-      </SectionCard>
+      />
 
       {/* EXPORT */}
       <div className="card-elevated p-6 flex flex-wrap gap-4 items-center justify-between">
