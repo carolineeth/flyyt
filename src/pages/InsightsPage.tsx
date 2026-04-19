@@ -23,6 +23,7 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { useRequirementChanges } from "@/hooks/useRequirementChangelog";
+import { RequirementsInsight } from "@/components/insights/RequirementsInsight";
 import { useActivityCatalog } from "@/hooks/useActivityCatalog";
 import { calcTotalEarnedPoints } from "@/lib/calcTotalEarnedPoints";
 import { PROJECT_START as _PROJECT_START_IMPORT } from "@/hooks/useDailyUpdates";
