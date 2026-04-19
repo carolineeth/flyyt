@@ -566,31 +566,61 @@ export default function InsightsPage() {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <MetricCard
           icon={<Calendar className="h-4 w-4" />}
-          label="Prosjektvarighet"
-          value={`${weeksElapsed} uker`}
+          label="Tidsforløp"
+          value={`Uke ${weeksElapsed} / ${totalProjectWeeks}`}
+          sub={`${weeksRemaining} uker igjen`}
+          progressPct={projectProgressPct}
         />
         <MetricCard
           icon={<CheckCircle className="h-4 w-4" />}
-          label="Items levert"
-          value={`${doneItems.length} / ${doneSP} SP`}
+          label="Leveranse"
+          value={`${doneItems.length} / ${items.length}`}
+          sub={`${doneSP} av ${totalSP} SP (${deliverySpPct}%)`}
+          progressPct={deliverySpPct}
         />
         <MetricCard
           icon={<Layers className="h-4 w-4" />}
-          label="Sprinter fullført"
-          value={`${completedSprints.length}`}
-          sub={`${avgCompletionRate}% snitt`}
+          label="Sprinter"
+          value={`${completedSprints.length} fullført`}
+          sub={`${avgCompletionRate}% snitt completion`}
         />
         <MetricCard
           icon={<Target className="h-4 w-4" />}
           label="Aktivitetspoeng"
           value={`${totalActivityPoints} / 30p`}
+          sub={`${activityPointsPct}% av maks`}
+          progressPct={activityPointsPct}
         />
         <MetricCard
           icon={<Users className="h-4 w-4" />}
-          label="Møter gjennomført"
-          value={`${completedMeetings.length}`}
+          label="Møter & standups"
+          value={`${completedMeetings.length} møter`}
+          sub={`${dailyUpdates.length} standup-svar`}
         />
       </div>
+
+      {/* PROJECT PULSE */}
+      {projectPulse.length > 0 && (
+        <SectionCard title="Prosjektpuls" icon={<Activity className="h-4 w-4" />}>
+          <p className="text-xs text-muted-foreground -mt-2">
+            Aktivitetsnivå per uke på tvers av standups, møter og leverte items.
+          </p>
+          <div className="h-[220px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={projectPulse}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                <XAxis dataKey="name" className="text-xs" />
+                <YAxis className="text-xs" />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="standups" stackId="a" fill="hsl(var(--primary))" name="Standup-svar" />
+                <Bar dataKey="meetings" stackId="a" fill={CHART_COLORS.report} name="Møter" />
+                <Bar dataKey="itemsDone" stackId="a" fill={CHART_COLORS.design} name="Items fullført" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </SectionCard>
+      )}
 
       {/* SECTION A: Sprint Analysis */}
       <SectionCard
