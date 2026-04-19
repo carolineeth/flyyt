@@ -628,81 +628,77 @@ export default function InsightsPage() {
         icon={<Layers className="h-4 w-4" />}
         onCopy={() => copy(generateSprintReport())}
       >
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Velocity */}
-          <div>
-            <h4 className="text-sm font-medium mb-2 text-muted-foreground">Velocity-trend</h4>
-            <div className="h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={velocityData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                  <XAxis dataKey="name" className="text-xs" />
-                  <YAxis className="text-xs" />
-                  <Tooltip />
-                  <Line
-                    type="monotone"
-                    dataKey="planned"
-                    stroke="hsl(var(--muted-foreground))"
-                    strokeDasharray="5 5"
-                    name="Planlagt"
-                    dot={false}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="delivered"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2}
-                    name="Levert"
-                  />
-                  <Legend />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Gjennomsnittlig velocity: <strong>{avgVelocity} SP/sprint</strong>
-            </p>
+        {sprintTrend.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-[160px] text-muted-foreground gap-2">
+            <Layers className="h-8 w-8 opacity-30" />
+            <p className="text-sm">Ingen fullførte sprinter ennå</p>
           </div>
-
-          {/* Completion rate */}
-          <div>
-            <h4 className="text-sm font-medium mb-2 text-muted-foreground">Completion rate per sprint</h4>
-            <div className="h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={completionData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                  <XAxis dataKey="name" className="text-xs" />
-                  <YAxis className="text-xs" />
-                  <Tooltip />
-                  <Bar dataKey="completed" stackId="a" fill="hsl(var(--primary))" name="Fullført" />
-                  <Bar dataKey="incomplete" stackId="a" fill="hsl(var(--destructive))" name="Ikke fullført" radius={[4, 4, 0, 0]} />
-                  <Legend />
-                </BarChart>
-              </ResponsiveContainer>
+        ) : (
+          <>
+            {/* Key sprint stats */}
+            <div className="grid gap-3 sm:grid-cols-4">
+              <StatBox label="Snitt velocity" value={`${avgVelocity} SP`} />
+              <StatBox
+                label="Snitt completion"
+                value={`${avgCompletionRate}%`}
+                sub={avgCompletionRate >= 80 ? "Sterk leveranse" : avgCompletionRate >= 60 ? "Stabil" : "Variabel"}
+              />
+              <StatBox
+                label="Beste sprint"
+                value={
+                  sprintTrend.reduce((best, s) => (s.delivered > best.delivered ? s : best), sprintTrend[0]).name
+                }
+                sub={`${sprintTrend.reduce((best, s) => (s.delivered > best.delivered ? s : best), sprintTrend[0]).delivered} SP`}
+              />
+              <StatBox
+                label="Cycle time (snitt)"
+                value={`${cycleTime.avg} dager`}
+                sub={`Median ${cycleTime.median}d · ${cycleTime.count} items`}
+              />
             </div>
-          </div>
 
-          {/* Estimation accuracy */}
-          <div className="lg:col-span-2">
-            <h4 className="text-sm font-medium mb-2 text-muted-foreground">Estimerings-nøyaktighet</h4>
-            <div className="flex flex-wrap gap-3">
-              {estimationAccuracy.map((e) => (
-                <div key={e.name} className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
-                  e.accuracy >= 80 ? "bg-green-50 text-green-700" : e.accuracy >= 50 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
-                }`}>
-                  <span className="font-medium">{e.name}:</span>
-                  <span className="font-semibold">{e.accuracy}%</span>
-                  {e.accuracy >= 80 ? (
-                    <TrendingUp className="h-3.5 w-3.5" />
-                  ) : e.accuracy >= 50 ? (
-                    <Minus className="h-3.5 w-3.5" />
-                  ) : (
-                    <TrendingDown className="h-3.5 w-3.5" />
-                  )}
+            {/* Combined velocity + accuracy chart */}
+            <div className="mt-2">
+              <h4 className="text-sm font-medium mb-2 text-muted-foreground">Velocity og estimeringsnøyaktighet per sprint</h4>
+              <div className="h-[240px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={sprintTrend}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                    <XAxis dataKey="name" className="text-xs" />
+                    <YAxis yAxisId="left" className="text-xs" label={{ value: "SP", angle: -90, position: "insideLeft", className: "text-xs fill-muted-foreground" }} />
+                    <YAxis yAxisId="right" orientation="right" className="text-xs" unit="%" domain={[0, 120]} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar yAxisId="left" dataKey="planned" fill="hsl(var(--muted-foreground) / 0.4)" name="Planlagt SP" radius={[4, 4, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="delivered" fill="hsl(var(--primary))" name="Levert SP" radius={[4, 4, 0, 0]} />
+                    <Line yAxisId="right" type="monotone" dataKey="accuracy" stroke={CHART_COLORS.design} strokeWidth={2} name="Nøyaktighet (%)" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Per-sprint badges */}
+            <div className="flex flex-wrap gap-2">
+              {sprintTrend.map((s) => (
+                <div
+                  key={s.name}
+                  className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs border ${
+                    s.accuracy >= 80
+                      ? "bg-green-50 text-green-700 border-green-200"
+                      : s.accuracy >= 50
+                      ? "bg-amber-50 text-amber-700 border-amber-200"
+                      : "bg-red-50 text-red-700 border-red-200"
+                  }`}
+                >
+                  <span className="font-medium">{s.name}</span>
+                  <span className="opacity-70">{s.delivered}/{s.planned} SP</span>
+                  <span className="font-semibold">{s.accuracy}%</span>
+                  {s.accuracy >= 80 ? <TrendingUp className="h-3 w-3" /> : s.accuracy >= 50 ? <Minus className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                 </div>
               ))}
             </div>
-          </div>
-        </div>
+          </>
+        )}
 
         <ReflectionField
           value={reflections.sprint || ""}
