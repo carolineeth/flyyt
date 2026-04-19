@@ -949,6 +949,32 @@ export default function InsightsPage() {
             </p>
           </div>
         )}
+
+        {/* Collaboration matrix */}
+        {collaborationMatrix.length > 0 && (
+          <div className="mt-6">
+            <h4 className="text-sm font-medium mb-2 text-muted-foreground">
+              Samarbeidsmønster
+              <span className="font-normal ml-1 text-xs">(par som har jobbet sammen på flest items)</span>
+            </h4>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {collaborationMatrix.map((p) => {
+                const max = collaborationMatrix[0].count;
+                return (
+                  <div key={`${p.a}-${p.b}`} className="flex items-center gap-3 bg-neutral-50 rounded-lg px-3 py-2">
+                    <span className="text-sm font-medium w-32 truncate">
+                      {p.a} <span className="text-muted-foreground">+</span> {p.b}
+                    </span>
+                    <div className="flex-1 bg-muted rounded-full h-2">
+                      <div className="bg-primary rounded-full h-2 transition-all" style={{ width: `${(p.count / max) * 100}%` }} />
+                    </div>
+                    <span className="text-xs text-muted-foreground w-10 text-right">{p.count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </SectionCard>
 
       {/* REQUIREMENTS CHANGELOG */}
