@@ -543,7 +543,7 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
                 <Badge variant="outline" className="text-xs shrink-0">Rom</Badge>
                 <Input
                   value={room}
-                  onChange={(e) => setRoom(e.target.value)}
+                  onChange={(e) => { roomDirty.current = true; setRoom(e.target.value); }}
                   onBlur={handleRoomBlur}
                   placeholder="Grupperom..."
                   className="h-8 text-sm w-40"
@@ -665,7 +665,7 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
               <p className="text-sm font-medium text-muted-foreground mb-1.5">Møtenotater</p>
               <Textarea
                 value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                onChange={(e) => { notesDirty.current = true; setNotes(e.target.value); }}
                 onBlur={handleNotesBlur}
                 placeholder="Skriv møtenotater her... (lagres automatisk)"
                 rows={4}
