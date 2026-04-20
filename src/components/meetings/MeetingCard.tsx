@@ -155,10 +155,10 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
       () => supabase.from("meetings").update({ notes: val } as any).eq("id", meeting.id).select("id, notes, room").single() as any,
       { silent: true, errorMessage: "Kunne ikke lagre notater." }
     );
-    if (result !== null) {
+    if (result.ok && result.data) {
       notesDirty.current = false;
       qc.setQueryData(["week_meetings", year, week], (prev: any[] | undefined) =>
-        prev?.map((item) => (item.id === meeting.id ? { ...item, notes: result.notes, room: result.room } : item))
+        prev?.map((item) => (item.id === meeting.id ? { ...item, notes: result.data.notes, room: result.data.room } : item))
       );
       qc.invalidateQueries({ queryKey: ["all_meetings_minutes"] });
     }
@@ -170,10 +170,10 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
       () => supabase.from("meetings").update({ room: val } as any).eq("id", meeting.id).select("id, notes, room").single() as any,
       { silent: true, errorMessage: "Kunne ikke lagre rom." }
     );
-    if (result !== null) {
+    if (result.ok && result.data) {
       roomDirty.current = false;
       qc.setQueryData(["week_meetings", year, week], (prev: any[] | undefined) =>
-        prev?.map((item) => (item.id === meeting.id ? { ...item, notes: result.notes, room: result.room } : item))
+        prev?.map((item) => (item.id === meeting.id ? { ...item, notes: result.data.notes, room: result.data.room } : item))
       );
       qc.invalidateQueries({ queryKey: ["all_meetings_minutes"] });
     }
