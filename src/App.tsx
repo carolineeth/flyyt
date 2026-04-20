@@ -25,7 +25,14 @@ import ProfilePage from "@/pages/ProfilePage";
 import BacklogPage from "@/pages/BacklogPage";
 import NotFound from "@/pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Avoid clobbering in-progress edits when window regains focus
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 function AuthWrapper({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);

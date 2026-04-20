@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { format } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -135,51 +135,64 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
   const [showReschedule, setShowReschedule] = useState(false);
   const [newDate, setNewDate] = useState("");
 
-  useEffect(() => { setNotes(meeting?.notes || ""); }, [meeting?.notes]);
-  useEffect(() => { setRoom(meeting?.room || ""); }, [meeting?.room]);
+  // Track unsaved local edits so background refetches can't overwrite typing
+  const notesDirty = useRef(false);
+  const roomDirty = useRef(false);
 
-  // Auto-save room with debounce
+  // Only sync from server when the meeting record changes (id) and there are no
+  // unsaved local edits. This prevents in-progress typing from being clobbered
+  // by query refetches/invalidations.
   useEffect(() => {
-    if (!meeting?.id || room === (meeting?.room || "")) return;
-    const t = setTimeout(() => {
-      saveToSupabase(
-        () => supabase.from("meetings").update({ room } as any).eq("id", meeting.id) as any,
-        { silent: true, errorMessage: "Kunne ikke lagre rom." }
-      );
-    }, 800);
-    return () => clearTimeout(t);
-  }, [room, meeting?.room, meeting?.id]);
+    if (!notesDirty.current) setNotes(meeting?.notes || "");
+  }, [meeting?.id, meeting?.notes]);
+  useEffect(() => {
+    if (!roomDirty.current) setRoom(meeting?.room || "");
+  }, [meeting?.id, meeting?.room]);
 
   const saveNotes = useCallback(async (val: string) => {
     if (!meeting?.id) return;
-    await saveToSupabase(
+    const result = await saveToSupabase(
       () => supabase.from("meetings").update({ notes: val } as any).eq("id", meeting.id) as any,
       { silent: true, errorMessage: "Kunne ikke lagre notater." }
     );
+    if (result !== null) notesDirty.current = false;
   }, [meeting?.id]);
+
+  const saveRoom = useCallback(async (val: string) => {
+    if (!meeting?.id) return;
+    const result = await saveToSupabase(
+      () => supabase.from("meetings").update({ room: val } as any).eq("id", meeting.id) as any,
+      { silent: true, errorMessage: "Kunne ikke lagre rom." }
+    );
+    if (result !== null) roomDirty.current = false;
+  }, [meeting?.id]);
+
+  // Auto-save room with debounce
+  useEffect(() => {
+    if (!meeting?.id || !roomDirty.current || room === (meeting?.room || "")) return;
+    const t = setTimeout(() => { saveRoom(room); }, 800);
+    return () => clearTimeout(t);
+  }, [room, meeting?.room, meeting?.id, saveRoom]);
 
   // Auto-save notes with debounce
   useEffect(() => {
-    if (!meeting?.id || notes === (meeting?.notes || "")) return;
+    if (!meeting?.id || !notesDirty.current || notes === (meeting?.notes || "")) return;
     const t = setTimeout(() => { saveNotes(notes); }, 800);
     return () => clearTimeout(t);
   }, [notes, meeting?.notes, saveNotes, meeting?.id]);
 
   // Also save on blur for immediate persistence
   const handleNotesBlur = useCallback(() => {
-    if (meeting?.id && notes !== (meeting?.notes || "")) {
+    if (meeting?.id && notesDirty.current && notes !== (meeting?.notes || "")) {
       saveNotes(notes);
     }
   }, [meeting?.id, notes, meeting?.notes, saveNotes]);
 
   const handleRoomBlur = useCallback(() => {
-    if (meeting?.id && room !== (meeting?.room || "")) {
-      saveToSupabase(
-        () => supabase.from("meetings").update({ room } as any).eq("id", meeting.id) as any,
-        { silent: true, errorMessage: "Kunne ikke lagre rom." }
-      );
+    if (meeting?.id && roomDirty.current && room !== (meeting?.room || "")) {
+      saveRoom(room);
     }
-  }, [meeting?.id, room, meeting?.room]);
+  }, [meeting?.id, room, meeting?.room, saveRoom]);
 
   if (!meeting) return null;
 
@@ -530,7 +543,7 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
                 <Badge variant="outline" className="text-xs shrink-0">Rom</Badge>
                 <Input
                   value={room}
-                  onChange={(e) => setRoom(e.target.value)}
+                  onChange={(e) => { roomDirty.current = true; setRoom(e.target.value); }}
                   onBlur={handleRoomBlur}
                   placeholder="Grupperom..."
                   className="h-8 text-sm w-40"
@@ -652,7 +665,7 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
               <p className="text-sm font-medium text-muted-foreground mb-1.5">Møtenotater</p>
               <Textarea
                 value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                onChange={(e) => { notesDirty.current = true; setNotes(e.target.value); }}
                 onBlur={handleNotesBlur}
                 placeholder="Skriv møtenotater her... (lagres automatisk)"
                 rows={4}
