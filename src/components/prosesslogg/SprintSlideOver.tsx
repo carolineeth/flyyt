@@ -43,7 +43,7 @@ export function SprintSlideOver({ open, onOpenChange, sprint, snapshot }: Props)
         () => supabase.from("sprints").update({ [field]: value }).eq("id", sprint.id) as any,
         { silent: true, errorMessage: "Kunne ikke lagre sprint-notater. Prøv igjen." }
       ).then((result) => {
-        if (result !== null) qc.invalidateQueries({ queryKey: ["completed_sprints"] });
+        if (result.ok) qc.invalidateQueries({ queryKey: ["completed_sprints"] });
       });
     }, 800);
   };

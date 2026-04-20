@@ -10,23 +10,23 @@ import { toast } from "sonner";
  *   silent          If true, no success toast is shown (use for auto-save / toggles)
  */
 export async function saveToSupabase<T>(
-  operation: () => Promise<{ data: T; error: any }>,
+  operation: () => Promise<{ data: T | null; error: any }>,
   options?: {
     successMessage?: string;
     errorMessage?: string;
     silent?: boolean;
   }
-): Promise<T | null> {
+): Promise<{ ok: true; data: T | null } | { ok: false }> {
   try {
     const { data, error } = await operation();
     if (error) throw error;
     if (!options?.silent && options?.successMessage) {
       toast.success(options.successMessage, { duration: 2000 });
     }
-    return data;
+    return { ok: true, data };
   } catch (err: any) {
     toast.error(options?.errorMessage ?? "Kunne ikke lagre. Prøv igjen.", { duration: 5000 });
     console.error("saveToSupabase failed:", err);
-    return null;
+    return { ok: false };
   }
 }
