@@ -152,20 +152,32 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
   const saveNotes = useCallback(async (val: string) => {
     if (!meeting?.id) return;
     const result = await saveToSupabase(
-      () => supabase.from("meetings").update({ notes: val } as any).eq("id", meeting.id) as any,
+      () => supabase.from("meetings").update({ notes: val } as any).eq("id", meeting.id).select("id, notes, room").single() as any,
       { silent: true, errorMessage: "Kunne ikke lagre notater." }
     );
-    if (result !== null) notesDirty.current = false;
-  }, [meeting?.id]);
+    if (result !== null) {
+      notesDirty.current = false;
+      qc.setQueryData(["week_meetings", year, week], (prev: any[] | undefined) =>
+        prev?.map((item) => (item.id === meeting.id ? { ...item, notes: result.notes, room: result.room } : item))
+      );
+      qc.invalidateQueries({ queryKey: ["all_meetings_minutes"] });
+    }
+  }, [meeting?.id, meeting.id, qc, week, year]);
 
   const saveRoom = useCallback(async (val: string) => {
     if (!meeting?.id) return;
     const result = await saveToSupabase(
-      () => supabase.from("meetings").update({ room: val } as any).eq("id", meeting.id) as any,
+      () => supabase.from("meetings").update({ room: val } as any).eq("id", meeting.id).select("id, notes, room").single() as any,
       { silent: true, errorMessage: "Kunne ikke lagre rom." }
     );
-    if (result !== null) roomDirty.current = false;
-  }, [meeting?.id]);
+    if (result !== null) {
+      roomDirty.current = false;
+      qc.setQueryData(["week_meetings", year, week], (prev: any[] | undefined) =>
+        prev?.map((item) => (item.id === meeting.id ? { ...item, notes: result.notes, room: result.room } : item))
+      );
+      qc.invalidateQueries({ queryKey: ["all_meetings_minutes"] });
+    }
+  }, [meeting?.id, meeting.id, qc, week, year]);
 
   // Auto-save room with debounce
   useEffect(() => {
