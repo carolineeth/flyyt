@@ -377,10 +377,20 @@ export function SubSessionBlock({
   }, [subSession.id, subSession.notes]);
 
   const saveNotes = useCallback(async (val: string) => {
-    const { error } = await (supabase.from("meeting_sub_sessions" as any).update({ notes: val } as any).eq("id", subSession.id) as any);
+    const { data, error } = await (supabase
+      .from("meeting_sub_sessions" as any)
+      .update({ notes: val } as any)
+      .eq("id", subSession.id)
+      .select("id, meeting_id, notes, type_specific_data")
+      .single() as any);
     if (error) { toast.error("Kunne ikke lagre notater"); return; }
     notesDirty.current = false;
-  }, [subSession.id]);
+    qc.setQueryData(["meeting_sub_sessions", meetingId], (prev: any[] | undefined) =>
+      prev?.map((item) => (item.id === subSession.id ? { ...item, notes: data.notes, type_specific_data: data.type_specific_data } : item))
+    );
+    qc.invalidateQueries({ queryKey: ["all_sub_sessions_minutes"] });
+    qc.invalidateQueries({ queryKey: ["all_meeting_sub_sessions"] });
+  }, [meetingId, qc, subSession.id]);
 
   useEffect(() => {
     if (!notesDirty.current || notes === (subSession.notes || "")) return;
@@ -411,14 +421,24 @@ export function SubSessionBlock({
   useEffect(() => {
     if (!typeDataDirty.current) return;
     const t = setTimeout(async () => {
-      const { error } = await (supabase
+      const { data, error } = await (supabase
         .from("meeting_sub_sessions" as any)
         .update({ type_specific_data: typeData } as any)
-        .eq("id", subSession.id) as any);
+        .eq("id", subSession.id)
+        .select("id, meeting_id, notes, type_specific_data")
+        .single() as any);
       if (error) toast.error("Kunne ikke lagre data");
+      else {
+        typeDataDirty.current = false;
+        qc.setQueryData(["meeting_sub_sessions", meetingId], (prev: any[] | undefined) =>
+          prev?.map((item) => (item.id === subSession.id ? { ...item, notes: data.notes, type_specific_data: data.type_specific_data } : item))
+        );
+        qc.invalidateQueries({ queryKey: ["all_sub_sessions_minutes"] });
+        qc.invalidateQueries({ queryKey: ["all_meeting_sub_sessions"] });
+      }
     }, 800);
     return () => clearTimeout(t);
-  }, [typeData, subSession.id]);
+  }, [meetingId, qc, subSession.id, typeData]);
 
   // ── Prosesslogg ──
   const [prosesslogg, setProsesslogg] = useState({

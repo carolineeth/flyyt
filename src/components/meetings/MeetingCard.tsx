@@ -151,7 +151,7 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
 
   const saveNotes = useCallback(async (val: string) => {
     if (!meeting?.id) return;
-    const result = await saveToSupabase(
+    const result = await saveToSupabase<any>(
       () => supabase.from("meetings").update({ notes: val } as any).eq("id", meeting.id).select("id, notes, room").single() as any,
       { silent: true, errorMessage: "Kunne ikke lagre notater." }
     );
@@ -166,7 +166,7 @@ export function MeetingCard({ meeting, recurringMeeting, leaderName, notetakerNa
 
   const saveRoom = useCallback(async (val: string) => {
     if (!meeting?.id) return;
-    const result = await saveToSupabase(
+    const result = await saveToSupabase<any>(
       () => supabase.from("meetings").update({ room: val } as any).eq("id", meeting.id).select("id, notes, room").single() as any,
       { silent: true, errorMessage: "Kunne ikke lagre rom." }
     );
