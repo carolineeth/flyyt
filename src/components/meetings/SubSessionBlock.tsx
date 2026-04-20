@@ -368,22 +368,28 @@ export function SubSessionBlock({
   // ── Notes ──
   const [notes, setNotes] = useState(subSession.notes || "");
   const [newItem, setNewItem] = useState("");
+  const notesDirty = useRef(false);
 
-  useEffect(() => { setNotes(subSession.notes || ""); }, [subSession.notes]);
+  // Only sync from server when sub-session id changes OR no unsaved local edits.
+  // This prevents background refetches from clobbering in-progress typing.
+  useEffect(() => {
+    if (!notesDirty.current) setNotes(subSession.notes || "");
+  }, [subSession.id, subSession.notes]);
 
   const saveNotes = useCallback(async (val: string) => {
     const { error } = await (supabase.from("meeting_sub_sessions" as any).update({ notes: val } as any).eq("id", subSession.id) as any);
-    if (error) toast.error("Kunne ikke lagre notater");
+    if (error) { toast.error("Kunne ikke lagre notater"); return; }
+    notesDirty.current = false;
   }, [subSession.id]);
 
   useEffect(() => {
-    if (notes === (subSession.notes || "")) return;
+    if (!notesDirty.current || notes === (subSession.notes || "")) return;
     const t = setTimeout(() => { saveNotes(notes); }, 800);
     return () => clearTimeout(t);
   }, [notes, subSession.notes, saveNotes]);
 
   const handleNotesBlur = useCallback(() => {
-    if (notes !== (subSession.notes || "")) saveNotes(notes);
+    if (notesDirty.current && notes !== (subSession.notes || "")) saveNotes(notes);
   }, [notes, subSession.notes, saveNotes]);
 
   // ── Type-specific data ──
@@ -539,7 +545,7 @@ export function SubSessionBlock({
         <Label className="text-sm text-muted-foreground">Møtenotater</Label>
         <Textarea
           value={notes}
-          onChange={(e) => setNotes(e.target.value)}
+          onChange={(e) => { notesDirty.current = true; setNotes(e.target.value); }}
           onBlur={handleNotesBlur}
           placeholder="Notater for denne delen... (lagres automatisk)"
           rows={3}
