@@ -189,26 +189,31 @@ export function calculateActivityPoints(
   }
 
   // ===== Step 4: agile meetings (R6, R7) =====
-  // Within a week: only first registered type counts.
-  // Total: max 3 (one per type, earliest weeks first).
+  // R6: Hver type (daily/planning/review) kan telle maks én gang totalt = maks 3p.
+  // R7: Innen samme uke teller kun den først registrerte typen; senere typer
+  //     samme uke får agile_meeting_same_week.
+  // Sortert kronologisk: completed_date asc → created_at asc.
   const agileRows = rows
     .filter((r) => isStillCandidate(r) && r.cat.meeting_type && AGILE_TYPES.has(r.cat.meeting_type))
     .sort(compareSort);
 
   const agileTakenWeeks = new Set<number>();
-  let agileCounted = 0;
+  const agileTakenTypes = new Set<string>();
   for (const row of agileRows) {
     const w = row.reg.completed_week!;
+    const t = row.cat.meeting_type!;
     if (agileTakenWeeks.has(w)) {
+      // En annen smidig-type er allerede registrert tidligere denne uka.
       row.result.violations.push("agile_meeting_same_week");
       continue;
     }
-    if (agileCounted >= AGILE_MAX_TOTAL) {
+    if (agileTakenTypes.has(t)) {
+      // Samme type er allerede telt en tidligere uke (1p per type).
       row.result.violations.push("agile_meeting_total_cap");
       continue;
     }
     agileTakenWeeks.add(w);
-    agileCounted += 1;
+    agileTakenTypes.add(t);
   }
 
   // ===== Step 5: weekly cap (R3, R10) =====
