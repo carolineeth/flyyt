@@ -321,7 +321,7 @@ export const VIOLATION_MESSAGES: Record<PointsRuleViolation, string> = {
   after_week_19: "Uke 20 teller ikke for poeng",
   weekly_cap_exceeded: "Mer enn 3 aktiviteter denne uka — gir ikke poeng",
   agile_meeting_same_week: "Et annet smidig møte teller allerede for denne uka",
-  agile_meeting_total_cap: "Over taket på 3 smidige møter",
+  agile_meeting_total_cap: "Denne smidig-typen er allerede telt en tidligere uke",
   supervisor_weekly_cap: "Veiledermøte teller allerede for denne uka",
   supervisor_total_cap: "Over taket på 4 veiledermøter",
   total_cap_exceeded: "Over 30p-taket",
