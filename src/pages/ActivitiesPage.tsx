@@ -1,14 +1,13 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useActivityCatalog, useActivityRegistrations, type CatalogItem, type Registration } from "@/hooks/useActivityCatalog";
 import { PointsPlanner } from "@/components/activities/PointsPlanner";
-import { calcTotalEarnedPoints } from "@/lib/calcTotalEarnedPoints";
+import { calculateActivityPoints } from "@/lib/activityPoints";
 import { CatalogView } from "@/components/activities/CatalogView";
 import { RegistrationsView } from "@/components/activities/RegistrationsView";
 import { RegistrationModal } from "@/components/activities/RegistrationModal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Info } from "lucide-react";
-import { useMemo } from "react";
 
 export default function ActivitiesPage() {
   const { data: catalog, isLoading: loadingCatalog } = useActivityCatalog();
@@ -33,7 +32,10 @@ export default function ActivitiesPage() {
   const cat = catalog || [];
   const regs = registrations || [];
 
-  const earned = calcTotalEarnedPoints(regs, cat);
+  const pointsResult = useMemo(() => calculateActivityPoints(regs, cat), [regs, cat]);
+  const earned = pointsResult.totalEarned;
+  const totalBeforeCap = pointsResult.totalBeforeCap;
+  const overCap = totalBeforeCap > 30;
   const progressPct = Math.min((earned / 30) * 100, 100);
   const regCount = regs.filter((r) => r.status === "completed" || r.status === "in_progress").length;
 

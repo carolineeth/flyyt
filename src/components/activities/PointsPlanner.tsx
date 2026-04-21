@@ -310,7 +310,7 @@ export function PointsPlanner({ catalog, registrations, onClickRegistration }: P
                     {w.registrations.map((r) => {
                       const cat = catalog.find((c) => c.id === r.catalog_id);
                       if (!cat) return null;
-                      return <RegBlock key={r.id} reg={r} cat={cat} onDragStart={handleDragStart} isDragging={draggedId === r.id} onClick={() => onClickRegistration?.(r, cat)} />;
+                      return <RegBlock key={r.id} reg={r} cat={cat} onDragStart={handleDragStart} isDragging={draggedId === r.id} onClick={() => onClickRegistration?.(r, cat)} violations={violationsByRegId.get(r.id)} />;
                     })}
                     {isEmpty && (
                       <p className="text-xs text-muted-foreground text-center py-4">—</p>
@@ -376,21 +376,33 @@ function getRegBlockStyle(cat: CatalogItem) {
   return REG_BLOCK_STYLES.optional;
 }
 
-function RegBlock({ reg, cat, onDragStart, isDragging, onClick }: { reg: Registration; cat: CatalogItem; onDragStart: (e: React.DragEvent, id: string) => void; isDragging: boolean; onClick?: () => void }) {
+function RegBlock({ reg, cat, onDragStart, isDragging, onClick, violations }: { reg: Registration; cat: CatalogItem; onDragStart: (e: React.DragEvent, id: string) => void; isDragging: boolean; onClick?: () => void; violations?: PointsRuleViolation[] }) {
   const style = getRegBlockStyle(cat);
-  return (
+  // Only show "no points" styling if registration is completed but earned 0 points
+  const isDisqualified = reg.status === "completed" && violations && violations.length > 0 &&
+    !violations.includes("not_completed") && !violations.includes("invalid_week");
+  const block = (
     <div
       draggable
       onDragStart={(e) => onDragStart(e, reg.id)}
       onClick={(e) => { e.stopPropagation(); onClick?.(); }}
       className={`text-sm leading-snug rounded-lg py-2 px-3 cursor-pointer active:cursor-grabbing transition-all flex items-center gap-2 hover:ring-1 hover:ring-primary/30 border-l-[3px] ${style.bg} ${style.text} ${style.border} ${
-        isDragging ? "opacity-40 scale-95" : "opacity-100"
+        isDragging ? "opacity-40 scale-95" : isDisqualified ? "opacity-50" : "opacity-100"
       }`}
     >
       <GripVertical className="h-3.5 w-3.5 shrink-0 opacity-30" />
-      <span className="flex-1 min-w-0 font-medium truncate">{cat.name}</span>
-      <span className="text-xs font-medium opacity-70 shrink-0">{cat.points}p</span>
+      <span className={`flex-1 min-w-0 font-medium truncate ${isDisqualified ? "line-through" : ""}`}>{cat.name}</span>
+      <span className="text-xs font-medium opacity-70 shrink-0">{isDisqualified ? "0p" : `${cat.points}p`}</span>
     </div>
+  );
+  if (!violations || violations.length === 0) return block;
+  return (
+    <UITooltip>
+      <TooltipTrigger asChild>{block}</TooltipTrigger>
+      <TooltipContent side="top" className="max-w-[260px] text-xs">
+        {violations.map((v) => VIOLATION_MESSAGES[v]).join(" · ")}
+      </TooltipContent>
+    </UITooltip>
   );
 }
 
