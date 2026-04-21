@@ -25,14 +25,14 @@ export default function ActivitiesPage() {
     setPlannerModalOpen(true);
   }, []);
 
+  const cat = catalog || [];
+  const regs = registrations || [];
+  const pointsResult = useMemo(() => calculateActivityPoints(regs, cat), [regs, cat]);
+
   if (loadingCatalog || loadingRegs) {
     return <div className="p-8 text-muted-foreground">Laster aktiviteter...</div>;
   }
 
-  const cat = catalog || [];
-  const regs = registrations || [];
-
-  const pointsResult = useMemo(() => calculateActivityPoints(regs, cat), [regs, cat]);
   const earned = pointsResult.totalEarned;
   const totalBeforeCap = pointsResult.totalBeforeCap;
   const overCap = totalBeforeCap > 30;
