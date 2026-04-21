@@ -199,6 +199,20 @@ export function RegistrationModal({ open, onOpenChange, catalogItem, registratio
       ) ?? null
     : null;
 
+  // Non-blocking rule warning when picking completed_date
+  const ruleWarning = (() => {
+    if (!form.completed_date) return null;
+    const w = getWeekNumber(form.completed_date);
+    if (w >= 20) return "Uke 20 teller ikke for poeng.";
+    if (catalogItem.period === "first_half" && (w < 10 || w > 14)) return "Utenfor første halvdel (uke 10–14) — gir ikke poeng.";
+    if (catalogItem.period === "second_half" && (w < 15 || w > 19)) return "Utenfor andre halvdel (uke 15–19) — gir ikke poeng.";
+    const sameWeekCompleted = allRegistrations.filter(
+      (r) => r.id !== reg?.id && r.status === "completed" && r.completed_week === w,
+    );
+    if (sameWeekCompleted.length >= 3) return `Denne uka har allerede ${sameWeekCompleted.length} aktiviteter — denne vil ikke gi poeng (maks 3/uke).`;
+    return null;
+  })();
+
   const openDuplicate = () => {
     if (!duplicateInWeek) return;
     const existingParticipantIds = participants?.filter((p) => p.registration_id === duplicateInWeek.id).map((p) => p.member_id) || [];
