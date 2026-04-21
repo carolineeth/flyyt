@@ -186,6 +186,8 @@ describe("calculateActivityPoints", () => {
     expect(r.totalEarned).toBe(1);
     expect(r.perRegistration.find((x) => x.registrationId === "r2")?.violations).toContain("agile_meeting_total_cap");
   });
+
+  it("Sum > 30 → kappet på 30, totalBeforeCap viser reell sum", () => {
     // 16 obligatoriske á 2p over 6 uker (3/uke) = potensielt 32p, kappet på 30
     const catalog = Array.from({ length: 18 }, (_, i) =>
       cat({ id: `c${i}`, points: 2, is_mandatory: false }),
