@@ -365,7 +365,7 @@ export function PointsPlanner({ catalog, registrations, onClickRegistration }: P
           <SummaryItem label="Opptjent" value={`${summary.earned}p`} color="text-primary" />
           <SummaryItem label="Planlagt" value={`${summary.planned}p`} color="text-amber-600" />
           <SummaryItem label="Gjenstående" value={`${summary.remaining}p`} color="text-muted-foreground" />
-          <SummaryItem label="Maks mulig" value={`${catalog.reduce((s, c) => s + c.points * c.max_occurrences, 0)}p`} color="text-foreground/40" />
+          <SummaryItem label="Maks mulig" value="30p" color="text-foreground/40" />
         </div>
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">
