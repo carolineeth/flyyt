@@ -107,17 +107,43 @@ function compareSort(a: InternalRow, b: InternalRow): number {
   return a.reg.created_at.localeCompare(b.reg.created_at);
 }
 
+export interface CalculateOptions {
+  /**
+   * Når true behandles registreringer med status != "completed" som om
+   * de var fullført, ved å bruke planned_week som completed_week og
+   * created_at som completed_date. Brukes for å beregne potensielt
+   * opptjente poeng for planlagte aktiviteter.
+   */
+  includePlanned?: boolean;
+}
+
 export function calculateActivityPoints(
   registrations: RegistrationInput[],
   catalog: CatalogInput[],
+  options: CalculateOptions = {},
 ): ActivityPointsResult {
+  const { includePlanned = false } = options;
   const catalogById = new Map(catalog.map((c) => [c.id, c]));
 
-  // Build initial rows
+  // Build initial rows. When includePlanned is true, hydrate planned regs
+  // with synthetic completed_week/date so that they pass step 1.
   const rows: InternalRow[] = [];
-  for (const reg of registrations) {
-    const cat = catalogById.get(reg.catalog_id);
+  for (const orig of registrations) {
+    const cat = catalogById.get(orig.catalog_id);
     if (!cat) continue;
+    let reg: RegistrationInput = orig;
+    if (includePlanned && orig.status !== "completed") {
+      const plannedWeek = (orig as RegistrationInput & { planned_week?: number | null }).planned_week ?? null;
+      if (plannedWeek != null) {
+        reg = {
+          ...orig,
+          status: "completed",
+          completed_week: plannedWeek,
+          // Use start of week as synthetic completed_date — sortable
+          completed_date: orig.completed_date ?? `2025-01-01`,
+        };
+      }
+    }
     const result: RegistrationPointsResult = {
       registrationId: reg.id,
       catalogId: cat.id,
