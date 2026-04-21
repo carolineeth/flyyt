@@ -15,8 +15,8 @@ const reg = (over: Partial<RegistrationInput> & { id: string; catalog_id: string
   id: over.id,
   catalog_id: over.catalog_id,
   status: over.status ?? "completed",
-  completed_date: over.completed_date ?? "2026-03-10",
-  completed_week: over.completed_week ?? 11,
+  completed_date: "completed_date" in over ? over.completed_date! : "2026-03-10",
+  completed_week: "completed_week" in over ? over.completed_week! : 11,
   created_at: over.created_at ?? "2026-03-10T10:00:00Z",
 });
 
