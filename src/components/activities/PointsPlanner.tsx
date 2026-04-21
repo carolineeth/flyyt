@@ -86,8 +86,15 @@ export function PointsPlanner({ catalog, registrations, onClickRegistration }: P
   const currentWeek = getCurrentWeek();
 
   // === Single source of truth: the rule engine ===
+  // Earned: only counts status="completed" registrations
   const pointsResult = useMemo(
     () => calculateActivityPoints(registrations, catalog),
+    [registrations, catalog],
+  );
+
+  // Planned: re-run engine treating not-completed (with planned_week) as completed
+  const plannedResult = useMemo(
+    () => calculateActivityPoints(registrations, catalog, { includePlanned: true }),
     [registrations, catalog],
   );
 
@@ -120,12 +127,34 @@ export function PointsPlanner({ catalog, registrations, onClickRegistration }: P
     if (unplannedMandatory.length > 0) {
       msgs.push({ type: "warning", text: `⚠ ${unplannedMandatory.length} obligatorisk${unplannedMandatory.length > 1 ? "e" : ""} aktivitet${unplannedMandatory.length > 1 ? "er" : ""} ikke planlagt` });
     }
-    // Use engine's per-week breakdown for accurate disqualification warnings
-    pointsResult.perWeek.forEach((w) => {
-      if (w.disqualifiedCount > 0) {
-        msgs.push({ type: "warning", text: `⚠ Uke ${w.week} har ${w.disqualifiedCount} aktivitet${w.disqualifiedCount > 1 ? "er" : ""} som ikke gir poeng` });
+
+    // Group disqualified registrations per week per violation reason
+    const perWeekViolations = new Map<number, Map<PointsRuleViolation, number>>();
+    for (const r of pointsResult.perRegistration) {
+      if (r.countedTowardTotal) continue;
+      const w = r.completedWeek;
+      if (w == null) continue;
+      // Skip "not_completed" — those aren't user errors, just not done yet
+      const real = r.violations.filter((v) => v !== "not_completed" && v !== "invalid_week");
+      if (real.length === 0) continue;
+      // Use the most specific violation (first one)
+      const primary = real[0];
+      if (!perWeekViolations.has(w)) perWeekViolations.set(w, new Map());
+      const m = perWeekViolations.get(w)!;
+      m.set(primary, (m.get(primary) ?? 0) + 1);
+    }
+    const sortedWeeks = [...perWeekViolations.keys()].sort((a, b) => a - b);
+    for (const w of sortedWeeks) {
+      const reasons = perWeekViolations.get(w)!;
+      for (const [reason, count] of reasons) {
+        const noun = count === 1 ? "aktivitet" : "aktiviteter";
+        msgs.push({
+          type: "warning",
+          text: `⚠ Uke ${w}: ${count} ${noun} gir 0p — ${VIOLATION_MESSAGES[reason].toLowerCase()}`,
+        });
       }
-    });
+    }
+
     if (mandatoryCats.length > 0 && unplannedMandatory.length === 0) {
       msgs.push({ type: "success", text: "✓ Alle obligatoriske aktiviteter er gjennomført eller planlagt" });
     }
@@ -135,21 +164,16 @@ export function PointsPlanner({ catalog, registrations, onClickRegistration }: P
   const summary = useMemo(() => {
     // Earned = engine result (kappet på 30, alle regler anvendt)
     const earned = pointsResult.totalEarned;
-    // Planned = points from registrations that are not yet completed but planned
-    let planned = 0;
-    registrations.forEach((r) => {
-      if (r.status === "completed") return;
-      const cat = catalog.find((c) => c.id === r.catalog_id);
-      if (!cat) return;
-      if (r.planned_week != null || getRegWeek(r) != null) planned += cat.points;
-    });
+    // Planned = additional points planned activities would yield, after rules + cap
+    const planned = Math.max(0, Math.min(plannedResult.totalEarned - earned, 30 - earned));
+    const remaining = Math.max(0, 30 - earned - planned);
     return {
       earned,
       planned,
-      remaining: Math.max(30 - earned, 0),
+      remaining,
       totalBeforeCap: pointsResult.totalBeforeCap,
     };
-  }, [registrations, catalog, pointsResult]);
+  }, [pointsResult, plannedResult]);
 
   const chartData = useMemo(() => weekData.map((w) => ({
     name: `U${w.week}`,
