@@ -138,6 +138,55 @@ describe("calculateActivityPoints", () => {
     expect(dq?.violations).toContain("agile_meeting_same_week");
   });
 
+  it("uke med alle tre smidige møter — første teller, to diskvalifiseres", () => {
+    const catalog = [
+      cat({ id: "d", points: 1, meeting_type: "daily_standup", max_occurrences: 10 }),
+      cat({ id: "p", points: 1, meeting_type: "sprint_planning", max_occurrences: 10 }),
+      cat({ id: "rv", points: 1, meeting_type: "sprint_review", max_occurrences: 10 }),
+    ];
+    const regs = [
+      reg({ id: "r1", catalog_id: "d", completed_week: 12, completed_date: "2026-03-16", created_at: "2026-03-16T10:00:00Z" }),
+      reg({ id: "r2", catalog_id: "p", completed_week: 12, completed_date: "2026-03-16", created_at: "2026-03-16T12:00:00Z" }),
+      reg({ id: "r3", catalog_id: "rv", completed_week: 12, completed_date: "2026-03-16", created_at: "2026-03-16T14:00:00Z" }),
+    ];
+    const r = calculateActivityPoints(regs, catalog);
+    expect(r.totalEarned).toBe(1);
+    expect(r.perRegistration.find((x) => x.registrationId === "r1")?.pointsEarned).toBe(1);
+    expect(r.perRegistration.find((x) => x.registrationId === "r2")?.violations).toContain("agile_meeting_same_week");
+    expect(r.perRegistration.find((x) => x.registrationId === "r3")?.violations).toContain("agile_meeting_same_week");
+  });
+
+  it("tre smidige i tre ulike uker — alle teller, 3p totalt", () => {
+    const catalog = [
+      cat({ id: "d", points: 1, meeting_type: "daily_standup", max_occurrences: 10 }),
+      cat({ id: "p", points: 1, meeting_type: "sprint_planning", max_occurrences: 10 }),
+      cat({ id: "rv", points: 1, meeting_type: "sprint_review", max_occurrences: 10 }),
+    ];
+    const regs = [
+      reg({ id: "r1", catalog_id: "d", completed_week: 11, completed_date: "2026-03-09" }),
+      reg({ id: "r2", catalog_id: "p", completed_week: 12, completed_date: "2026-03-16" }),
+      reg({ id: "r3", catalog_id: "rv", completed_week: 13, completed_date: "2026-03-23" }),
+    ];
+    const r = calculateActivityPoints(regs, catalog);
+    expect(r.totalEarned).toBe(3);
+    for (const pr of r.perRegistration) {
+      expect(pr.violations).toEqual([]);
+    }
+  });
+
+  it("daily i uke 11 og 12 — kun uke 11 teller (type kan brukes maks én gang)", () => {
+    const catalog = [
+      cat({ id: "d", points: 1, meeting_type: "daily_standup", max_occurrences: 10 }),
+    ];
+    const regs = [
+      reg({ id: "r1", catalog_id: "d", completed_week: 11, completed_date: "2026-03-09" }),
+      reg({ id: "r2", catalog_id: "d", completed_week: 12, completed_date: "2026-03-16" }),
+    ];
+    const r = calculateActivityPoints(regs, catalog);
+    expect(r.totalEarned).toBe(1);
+    expect(r.perRegistration.find((x) => x.registrationId === "r2")?.violations).toContain("agile_meeting_total_cap");
+  });
+
   it("Sum > 30 → kappet på 30, totalBeforeCap viser reell sum", () => {
     // 16 obligatoriske á 2p over 6 uker (3/uke) = potensielt 32p, kappet på 30
     const catalog = Array.from({ length: 18 }, (_, i) =>
