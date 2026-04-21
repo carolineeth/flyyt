@@ -6,6 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } fro
 import { useUpdateRegistration, type CatalogItem, type Registration } from "@/hooks/useActivityCatalog";
 import { Tooltip as UITooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
+import { calculateActivityPoints, VIOLATION_MESSAGES, type PointsRuleViolation } from "@/lib/activityPoints";
 
 const WEEK_RANGES: Record<number, string> = {
   10: "3.–8. mars", 11: "9.–15. mars", 12: "16.–22. mars", 13: "23.–29. mars",
@@ -84,6 +85,20 @@ export function PointsPlanner({ catalog, registrations, onClickRegistration }: P
   const [showAllWeeks, setShowAllWeeks] = useState(false);
   const currentWeek = getCurrentWeek();
 
+  // === Single source of truth: the rule engine ===
+  const pointsResult = useMemo(
+    () => calculateActivityPoints(registrations, catalog),
+    [registrations, catalog],
+  );
+
+  const violationsByRegId = useMemo(() => {
+    const map = new Map<string, PointsRuleViolation[]>();
+    for (const r of pointsResult.perRegistration) {
+      if (r.violations.length > 0) map.set(r.registrationId, r.violations);
+    }
+    return map;
+  }, [pointsResult]);
+
   const weekData = useMemo(() => {
     return Array.from({ length: 10 }, (_, i) => {
       const week = i + 10;
@@ -105,47 +120,36 @@ export function PointsPlanner({ catalog, registrations, onClickRegistration }: P
     if (unplannedMandatory.length > 0) {
       msgs.push({ type: "warning", text: `⚠ ${unplannedMandatory.length} obligatorisk${unplannedMandatory.length > 1 ? "e" : ""} aktivitet${unplannedMandatory.length > 1 ? "er" : ""} ikke planlagt` });
     }
-    weekData.forEach((w) => {
-      if (w.optionalCount > 3) {
-        msgs.push({ type: "warning", text: `⚠ Uke ${w.week} har ${w.optionalCount} valgfrie aktiviteter — maks 3 gir poeng` });
+    // Use engine's per-week breakdown for accurate disqualification warnings
+    pointsResult.perWeek.forEach((w) => {
+      if (w.disqualifiedCount > 0) {
+        msgs.push({ type: "warning", text: `⚠ Uke ${w.week} har ${w.disqualifiedCount} aktivitet${w.disqualifiedCount > 1 ? "er" : ""} som ikke gir poeng` });
       }
     });
     if (mandatoryCats.length > 0 && unplannedMandatory.length === 0) {
       msgs.push({ type: "success", text: "✓ Alle obligatoriske aktiviteter er gjennomført eller planlagt" });
     }
     return msgs;
-  }, [catalog, registrations, weekData]);
+  }, [catalog, registrations, pointsResult]);
 
   const summary = useMemo(() => {
-    // Group by week and calculate effective points
-    const weekMap: Record<number, Registration[]> = {};
-    registrations.forEach((r) => {
-      const w = getRegWeek(r);
-      if (w != null) {
-        if (!weekMap[w]) weekMap[w] = [];
-        weekMap[w].push(r);
-      }
-    });
-
-    let earned = 0;
+    // Earned = engine result (kappet på 30, alle regler anvendt)
+    const earned = pointsResult.totalEarned;
+    // Planned = points from registrations that are not yet completed but planned
     let planned = 0;
-    Object.values(weekMap).forEach((weekRegs) => {
-      const calc = calcWeekPoints(weekRegs, catalog);
-      earned += calc.mandatoryEarned + calc.optionalEarned;
-      planned += calc.mandatoryPlanned + calc.optionalPlanned;
-    });
-
-    // Also count unplanned registrations' points (they haven't been assigned a week yet)
-    const unplannedRegs = registrations.filter((r) => getRegWeek(r) === null);
-    unplannedRegs.forEach((r) => {
+    registrations.forEach((r) => {
+      if (r.status === "completed") return;
       const cat = catalog.find((c) => c.id === r.catalog_id);
       if (!cat) return;
-      if (r.status === "completed") earned += cat.points;
-      else planned += cat.points;
+      if (r.planned_week != null || getRegWeek(r) != null) planned += cat.points;
     });
-
-    return { earned, planned, remaining: Math.max(30 - earned - planned, 0) };
-  }, [registrations, catalog]);
+    return {
+      earned,
+      planned,
+      remaining: Math.max(30 - earned, 0),
+      totalBeforeCap: pointsResult.totalBeforeCap,
+    };
+  }, [registrations, catalog, pointsResult]);
 
   const chartData = useMemo(() => weekData.map((w) => ({
     name: `U${w.week}`,
@@ -306,7 +310,7 @@ export function PointsPlanner({ catalog, registrations, onClickRegistration }: P
                     {w.registrations.map((r) => {
                       const cat = catalog.find((c) => c.id === r.catalog_id);
                       if (!cat) return null;
-                      return <RegBlock key={r.id} reg={r} cat={cat} onDragStart={handleDragStart} isDragging={draggedId === r.id} onClick={() => onClickRegistration?.(r, cat)} />;
+                      return <RegBlock key={r.id} reg={r} cat={cat} onDragStart={handleDragStart} isDragging={draggedId === r.id} onClick={() => onClickRegistration?.(r, cat)} violations={violationsByRegId.get(r.id)} />;
                     })}
                     {isEmpty && (
                       <p className="text-xs text-muted-foreground text-center py-4">—</p>
@@ -372,21 +376,33 @@ function getRegBlockStyle(cat: CatalogItem) {
   return REG_BLOCK_STYLES.optional;
 }
 
-function RegBlock({ reg, cat, onDragStart, isDragging, onClick }: { reg: Registration; cat: CatalogItem; onDragStart: (e: React.DragEvent, id: string) => void; isDragging: boolean; onClick?: () => void }) {
+function RegBlock({ reg, cat, onDragStart, isDragging, onClick, violations }: { reg: Registration; cat: CatalogItem; onDragStart: (e: React.DragEvent, id: string) => void; isDragging: boolean; onClick?: () => void; violations?: PointsRuleViolation[] }) {
   const style = getRegBlockStyle(cat);
-  return (
+  // Only show "no points" styling if registration is completed but earned 0 points
+  const isDisqualified = reg.status === "completed" && violations && violations.length > 0 &&
+    !violations.includes("not_completed") && !violations.includes("invalid_week");
+  const block = (
     <div
       draggable
       onDragStart={(e) => onDragStart(e, reg.id)}
       onClick={(e) => { e.stopPropagation(); onClick?.(); }}
       className={`text-sm leading-snug rounded-lg py-2 px-3 cursor-pointer active:cursor-grabbing transition-all flex items-center gap-2 hover:ring-1 hover:ring-primary/30 border-l-[3px] ${style.bg} ${style.text} ${style.border} ${
-        isDragging ? "opacity-40 scale-95" : "opacity-100"
+        isDragging ? "opacity-40 scale-95" : isDisqualified ? "opacity-50" : "opacity-100"
       }`}
     >
       <GripVertical className="h-3.5 w-3.5 shrink-0 opacity-30" />
-      <span className="flex-1 min-w-0 font-medium truncate">{cat.name}</span>
-      <span className="text-xs font-medium opacity-70 shrink-0">{cat.points}p</span>
+      <span className={`flex-1 min-w-0 font-medium truncate ${isDisqualified ? "line-through" : ""}`}>{cat.name}</span>
+      <span className="text-xs font-medium opacity-70 shrink-0">{isDisqualified ? "0p" : `${cat.points}p`}</span>
     </div>
+  );
+  if (!violations || violations.length === 0) return block;
+  return (
+    <UITooltip>
+      <TooltipTrigger asChild>{block}</TooltipTrigger>
+      <TooltipContent side="top" className="max-w-[260px] text-xs">
+        {violations.map((v) => VIOLATION_MESSAGES[v]).join(" · ")}
+      </TooltipContent>
+    </UITooltip>
   );
 }
 

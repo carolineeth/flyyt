@@ -1,14 +1,13 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useActivityCatalog, useActivityRegistrations, type CatalogItem, type Registration } from "@/hooks/useActivityCatalog";
 import { PointsPlanner } from "@/components/activities/PointsPlanner";
-import { calcTotalEarnedPoints } from "@/lib/calcTotalEarnedPoints";
+import { calculateActivityPoints } from "@/lib/activityPoints";
 import { CatalogView } from "@/components/activities/CatalogView";
 import { RegistrationsView } from "@/components/activities/RegistrationsView";
 import { RegistrationModal } from "@/components/activities/RegistrationModal";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Info } from "lucide-react";
-import { useMemo } from "react";
 
 export default function ActivitiesPage() {
   const { data: catalog, isLoading: loadingCatalog } = useActivityCatalog();
@@ -26,14 +25,17 @@ export default function ActivitiesPage() {
     setPlannerModalOpen(true);
   }, []);
 
+  const cat = catalog || [];
+  const regs = registrations || [];
+  const pointsResult = useMemo(() => calculateActivityPoints(regs, cat), [regs, cat]);
+
   if (loadingCatalog || loadingRegs) {
     return <div className="p-8 text-muted-foreground">Laster aktiviteter...</div>;
   }
 
-  const cat = catalog || [];
-  const regs = registrations || [];
-
-  const earned = calcTotalEarnedPoints(regs, cat);
+  const earned = pointsResult.totalEarned;
+  const totalBeforeCap = pointsResult.totalBeforeCap;
+  const overCap = totalBeforeCap > 30;
   const progressPct = Math.min((earned / 30) * 100, 100);
   const regCount = regs.filter((r) => r.status === "completed" || r.status === "in_progress").length;
 
@@ -64,7 +66,7 @@ export default function ActivitiesPage() {
       {/* Progress card */}
       <div className="card-elevated p-6 space-y-3">
         <div className="flex items-center justify-between">
-          <span className={`text-lg font-semibold ${earned > 30 ? "text-green-600" : "text-foreground"}`}>Opptjent: {earned}p av 30p</span>
+          <span className="text-lg font-semibold text-foreground">Opptjent: {earned}p av 30p</span>
           <span className="text-lg font-semibold text-primary tabular-nums">{Math.round(progressPct)}%</span>
         </div>
         <div className="h-3 rounded-full bg-muted overflow-hidden">
@@ -73,6 +75,11 @@ export default function ActivitiesPage() {
             style={{ width: `${progressPct}%` }}
           />
         </div>
+        {overCap && (
+          <p className="text-xs text-amber-600">
+            Over taket — {totalBeforeCap}p opptjent, {totalBeforeCap - 30}p over grensen
+          </p>
+        )}
       </div>
 
       {/* Points Planner */}
