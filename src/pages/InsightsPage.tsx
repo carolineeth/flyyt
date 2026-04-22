@@ -725,12 +725,19 @@ export default function InsightsPage() {
           {/* Work by person */}
           <div>
             <h4 className="text-sm font-medium mb-2 text-muted-foreground">Arbeidstypefordeling per person</h4>
-            <div className="h-[200px]">
+            <div style={{ height: Math.max(200, workByPerson.length * 40 + 60) }}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={workByPerson} layout="vertical">
+                <BarChart data={workByPerson} layout="vertical" margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                  <XAxis type="number" className="text-xs" />
-                  <YAxis dataKey="name" type="category" className="text-xs" width={70} />
+                  <XAxis type="number" className="text-xs" allowDecimals={false} />
+                  <YAxis
+                    dataKey="name"
+                    type="category"
+                    className="text-xs"
+                    width={90}
+                    interval={0}
+                    tick={{ fontSize: 12 }}
+                  />
                   <Tooltip />
                   <Bar dataKey="user_story" stackId="a" fill={CHART_COLORS.user_story} name="Brukerhistorie" />
                   <Bar dataKey="technical" stackId="a" fill={CHART_COLORS.technical} name="Teknisk" />
