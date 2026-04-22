@@ -93,6 +93,9 @@ export default function RequirementsPage() {
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const initializedRef = useRef(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [newCategoryInput, setNewCategoryInput] = useState("");
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [newReq, setNewReq] = useState({
     type: "functional" as "functional" | "non_functional" | "documentation",
     category: "Værkart",
@@ -693,17 +696,92 @@ export default function RequirementsPage() {
             </div>
             <div className="space-y-1">
               <Label>Kategori</Label>
-              <Select
-                value={newReq.category}
-                onValueChange={(v) => setNewReq((p) => ({ ...p, category: v }))}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.keys(CATEGORY_LABELS).map((k) => (
-                    <SelectItem key={k} value={k}>{CATEGORY_LABELS[k]}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {addingCategory ? (
+                <div className="flex gap-2">
+                  <Input
+                    autoFocus
+                    value={newCategoryInput}
+                    onChange={(e) => setNewCategoryInput(e.target.value)}
+                    placeholder="Navn på ny kategori"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const name = newCategoryInput.trim();
+                        if (!name) return;
+                        if (!customCategories.includes(name) && !CATEGORY_LABELS[name]) {
+                          setCustomCategories((p) => [...p, name]);
+                        }
+                        setNewReq((p) => ({ ...p, category: name }));
+                        setNewCategoryInput("");
+                        setAddingCategory(false);
+                      } else if (e.key === "Escape") {
+                        e.preventDefault();
+                        setNewCategoryInput("");
+                        setAddingCategory(false);
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      const name = newCategoryInput.trim();
+                      if (!name) return;
+                      if (!customCategories.includes(name) && !CATEGORY_LABELS[name]) {
+                        setCustomCategories((p) => [...p, name]);
+                      }
+                      setNewReq((p) => ({ ...p, category: name }));
+                      setNewCategoryInput("");
+                      setAddingCategory(false);
+                    }}
+                  >
+                    Legg til
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setNewCategoryInput("");
+                      setAddingCategory(false);
+                    }}
+                  >
+                    Avbryt
+                  </Button>
+                </div>
+              ) : (
+                <Select
+                  value={newReq.category}
+                  onValueChange={(v) => {
+                    if (v === "__new__") {
+                      setAddingCategory(true);
+                    } else {
+                      setNewReq((p) => ({ ...p, category: v }));
+                    }
+                  }}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.keys(CATEGORY_LABELS).map((k) => (
+                      <SelectItem key={k} value={k}>{CATEGORY_LABELS[k]}</SelectItem>
+                    ))}
+                    {/* Eksisterende kategorier som ikke er i CATEGORY_LABELS (fra DB) */}
+                    {Array.from(new Set((requirements ?? []).map((r) => r.category)))
+                      .filter((c) => c && !CATEGORY_LABELS[c] && !customCategories.includes(c))
+                      .map((c) => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      ))}
+                    {customCategories.map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                    <SelectItem value="__new__">
+                      <span className="flex items-center gap-1.5 text-primary">
+                        <Plus className="h-3.5 w-3.5" /> Ny kategori…
+                      </span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div className="space-y-1">
               <Label>Tittel *</Label>
