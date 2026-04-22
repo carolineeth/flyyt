@@ -93,6 +93,9 @@ export default function RequirementsPage() {
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const initializedRef = useRef(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [newCategoryInput, setNewCategoryInput] = useState("");
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [newReq, setNewReq] = useState({
     type: "functional" as "functional" | "non_functional" | "documentation",
     category: "Værkart",
